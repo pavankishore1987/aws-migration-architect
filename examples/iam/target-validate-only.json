@@ -1,0 +1,76 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "TargetReadOnlyForTerraformPlan",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:Describe*",
+        "vpc:Describe*",
+        "elasticloadbalancing:Describe*",
+        "autoscaling:Describe*",
+        "s3:List*",
+        "s3:GetBucket*",
+        "rds:Describe*",
+        "lambda:List*",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "iam:List*",
+        "iam:Get*",
+        "route53:List*",
+        "route53:Get*",
+        "acm:List*",
+        "acm:Describe*",
+        "kms:List*",
+        "kms:Describe*",
+        "secretsmanager:List*",
+        "secretsmanager:DescribeSecret",
+        "ssm:DescribeParameters",
+        "cloudwatch:Describe*",
+        "logs:Describe*",
+        "dynamodb:Describe*",
+        "dynamodb:List*",
+        "cloudfront:List*",
+        "cloudfront:Get*",
+        "ecs:Describe*",
+        "ecs:List*",
+        "eks:Describe*",
+        "eks:List*",
+        "ecr:Describe*",
+        "sns:List*",
+        "sns:Get*",
+        "sqs:List*",
+        "sqs:GetQueueAttributes",
+        "events:List*",
+        "states:List*",
+        "states:Describe*",
+        "efs:Describe*",
+        "fsx:Describe*",
+        "elasticache:Describe*",
+        "es:Describe*",
+        "es:List*",
+        "sts:GetCallerIdentity",
+        "tag:GetResources"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "TerraformStateBackend",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket",
+        "dynamodb:GetItem",
+        "dynamodb:PutItem",
+        "dynamodb:DeleteItem"
+      ],
+      "Resource": [
+        "arn:aws:s3:::<TERRAFORM_STATE_BUCKET>/*",
+        "arn:aws:s3:::<TERRAFORM_STATE_BUCKET>",
+        "arn:aws:dynamodb:*:*:table/<TERRAFORM_LOCK_TABLE>"
+      ]
+    }
+  ]
+}

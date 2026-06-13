@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/execution-step.schema.json",
+  "title": "Cutover Execution Step",
+  "description": "Per-resource, per-action contract that the cutover-executor consumes. Each step is fully self-describing: preview/execute/verify/rollback/poll commands, plus enough metadata for the executor to halt safely and resume.",
+  "type": "object",
+  "required": [
+    "step_id",
+    "phase_number",
+    "phase_name",
+    "checklist_item_id",
+    "resource_arn",
+    "resource_type",
+    "action",
+    "tool",
+    "execute_cmd",
+    "verify_cmd",
+    "rollback_cmd",
+    "risk",
+    "approval_required"
+  ],
+  "properties": {
+    "step_id": {
+      "type": "string",
+      "description": "Deterministic id, format: phase{N}-{seq}-{slug}. Stable across reruns so the journal can match.",
+      "pattern": "^phase[1-6]-[0-9]{3}-[a-z0-9-]+$"
+    },
+    "phase_number":     { "type": "integer", "minimum": 1, "maximum": 6 },
+    "phase_name":       { "type": "string", "enum": ["Networking", "Storage", "Databases", "Applications", "DNS Cutover", "Validation"] },
+    "checklist_item_id": { "type": "string", "description": "ID of the parent item in cutover-checklist.json that this step implements." },
+    "resource_arn":     { "type": "string", "description": "ARN of the source-side resource this step acts on. Use 'target:<service>:<id>' for target-only resources that have no source ARN." },
+    "resource_type":    { "type": "string", "description": "Service-qualified type, e.g. AWS::S3::Bucket, AWS::RDS::DBInstance." },
+    "action": {
+      "type": "string",
+      "enum": [
+        "terraform-apply",
+        "snapshot-share",
+        "snapshot-restore",
+        "ami-share",
+        "kms-grant",
+        "datasync-start",
+        "dms-create-replication-task",
+        "dms-start-replication-task",
+        "s3-sync",
+        "s3-batch-replication-job",
+        "dynamodb-export",
+        "dynamodb-import",
+        "secret-put-value",
+        "route53-change",
+        "rds-promote-read-replica",
+        "verify-only",
+        "manual-decision"
+      ]
+    },
+    "tool": {
+      "type": "string",
+      "enum": ["terraform", "aws-cli", "datasync", "dms", "s3-batch", "human"]
+    },
+    "preview_cmd": {
+      "type": ["string", "null"],
+      "description": "Read-only command that shows the human what will happen (e.g. terraform plan -target=..., aws ... --dry-run). Null when no safe preview exists; in that case approval_required MUST be true and the description must spell out the effect."
+    },
+    "execute_cmd": {
+      "type": "string",
+      "description": "The actual mutating command. Single line; the executor runs it via Bash. Profile env var references ($MIGRATION_TARGET_PROFILE / $MIGRATION_SOURCE_PROFILE) are expanded by the shell at run time."
+    },
+    "verify_cmd": {
+      "type": "string",
+      "description": "Read-only command run after execute_cmd. Non-zero exit => verify failed => step marked failed. Used both at first run and on resume re-verification."
+    },
+    "verify_success_pattern": {
+      "type": ["string", "null"],
+      "description": "Optional regex matched against verify_cmd stdout. Match required for success in addition to exit==0."
+    },
+    "rollback_cmd": {
+      "type": "string",
+      "description": "Command(s) to undo this step on failure. Multi-step rollbacks use ' && ' or are scripted out-of-band; the executor surfaces this to the human, who approves before it runs."
+    },
+    "requires": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^phase[1-6]-[0-9]{3}-[a-z0-9-]+$" },
+      "description": "step_ids that must be in state=succeeded before this step can run. Executor enforces order."
+    },
+    "long_running": {
+      "type": "boolean",
+      "description": "True when execute_cmd starts a job that completes asynchronously (DMS replication, DataSync task, S3 batch). When true, poll_cmd MUST be set and the executor polls instead of blocking."
+    },
+    "poll_cmd": {
+      "type": ["string", "null"],
+      "description": "Read-only command run on interval while long_running. Must emit a single status line on stdout; the executor parses status_field_jsonpath to extract state."
+    },
+    "poll_interval_seconds": {
+      "type": ["integer", "null"],
+      "minimum": 10
+    },
+    "poll_terminal_states": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Status values that mean the job is done. e.g. ['stopped','failed','completed','success']. The executor compares case-insensitively."
+    },
+    "risk":               { "type": "string", "enum": ["low", "medium", "high"] },
+    "approval_required":  { "type": "boolean", "description": "If true, executor MUST prompt the human before execute_cmd, regardless of approval mode." },
+    "owner_team":         { "type": ["string", "null"] },
+    "estimated_seconds":  { "type": "integer", "minimum": 0 },
+    "notes":              { "type": ["string", "null"], "description": "Human-readable context: why this step exists, what to watch for, known footguns." }
+  }
+}

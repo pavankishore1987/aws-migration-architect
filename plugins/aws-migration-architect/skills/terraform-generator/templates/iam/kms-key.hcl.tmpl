@@ -1,0 +1,27 @@
+# KMS keys are account-bound and cannot be moved across accounts.
+# This resource creates a NEW key in the target with equivalent policy and alias.
+# Any data encrypted under the source key must be re-encrypted at the data-plane layer
+# (see cutover-checklist.md for per-resource re-encryption steps).
+
+resource "aws_kms_key" "{{slug}}" {
+  description             = "{{description}}"
+  key_usage               = "{{key_usage}}"
+  customer_master_key_spec = "{{customer_master_key_spec}}"
+
+  deletion_window_in_days = {{deletion_window_in_days}}
+  enable_key_rotation     = {{enable_key_rotation}}
+  multi_region            = {{multi_region}}
+
+  # Key policy with source-account references rewritten to target.
+  policy = jsonencode({{key_policy_parameterized}})
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}
+
+resource "aws_kms_alias" "{{slug}}" {
+  name          = "alias/{{alias_name}}"
+  target_key_id = aws_kms_key.{{slug}}.key_id
+}

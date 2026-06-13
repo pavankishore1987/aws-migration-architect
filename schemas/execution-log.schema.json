@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/execution-log.schema.json",
+  "title": "Cutover Execution Log",
+  "description": "Append-only journal of every cutover step attempted by the cutover-executor. One log per run. Written as JSONL on disk (one entry per line); the on-disk file validates as { metadata, entries }. The executor never rewrites prior lines; resume reads the journal back, finds the last entry per step_id, and decides what to do.",
+  "type": "object",
+  "required": ["metadata", "entries"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["run_id", "started_at", "source_account_id", "target_account_id", "plugin_version", "checklist_ref", "plan_ref"],
+      "properties": {
+        "run_id":             { "type": "string" },
+        "started_at":         { "type": "string", "format": "date-time" },
+        "source_account_id":  { "type": "string", "pattern": "^[0-9]{12}$" },
+        "target_account_id":  { "type": "string", "pattern": "^[0-9]{12}$" },
+        "plugin_version":     { "type": "string" },
+        "checklist_ref":      { "type": "string", "description": "Path to the cutover-checklist.json this execution implements." },
+        "plan_ref":           { "type": "string", "description": "Path to the migration-plan.json the checklist was generated from. Source of rollback steps." },
+        "execution_steps_ref": { "type": "string", "description": "Path to the execution-steps.json the executor walks." },
+        "approval_mode":      { "type": "string", "enum": ["per-step"], "description": "Locked to per-step for safety. Other modes may be added later." }
+      }
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["entry_id", "step_id", "phase_number", "event", "at"],
+        "properties": {
+          "entry_id":     { "type": "string", "description": "Monotonically increasing per-run id, format: e{seq}. Each line gets one." },
+          "step_id":      { "type": "string", "pattern": "^phase[1-6]-[0-9]{3}-[a-z0-9-]+$" },
+          "phase_number": { "type": "integer", "minimum": 1, "maximum": 6 },
+          "at":           { "type": "string", "format": "date-time" },
+          "event": {
+            "type": "string",
+            "enum": [
+              "step-started",
+              "preview-shown",
+              "approval-requested",
+              "approved",
+              "skipped",
+              "aborted",
+              "executed",
+              "verify-passed",
+              "verify-failed",
+              "poll-tick",
+              "poll-terminal",
+              "rollback-offered",
+              "rollback-approved",
+              "rollback-executed",
+              "rollback-skipped",
+              "step-succeeded",
+              "step-failed",
+              "resume-reverified",
+              "resume-marked-done",
+              "resume-reprompted",
+              "sso-probe-passed",
+              "sso-probe-failed",
+              "lock-acquired",
+              "lock-released",
+              "lock-taken-over-from-stale"
+            ]
+          },
+          "operator":     { "type": ["string", "null"], "description": "Operator identity. Resolved from $USER, falling back to `git config --global user.email`, else 'unknown'. MUST be set on approval-class events: approved, skipped, aborted, rollback-approved, rollback-skipped, lock-acquired, lock-taken-over-from-stale. May be set on other events." },
+          "cmd":          { "type": ["string", "null"] },
+          "exit_code":    { "type": ["integer", "null"] },
+          "stdout_tail":  { "type": ["string", "null"], "description": "Last ~2KB of stdout. Full output goes to per-step .log files alongside the journal." },
+          "stderr_tail":  { "type": ["string", "null"] },
+          "poll_state":   { "type": ["string", "null"] },
+          "notes":        { "type": ["string", "null"] }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "description": "Written at end-of-run. Optional during run.",
+      "properties": {
+        "ended_at":         { "type": "string", "format": "date-time" },
+        "verdict":          { "type": "string", "enum": ["completed", "halted", "aborted", "failed"] },
+        "steps_total":      { "type": "integer", "minimum": 0 },
+        "steps_succeeded":  { "type": "integer", "minimum": 0 },
+        "steps_skipped":    { "type": "integer", "minimum": 0 },
+        "steps_failed":     { "type": "integer", "minimum": 0 },
+        "halt_reason":      { "type": ["string", "null"] },
+        "halt_step_id":     { "type": ["string", "null"] }
+      }
+    }
+  }
+}

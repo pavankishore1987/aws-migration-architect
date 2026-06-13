@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/inventory.schema.json",
+  "title": "AWS Migration Inventory",
+  "type": "object",
+  "required": ["metadata", "coverage", "resources"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "run_id", "plugin_version"],
+      "properties": {
+        "captured_at":         { "type": "string", "format": "date-time" },
+        "source_account_id":   { "type": "string", "pattern": "^[0-9]{12}$" },
+        "target_account_id":   { "type": ["string", "null"], "pattern": "^[0-9]{12}$" },
+        "source_profile":      { "type": "string" },
+        "target_profile":      { "type": ["string", "null"] },
+        "run_id":              { "type": "string" },
+        "plugin_version":      { "type": "string" },
+        "incremental_from":    { "type": ["string", "null"], "description": "Prior run_id if this is an incremental scan" }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "required": ["regions_scanned", "services_scanned", "discovery_source"],
+      "properties": {
+        "regions_scanned":  { "type": "array", "items": { "type": "string" } },
+        "regions_skipped":  {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["region", "reason"],
+            "properties": {
+              "region": { "type": "string" },
+              "reason": { "type": "string", "enum": ["opted-out", "user-excluded", "no-resources"] }
+            }
+          }
+        },
+        "services_scanned": { "type": "array", "items": { "type": "string" } },
+        "services_skipped": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["service", "reason"],
+            "properties": {
+              "service":             { "type": "string" },
+              "reason":              { "type": "string" },
+              "resource_count_seen": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "discovery_source": {
+          "type": "string",
+          "enum": ["resource-explorer", "aws-config", "list-sweep"]
+        },
+        "tag_filter":              { "type": ["string", "null"] },
+        "force_include_arns":      { "type": "array", "items": { "type": "string" } },
+        "excluded_by_tag_filter":  { "type": "array", "items": { "type": "string" } },
+        "cloudformation_stacks":   {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["stack_name", "region", "status", "resource_count"],
+            "properties": {
+              "stack_name":     { "type": "string" },
+              "region":         { "type": "string" },
+              "status":         { "type": "string" },
+              "resource_count": { "type": "integer", "minimum": 0 }
+            }
+          }
+        },
+        "skipped_service_linked_roles": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["arn", "type", "service", "region", "name"],
+        "properties": {
+          "arn":      { "type": "string" },
+          "type":     { "type": "string", "description": "Generic type, e.g. compute_instance" },
+          "service":  { "type": "string", "description": "AWS service code, e.g. ec2, rds, lambda" },
+          "region":   { "type": "string" },
+          "name":     { "type": "string" },
+          "tags":     { "type": "object", "additionalProperties": { "type": "string" } },
+          "criticality": {
+            "type": "string",
+            "enum": ["P1", "P2", "P3"],
+            "description": "Migration priority"
+          },
+          "stateful": { "type": "boolean" },
+          "provider_specific": {
+            "type": "object",
+            "properties": {
+              "aws": {
+                "type": "object",
+                "description": "Raw AWS describe-* output, normalized (timestamps/IDs may be stripped). Structure varies per service."
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

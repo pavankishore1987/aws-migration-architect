@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/cutover-checklist-control-plane.schema.json",
+  "title": "Cutover Checklist — Control Plane",
+  "description": "Day-of-cutover runbook for control-plane operations: Terraform applies per module, IAM creation, networking, security groups, KMS keys, empty resource containers, DNS scaffolding, control-plane validation. Pairs with cutover-checklist-data-plane.json. The control-plane runbook is what you run BEFORE the data-plane runbook — you create the empty target shape first, then move data into it.",
+  "type": "object",
+  "required": ["metadata", "phases"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "target_account_id", "run_id", "plugin_version"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "target_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "run_id":             { "type": "string" },
+        "plugin_version":     { "type": "string" },
+        "migration_plan_ref": { "type": "string" },
+        "iam_policy_required": { "type": "string", "enum": ["target-cutover-control-plane"], "description": "Reminds operator which IAM policy must be attached during this checklist's execution." }
+      }
+    },
+    "phases": {
+      "type": "array",
+      "minItems": 7,
+      "maxItems": 7,
+      "items": {
+        "type": "object",
+        "required": ["number", "name", "pre_cutover", "during_cutover", "post_cutover"],
+        "properties": {
+          "number":   { "type": "integer", "minimum": 0, "maximum": 6 },
+          "name":     { "type": "string", "enum": ["Globals", "Networking", "Storage Containers", "Database Containers", "Compute Containers", "DNS Scaffolding", "Control Plane Validation"] },
+          "description": { "type": "string", "description": "One-liner: what this phase creates in the target account." },
+          "terraform_modules": { "type": "array", "items": { "type": "string" }, "description": "Which terraform/<module>/ directories this phase applies." },
+          "pre_cutover": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "description"],
+              "properties": {
+                "id":           { "type": "string" },
+                "description":  { "type": "string" },
+                "owner_team":   { "type": ["string", "null"] },
+                "time_box_minutes": { "type": "integer", "minimum": 0 },
+                "verification_command": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "during_cutover": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "description", "operation_type"],
+              "properties": {
+                "id":           { "type": "string" },
+                "description":  { "type": "string" },
+                "owner_team":   { "type": ["string", "null"] },
+                "operation_type": { "type": "string", "enum": ["terraform-apply", "aws-cli", "manual"], "description": "Module apply, AWS CLI call, or operator manual action — strictly control-plane operations only." },
+                "terraform_module": { "type": ["string", "null"], "description": "Set for operation_type=terraform-apply." },
+                "command":      { "type": ["string", "null"] },
+                "time_box_minutes": { "type": "integer", "minimum": 0 },
+                "verification_command": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "post_cutover": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "description"],
+              "properties": {
+                "id":           { "type": "string" },
+                "description":  { "type": "string" },
+                "owner_team":   { "type": ["string", "null"] },
+                "verification_command": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "go_no_go_gate": {
+            "type": "object",
+            "properties": {
+              "criteria":  { "type": "array", "items": { "type": "string" } },
+              "approvers": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "handoff_to_data_plane": {
+      "type": "object",
+      "description": "What must be true at the end of the control-plane runbook before the data-plane runbook can start.",
+      "properties": {
+        "criteria": { "type": "array", "items": { "type": "string" } }
+      }
+    }
+  }
+}

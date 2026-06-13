@@ -1,0 +1,22 @@
+# macOS
+.DS_Store
+
+# Migration run artifacts (when AWS_MIGRATION_ROOT points inside the repo)
+.aws-migration/
+runs/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+crash.log
+
+# Local env / credentials (never commit)
+.env
+.env.*
+*.pem
+
+# Editor
+.idea/
+*.swp

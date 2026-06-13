@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/audit-diff.schema.json",
+  "title": "Post-Migration Audit Diff",
+  "type": "object",
+  "required": ["metadata", "summary", "findings"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "target_account_id", "run_id", "plugin_version"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "target_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "source_profile":    { "type": "string" },
+        "target_profile":    { "type": "string" },
+        "run_id":             { "type": "string" },
+        "plugin_version":     { "type": "string" },
+        "inventory_ref":      { "type": "string", "description": "Source-side inventory used as the expected baseline" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total_resources_in_source_scope", "matches", "drift_count_by_category"],
+      "properties": {
+        "total_resources_in_source_scope": { "type": "integer", "minimum": 0 },
+        "matches":                          { "type": "integer", "minimum": 0 },
+        "drift_count_by_category": {
+          "type": "object",
+          "properties": {
+            "missing_in_target": { "type": "integer", "minimum": 0 },
+            "extra_in_target":   { "type": "integer", "minimum": 0 },
+            "config_drift":      { "type": "integer", "minimum": 0 },
+            "security_drift":    { "type": "integer", "minimum": 0 },
+            "cost_drift":        { "type": "integer", "minimum": 0 },
+            "scope_drift":       { "type": "integer", "minimum": 0 }
+          }
+        },
+        "verdict": {
+          "type": "string",
+          "enum": ["clean", "minor-drift", "significant-drift", "failed"],
+          "description": "clean = zero findings; minor = <5 non-security; significant = security/missing findings present; failed = unrecoverable"
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["category", "resource", "description", "severity"],
+        "properties": {
+          "category": {
+            "type": "string",
+            "enum": ["missing_in_target", "extra_in_target", "config_drift", "security_drift", "cost_drift", "scope_drift"]
+          },
+          "resource":    { "type": "string", "description": "ARN if available, otherwise resource identifier" },
+          "description": { "type": "string" },
+          "severity":    { "type": "string", "enum": ["info", "warning", "error"] },
+          "source_value": { "description": "Value as observed in source (any JSON type)" },
+          "target_value": { "description": "Value as observed in target (any JSON type)" },
+          "rollback_hint": { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

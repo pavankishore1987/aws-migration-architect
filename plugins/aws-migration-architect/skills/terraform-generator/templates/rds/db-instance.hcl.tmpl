@@ -1,0 +1,61 @@
+# RDS data is migrated via cross-account snapshot share (see cutover-checklist.md).
+# This resource creates the empty target DB; restore-from-snapshot is the cutover step.
+
+resource "aws_db_subnet_group" "{{slug}}" {
+  name       = "{{name}}-subnet-group"
+  subnet_ids = [{{#subnet_refs}}{{ref:subnet_arn}},{{/subnet_refs}}]
+  tags       = merge(var.common_tags, {{tags}})
+}
+
+resource "aws_db_instance" "{{slug}}" {
+  identifier     = "{{name}}"
+  engine         = "{{engine}}"
+  engine_version = "{{engine_version}}"
+  instance_class = "{{instance_class}}"
+
+  allocated_storage     = {{allocated_storage}}
+  max_allocated_storage = {{max_allocated_storage}}
+  storage_type          = "{{storage_type}}"
+  storage_encrypted     = true
+  kms_key_id            = {{kms_alias_var rds_kms_alias}}
+
+  db_subnet_group_name   = aws_db_subnet_group.{{slug}}.name
+  vpc_security_group_ids = [{{#security_group_refs}}{{ref:sg_arn}},{{/security_group_refs}}]
+  parameter_group_name   = "{{parameter_group_name}}"
+  publicly_accessible    = {{publicly_accessible}}
+  multi_az               = {{multi_az}}
+  port                   = {{port}}
+
+  # Initial credentials — overridden post-restore via cutover checklist.
+  username = var.rds_{{slug}}_username
+  password = var.rds_{{slug}}_password
+  # Or, if restoring from snapshot, the snapshot's credentials carry over:
+  # snapshot_identifier = var.rds_{{slug}}_snapshot
+
+  backup_retention_period = {{backup_retention_period}}
+  backup_window           = "{{backup_window}}"
+  maintenance_window      = "{{maintenance_window}}"
+
+  performance_insights_enabled = {{performance_insights_enabled}}
+  monitoring_interval          = {{monitoring_interval}}
+
+  enabled_cloudwatch_logs_exports = {{enabled_cloudwatch_logs_exports}}
+
+  deletion_protection = true
+  skip_final_snapshot = false
+  final_snapshot_identifier = "{{name}}-final-${formatdate("YYYYMMDDHHmmss", timestamp())}"
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name       = "{{name}}"
+    MigratedAt = formatdate("YYYY-MM-DD", timestamp())
+    SourceArn  = "{{source_arn}}"
+  })
+
+  lifecycle {
+    ignore_changes = [
+      password,                 # rotated post-cutover
+      snapshot_identifier,      # set once at restore time
+      final_snapshot_identifier # timestamp-suffixed
+    ]
+  }
+}

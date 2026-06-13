@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/migration-plan.schema.json",
+  "title": "AWS Migration Plan",
+  "type": "object",
+  "required": ["metadata", "phases"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "target_account_id", "run_id", "plugin_version"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "target_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "source_region":     { "type": "string" },
+        "target_region":     { "type": "string" },
+        "run_id":             { "type": "string" },
+        "plugin_version":     { "type": "string" },
+        "inventory_ref":      { "type": "string" },
+        "dependency_graph_ref": { "type": "string" },
+        "risk_scores_ref":    { "type": "string" }
+      }
+    },
+    "phases": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "type": "object",
+        "required": ["number", "name", "prerequisites", "steps", "estimated_duration_minutes", "rollback"],
+        "properties": {
+          "number":   { "type": "integer", "minimum": 1, "maximum": 6 },
+          "name":     { "type": "string", "enum": ["Networking", "Storage", "Databases", "Applications", "DNS Cutover", "Validation"] },
+          "prerequisites": { "type": "array", "items": { "type": "string" } },
+          "steps": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "description", "resources", "parallel_safe", "risk"],
+              "properties": {
+                "id":             { "type": "string" },
+                "description":    { "type": "string" },
+                "resources":      { "type": "array", "items": { "type": "string" } },
+                "parallel_safe":  { "type": "boolean" },
+                "risk":           { "type": "string", "enum": ["low", "medium", "high"] },
+                "owner_team":     { "type": ["string", "null"] },
+                "estimated_minutes": { "type": "integer", "minimum": 0 },
+                "cost_delta_usd": { "type": "number" }
+              }
+            }
+          },
+          "estimated_duration_minutes": { "type": "integer", "minimum": 0 },
+          "rollback": {
+            "type": "object",
+            "required": ["description", "steps"],
+            "properties": {
+              "description":    { "type": "string" },
+              "steps":          { "type": "array", "items": { "type": "string" } },
+              "rollback_window_minutes": { "type": "integer", "minimum": 0 }
+            }
+          },
+          "go_no_go_gate": {
+            "type": "object",
+            "properties": {
+              "criteria":    { "type": "array", "items": { "type": "string" } },
+              "approvers":   { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    }
+  }
+}

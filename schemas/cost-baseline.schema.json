@@ -1,0 +1,58 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/cost-baseline.schema.json",
+  "title": "Migration Cost Baseline",
+  "type": "object",
+  "required": ["metadata", "source", "target", "delta_monthly_steady_state", "first_month_total_delta"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "run_id", "plugin_version", "currency"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "target_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "run_id":             { "type": "string" },
+        "plugin_version":     { "type": "string" },
+        "currency":           { "type": "string", "default": "USD" },
+        "pricing_source":     { "type": "string", "description": "awspricing-mcp | ce | manual" }
+      }
+    },
+    "source": {
+      "type": "object",
+      "required": ["monthly_on_demand", "monthly_effective"],
+      "properties": {
+        "monthly_on_demand":         { "type": "number", "description": "Source on-demand cost as if no RIs/SPs" },
+        "monthly_ri_sp_discount":    { "type": "number", "description": "Negative number — RI/SP discount applied" },
+        "monthly_effective":         { "type": "number", "description": "Actual monthly cost in source" },
+        "ri_sp_breakdown": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["type", "annual_value", "expiry"],
+            "properties": {
+              "type":          { "type": "string", "enum": ["ri-ec2", "ri-rds", "savings-plan-compute", "savings-plan-ec2", "savings-plan-sagemaker"] },
+              "annual_value":  { "type": "number" },
+              "expiry":        { "type": "string", "format": "date" }
+            }
+          }
+        }
+      }
+    },
+    "target": {
+      "type": "object",
+      "required": ["monthly_on_demand_estimate", "first_month_includes_migration_costs"],
+      "properties": {
+        "monthly_on_demand_estimate":           { "type": "number" },
+        "monthly_with_phase2_commitments":      { "type": "number", "description": "Estimated cost if equivalent RIs/SPs are purchased in target" },
+        "first_month_includes_migration_costs": { "type": "number", "description": "DataSync, snapshot transfer, parallel-run period" }
+      }
+    },
+    "delta_monthly_steady_state": { "type": "number", "description": "target_monthly - source_monthly_effective at steady state" },
+    "first_month_total_delta":    { "type": "number", "description": "Includes migration one-shot costs and pre-commitment period" },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  }
+}

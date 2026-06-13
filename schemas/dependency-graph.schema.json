@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/dependency-graph.schema.json",
+  "title": "AWS Migration Dependency Graph",
+  "type": "object",
+  "required": ["metadata", "edges", "iam_trusts"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "run_id", "plugin_version", "inventory_ref"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "run_id":             { "type": "string" },
+        "plugin_version":     { "type": "string" },
+        "inventory_ref":      { "type": "string", "description": "Relative path to source inventory.json" }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "relation"],
+        "properties": {
+          "from":     { "type": "string", "description": "Source resource ARN" },
+          "to":       { "type": "string", "description": "Target resource ARN or external identifier" },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "sg-ingress", "sg-egress",
+              "lambda-env-secret", "lambda-env-ssm", "lambda-env-other",
+              "iam-policy", "iam-trust",
+              "s3-bucket-policy",
+              "r53-alias", "r53-cname",
+              "cloudfront-origin",
+              "elb-target-group", "elb-target",
+              "ecs-task-role", "eks-irsa",
+              "kms-key-use",
+              "vpc-endpoint"
+            ]
+          },
+          "context":  { "type": "string", "description": "Optional context (e.g., SG rule port range)" }
+        }
+      }
+    },
+    "iam_trusts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["role_arn", "trust_type"],
+        "properties": {
+          "role_arn":   { "type": "string" },
+          "trust_type": {
+            "type": "string",
+            "enum": [
+              "same-account-role",
+              "cross-account-role",
+              "oidc-github",
+              "oidc-gitlab",
+              "oidc-other",
+              "irsa-eks",
+              "saml-federation",
+              "web-identity-cognito",
+              "web-identity-custom",
+              "aws-service-principal"
+            ]
+          },
+          "trusted_principal": { "type": "string" },
+          "trusted_account":   { "type": ["string", "null"], "pattern": "^[0-9]{12}$" },
+          "needs_target_rework": { "type": "boolean", "description": "True if the trust requires explicit re-work in target (cross-account, OIDC, IRSA, SAML)" },
+          "rework_notes":        { "type": "string" }
+        }
+      }
+    },
+    "external_account_dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["account_id", "resource_arns", "type"],
+        "properties": {
+          "account_id":    { "type": "string", "pattern": "^[0-9]{12}$" },
+          "resource_arns": { "type": "array", "items": { "type": "string" } },
+          "type":          { "type": "string", "description": "vpc-peering | tgw-attachment | ram-share | iam-trust | etc" }
+        }
+      }
+    },
+    "external_identity_provider_trusts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["provider", "arn"],
+        "properties": {
+          "provider": { "type": "string", "description": "okta | azure-ad | google | github | gitlab | other" },
+          "arn":      { "type": "string", "description": "IAM identity provider ARN in source" },
+          "used_by":  { "type": "array", "items": { "type": "string" }, "description": "Role ARNs that trust this IdP" }
+        }
+      }
+    },
+    "eip_remap_required": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["eip", "referenced_at"],
+        "properties": {
+          "eip":          { "type": "string", "format": "ipv4" },
+          "referenced_at": { "type": "array", "items": { "type": "string" }, "description": "Locations referencing this EIP literal" }
+        }
+      }
+    },
+    "fragile_couplings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["description", "resources", "severity"],
+        "properties": {
+          "description": { "type": "string" },
+          "resources":   { "type": "array", "items": { "type": "string" } },
+          "severity":    { "type": "string", "enum": ["low", "medium", "high"] }
+        }
+      }
+    }
+  }
+}

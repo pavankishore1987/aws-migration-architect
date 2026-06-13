@@ -1,0 +1,88 @@
+{
+  "Roles": [
+    {
+      "RoleName": "orders-api-lambda-role",
+      "Arn": "arn:aws:iam::111111111111:role/orders-api-lambda-role",
+      "Path": "/",
+      "AssumeRolePolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": { "Service": "lambda.amazonaws.com" },
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      },
+      "Tags": [
+        { "Key": "Owner", "Value": "platform" },
+        { "Key": "Project", "Value": "orders-api" }
+      ]
+    },
+    {
+      "RoleName": "github-actions-deploy",
+      "Arn": "arn:aws:iam::111111111111:role/github-actions-deploy",
+      "Path": "/",
+      "AssumeRolePolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {
+              "Federated": "arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com"
+            },
+            "Action": "sts:AssumeRoleWithWebIdentity",
+            "Condition": {
+              "StringEquals": {
+                "token.actions.githubusercontent.com:sub": "repo:acme-corp/orders-api:ref:refs/heads/main",
+                "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+              }
+            }
+          }
+        ]
+      },
+      "Tags": [
+        { "Key": "Owner", "Value": "platform" },
+        { "Key": "CrossAccount", "Value": "github-oidc" }
+      ]
+    },
+    {
+      "RoleName": "analytics-cross-account",
+      "Arn": "arn:aws:iam::111111111111:role/analytics-cross-account",
+      "Path": "/",
+      "AssumeRolePolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": { "AWS": "arn:aws:iam::333333333333:root" },
+            "Action": "sts:AssumeRole",
+            "Condition": {
+              "StringEquals": { "sts:ExternalId": "acme-analytics-2024" }
+            }
+          }
+        ]
+      },
+      "Tags": [
+        { "Key": "Owner", "Value": "data-platform" },
+        { "Key": "CrossAccount", "Value": "true" }
+      ]
+    },
+    {
+      "RoleName": "AWSServiceRoleForRDS",
+      "Arn": "arn:aws:iam::111111111111:role/aws-service-role/rds.amazonaws.com/AWSServiceRoleForRDS",
+      "Path": "/aws-service-role/rds.amazonaws.com/",
+      "AssumeRolePolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": { "Service": "rds.amazonaws.com" },
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      },
+      "Tags": []
+    }
+  ]
+}

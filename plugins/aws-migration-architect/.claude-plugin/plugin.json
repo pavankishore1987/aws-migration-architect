@@ -1,0 +1,22 @@
+{
+  "name": "aws-migration-architect",
+  "version": "0.1.0",
+  "description": "AWS account-to-account migration toolkit: 9 specialist skills + 9 sub-agents + 4 deterministic Workflow orchestrators. Produces schema-validated JSON artifacts at every stage. Terraform-portable HCL output with parameterized account IDs, regions, and AZs.",
+  "author": {
+    "name": "pventrapragada"
+  },
+  "homepage": "https://github.com/pavankishore1987/aws-migration-architect",
+  "repository": "https://github.com/pavankishore1987/aws-migration-architect",
+  "keywords": [
+    "aws",
+    "migration",
+    "account-migration",
+    "terraform",
+    "iac",
+    "cutover",
+    "readiness",
+    "iam-trust-analysis",
+    "well-architected"
+  ],
+  "license": "MIT-0"
+}

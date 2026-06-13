@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/hardcoded-values.schema.json",
+  "title": "Detected Hard-Coded Values",
+  "type": "object",
+  "required": ["metadata", "auto_parameterized", "manual_review_required"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "run_id", "plugin_version"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "run_id":             { "type": "string" },
+        "plugin_version":     { "type": "string" }
+      }
+    },
+    "auto_parameterized": {
+      "type": "array",
+      "description": "Values that terraform-generator will replace with a Terraform variable automatically",
+      "items": {
+        "type": "object",
+        "required": ["location", "value", "kind", "var"],
+        "properties": {
+          "location":  { "type": "string", "description": "e.g., lambda:fn-xyz:env:DB_HOST" },
+          "value":     { "type": "string" },
+          "kind": {
+            "type": "string",
+            "enum": ["source-account-id", "region-name", "resource-arn-internal", "kms-key-alias"]
+          },
+          "var":       { "type": "string", "description": "Terraform variable that will hold this value" }
+        }
+      }
+    },
+    "manual_review_required": {
+      "type": "array",
+      "description": "Values that cannot be auto-parameterized; require human decision",
+      "items": {
+        "type": "object",
+        "required": ["location", "value", "kind", "reason"],
+        "properties": {
+          "location":  { "type": "string" },
+          "value":     { "type": "string" },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "elastic-ip-literal",
+              "external-domain",
+              "oidc-provider-url",
+              "external-resource-arn",
+              "external-account-id"
+            ]
+          },
+          "reason":    { "type": "string" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,22 @@
+resource "aws_security_group" "{{slug}}" {
+  name        = "{{name}}"
+  description = "{{description}}"
+  vpc_id      = {{ref:vpc_arn}}
+
+  tags = merge(var.common_tags, {{tags}})
+}
+
+# Ingress rules are emitted as separate aws_security_group_rule resources
+# so they can reference other SGs that may be defined later in the module.
+# {{#ingress_rules}}
+resource "aws_security_group_rule" "{{slug}}_ingress_{{rule_index}}" {
+  type              = "ingress"
+  security_group_id = aws_security_group.{{slug}}.id
+  from_port         = {{from_port}}
+  to_port           = {{to_port}}
+  protocol          = "{{protocol}}"
+  {{#cidr_blocks}}cidr_blocks       = {{cidr_blocks}}{{/cidr_blocks}}
+  {{#source_sg_slug}}source_security_group_id = aws_security_group.{{source_sg_slug}}.id{{/source_sg_slug}}
+  description       = "{{rule_description}}"
+}
+# {{/ingress_rules}}

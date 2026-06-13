@@ -1,0 +1,51 @@
+{
+  "Buckets": [
+    {
+      "Name": "acme-prod-orders-assets",
+      "CreationDate": "2023-04-12T10:23:45Z",
+      "Location": "us-east-1",
+      "Versioning": "Enabled",
+      "Encryption": {
+        "ServerSideEncryptionConfiguration": {
+          "Rules": [
+            {
+              "ApplyServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "aws:kms",
+                "KMSMasterKeyID": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-1"
+              },
+              "BucketKeyEnabled": true
+            }
+          ]
+        }
+      },
+      "PublicAccessBlockConfiguration": {
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true,
+        "BlockPublicPolicy": true,
+        "RestrictPublicBuckets": true
+      },
+      "Tags": {
+        "Owner": "platform",
+        "Project": "orders-api",
+        "Environment": "production"
+      }
+    },
+    {
+      "Name": "acme-prod-orders-logs",
+      "CreationDate": "2023-04-12T10:24:11Z",
+      "Location": "us-east-1",
+      "Versioning": "Disabled",
+      "Encryption": {
+        "ServerSideEncryptionConfiguration": {
+          "Rules": [
+            { "ApplyServerSideEncryptionByDefault": { "SSEAlgorithm": "AES256" } }
+          ]
+        }
+      },
+      "Tags": {
+        "Owner": "data-platform",
+        "Environment": "production"
+      }
+    }
+  ]
+}

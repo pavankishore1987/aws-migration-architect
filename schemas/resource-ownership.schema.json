@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/resource-ownership.schema.json",
+  "title": "Resource Ownership Map",
+  "type": "object",
+  "required": ["metadata", "ownership_tags", "teams", "unowned_resources"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "run_id", "plugin_version"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "run_id":             { "type": "string" },
+        "plugin_version":     { "type": "string" }
+      }
+    },
+    "ownership_tags": {
+      "type": "array",
+      "description": "Tag keys used to identify ownership, in priority order. Default: Owner, Team. Configurable via MIGRATION_OWNERSHIP_TAGS.",
+      "items": { "type": "string" }
+    },
+    "teams": {
+      "type": "object",
+      "description": "Map of team identifier → resources owned by that team",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["resources"],
+        "properties": {
+          "resources":     { "type": "array", "items": { "type": "string", "description": "Resource ARN" } },
+          "contact":       { "type": ["string", "null"], "description": "Optional contact email or Slack handle if discoverable from tags" },
+          "approval_required_for_cutover": { "type": "boolean", "default": true }
+        }
+      }
+    },
+    "unowned_resources": {
+      "type": "array",
+      "description": "Resources without any of the configured ownership tags",
+      "items": { "type": "string" }
+    }
+  }
+}

@@ -1,0 +1,208 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "DataSyncControlForFileSystemMigration",
+      "Effect": "Allow",
+      "Action": [
+        "datasync:CreateAgent",
+        "datasync:CreateLocationS3",
+        "datasync:CreateLocationEfs",
+        "datasync:CreateLocationFsxWindows",
+        "datasync:CreateLocationFsxLustre",
+        "datasync:CreateLocationFsxOpenZfs",
+        "datasync:CreateLocationFsxOntap",
+        "datasync:CreateLocationNfs",
+        "datasync:CreateLocationSmb",
+        "datasync:CreateTask",
+        "datasync:StartTaskExecution",
+        "datasync:CancelTaskExecution",
+        "datasync:DescribeAgent",
+        "datasync:DescribeLocation*",
+        "datasync:DescribeTask",
+        "datasync:DescribeTaskExecution",
+        "datasync:ListTasks",
+        "datasync:ListTaskExecutions",
+        "datasync:UpdateTask",
+        "datasync:TagResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DMSForLiveDatabaseReplication",
+      "Effect": "Allow",
+      "Action": [
+        "dms:CreateReplicationInstance",
+        "dms:CreateReplicationSubnetGroup",
+        "dms:CreateReplicationTask",
+        "dms:CreateEndpoint",
+        "dms:StartReplicationTask",
+        "dms:StopReplicationTask",
+        "dms:DescribeReplicationInstances",
+        "dms:DescribeReplicationTasks",
+        "dms:DescribeReplicationTaskAssessmentResults",
+        "dms:DescribeEndpoints",
+        "dms:TestConnection",
+        "dms:DescribeConnections",
+        "dms:ModifyReplicationTask",
+        "dms:ModifyEndpoint",
+        "dms:AddTagsToResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3ReplicationAndSync",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:PutObjectAcl",
+        "s3:PutObjectTagging",
+        "s3:PutObjectRetention",
+        "s3:PutObjectLegalHold",
+        "s3:ReplicateObject",
+        "s3:ReplicateDelete",
+        "s3:ReplicateTags",
+        "s3:GetReplicationConfiguration",
+        "s3:PutReplicationConfiguration",
+        "s3:GetBucketVersioning",
+        "s3:PutBucketVersioning",
+        "s3:GetBucketLocation",
+        "s3:ListBucket",
+        "s3:ListBucketVersions",
+        "s3:GetObject",
+        "s3:GetObjectVersion",
+        "s3:GetObjectTagging"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "S3BatchOperationsJobs",
+      "Effect": "Allow",
+      "Action": [
+        "s3control:CreateJob",
+        "s3control:DescribeJob",
+        "s3control:ListJobs",
+        "s3control:UpdateJobPriority",
+        "s3control:UpdateJobStatus"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RDSCrossAccountSnapshotAndPromote",
+      "Effect": "Allow",
+      "Action": [
+        "rds:RestoreDBInstanceFromDBSnapshot",
+        "rds:RestoreDBClusterFromSnapshot",
+        "rds:CopyDBSnapshot",
+        "rds:CopyDBClusterSnapshot",
+        "rds:ModifyDBSnapshotAttribute",
+        "rds:ModifyDBClusterSnapshotAttribute",
+        "rds:CreateDBInstanceReadReplica",
+        "rds:PromoteReadReplica",
+        "rds:PromoteReadReplicaDBCluster",
+        "rds:DescribeDBSnapshots",
+        "rds:DescribeDBClusterSnapshots",
+        "rds:DescribeDBSnapshotAttributes",
+        "rds:DescribeDBClusterSnapshotAttributes",
+        "rds:DescribeDBInstances",
+        "rds:DescribeDBClusters"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EC2AMIAndSnapshotForCrossAccount",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:ModifyImageAttribute",
+        "ec2:ModifySnapshotAttribute",
+        "ec2:CopyImage",
+        "ec2:CopySnapshot",
+        "ec2:DescribeImages",
+        "ec2:DescribeSnapshots",
+        "ec2:CreateVolume",
+        "ec2:DescribeVolumes"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DynamoDBExportImport",
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:ExportTableToPointInTime",
+        "dynamodb:ImportTable",
+        "dynamodb:DescribeExport",
+        "dynamodb:DescribeImport",
+        "dynamodb:ListExports",
+        "dynamodb:ListImports",
+        "dynamodb:DescribeContinuousBackups",
+        "dynamodb:UpdateContinuousBackups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "Route53RecordChangesForDNSCutover",
+      "Effect": "Allow",
+      "Action": [
+        "route53:ChangeResourceRecordSets",
+        "route53:GetChange",
+        "route53:ListResourceRecordSets",
+        "route53:GetHostedZone",
+        "route53:CreateHealthCheck",
+        "route53:UpdateHealthCheck",
+        "route53:GetHealthCheck",
+        "route53:ListHealthChecks"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "SecretsManagerPutValueDuringCutover",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:UpdateSecretVersionStage",
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/ManagedBy": "terraform"
+        }
+      }
+    },
+    {
+      "Sid": "KMSGrantsForCrossAccountAccess",
+      "Effect": "Allow",
+      "Action": [
+        "kms:CreateGrant",
+        "kms:RevokeGrant",
+        "kms:ListGrants",
+        "kms:DescribeKey",
+        "kms:Decrypt",
+        "kms:GenerateDataKey",
+        "kms:ReEncrypt*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DenyDestructiveDataPlane",
+      "Effect": "Deny",
+      "Action": [
+        "rds:DeleteDBInstance",
+        "rds:DeleteDBCluster",
+        "rds:DeleteDBSnapshot",
+        "rds:DeleteDBClusterSnapshot",
+        "s3:DeleteBucket",
+        "ec2:DeregisterImage",
+        "ec2:DeleteSnapshot",
+        "dynamodb:DeleteTable",
+        "datasync:DeleteTask",
+        "datasync:DeleteLocation*",
+        "dms:DeleteReplicationTask",
+        "dms:DeleteReplicationInstance",
+        "dms:DeleteEndpoint"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

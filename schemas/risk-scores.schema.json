@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/risk-scores.schema.json",
+  "title": "Per-Resource Migration Risk Scores",
+  "type": "object",
+  "required": ["metadata", "resources"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "run_id", "plugin_version"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "run_id":             { "type": "string" },
+        "plugin_version":     { "type": "string" }
+      }
+    },
+    "resources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["arn", "risk", "reasons"],
+        "properties": {
+          "arn":   { "type": "string" },
+          "risk":  { "type": "string", "enum": ["low", "medium", "high"] },
+          "reasons": {
+            "type": "array",
+            "description": "Why this risk level was assigned. Used for traceability and rollback planning.",
+            "items": {
+              "type": "string",
+              "enum": [
+                "stateless-no-deps",
+                "stateless-with-deps",
+                "stateful-rds",
+                "stateful-ebs-data",
+                "stateful-efs-fsx",
+                "stateful-dynamodb",
+                "in-unsupported-service",
+                "cross-account-trust",
+                "oidc-trust",
+                "irsa-trust",
+                "saml-trust",
+                "non-fixable-hardcoded-value",
+                "kms-encrypted",
+                "high-dependency-count",
+                "external-account-dependency",
+                "external-eip-reference",
+                "cidr-overlap-with-target"
+              ]
+            }
+          },
+          "dependency_count": { "type": "integer", "minimum": 0 }
+        }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_resources": { "type": "integer", "minimum": 0 },
+        "low":             { "type": "integer", "minimum": 0 },
+        "medium":          { "type": "integer", "minimum": 0 },
+        "high":            { "type": "integer", "minimum": 0 }
+      }
+    }
+  }
+}

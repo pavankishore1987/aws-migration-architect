@@ -1,0 +1,58 @@
+resource "aws_s3_bucket" "{{slug}}" {
+  bucket = "{{name}}${var.bucket_name_suffix}"
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name       = "{{name}}"
+    MigratedAt = formatdate("YYYY-MM-DD", timestamp())
+  })
+}
+
+resource "aws_s3_bucket_versioning" "{{slug}}" {
+  bucket = aws_s3_bucket.{{slug}}.id
+  versioning_configuration {
+    status = "{{versioning_status}}"
+  }
+}
+
+{{#has_encryption}}
+resource "aws_s3_bucket_server_side_encryption_configuration" "{{slug}}" {
+  bucket = aws_s3_bucket.{{slug}}.id
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = "{{sse_algorithm}}"
+      {{#kms_master_key_id}}kms_master_key_id = {{kms_alias_var bucket_kms_alias}}{{/kms_master_key_id}}
+    }
+    bucket_key_enabled = {{bucket_key_enabled}}
+  }
+}
+{{/has_encryption}}
+
+resource "aws_s3_bucket_public_access_block" "{{slug}}" {
+  bucket = aws_s3_bucket.{{slug}}.id
+
+  block_public_acls       = {{block_public_acls}}
+  block_public_policy     = {{block_public_policy}}
+  ignore_public_acls      = {{ignore_public_acls}}
+  restrict_public_buckets = {{restrict_public_buckets}}
+}
+
+{{#has_lifecycle_rules}}
+resource "aws_s3_bucket_lifecycle_configuration" "{{slug}}" {
+  bucket = aws_s3_bucket.{{slug}}.id
+  # {{#lifecycle_rules}}
+  rule {
+    id     = "{{rule_id}}"
+    status = "{{rule_status}}"
+    {{rule_body}}
+  }
+  # {{/lifecycle_rules}}
+}
+{{/has_lifecycle_rules}}
+
+{{#has_bucket_policy}}
+resource "aws_s3_bucket_policy" "{{slug}}" {
+  bucket = aws_s3_bucket.{{slug}}.id
+  policy = jsonencode({{bucket_policy_parameterized}})
+  # Source-account IDs in this policy have been replaced with var.target_account_id.
+}
+{{/has_bucket_policy}}

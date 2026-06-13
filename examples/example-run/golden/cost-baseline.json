@@ -1,0 +1,33 @@
+{
+  "metadata": {
+    "captured_at":       "2026-06-12T14:32:00Z",
+    "source_account_id": "111111111111",
+    "target_account_id": "222222222222",
+    "run_id":            "example-run",
+    "plugin_version":    "0.1.0",
+    "currency":          "USD",
+    "pricing_source":    "awspricing-mcp"
+  },
+  "source": {
+    "monthly_on_demand":      8420,
+    "monthly_ri_sp_discount": -2000,
+    "monthly_effective":       6420,
+    "ri_sp_breakdown": [
+      { "type": "ri-ec2", "annual_value": 24000, "expiry": "2027-03-15" }
+    ]
+  },
+  "target": {
+    "monthly_on_demand_estimate":            8520,
+    "monthly_with_phase2_commitments":        6500,
+    "first_month_includes_migration_costs":   1240
+  },
+  "delta_monthly_steady_state": 80,
+  "first_month_total_delta":    3340,
+  "notes": [
+    "RIs in source ($24k/yr) cannot transfer — first ~90 days in target at full on-demand pricing.",
+    "DataSync (~$120 one-shot for ~10TB of S3 + EFS) included in first_month_includes_migration_costs.",
+    "Cross-account RDS snapshot transfer (~$95) included.",
+    "Parallel-run period assumed at 7 days of double cost (~$1,025).",
+    "SageMaker notebook instance not estimated — out of MVP."
+  ]
+}

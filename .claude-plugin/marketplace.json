@@ -1,0 +1,32 @@
+{
+  "name": "aws-migration-architect",
+  "owner": {
+    "name": "pventrapragada"
+  },
+  "metadata": {
+    "description": "Claude Code plugin for AWS account-to-account migrations. Nine specialist skills (inventory, dependency analysis, Terraform generation, migration planning, data-migration planning, cutover control-plane, cutover data-plane, cutover execution, post-migration audit), nine bounded sub-agents, and four deterministic Workflow orchestrators (migrate, discover, execute, audit). Output is Terraform-portable HCL with parameterized account IDs, regions, and AZs.",
+    "version": "0.1.0"
+  },
+  "plugins": [
+    {
+      "name": "aws-migration-architect",
+      "source": "./plugins/aws-migration-architect",
+      "description": "AWS account-to-account migration toolkit: discover-then-confirm inventory across enabled regions, dependency + IAM trust + hard-coded value analysis, templated Terraform generation, phased migration planning with readiness score and cost baseline, cutover checklist generation, and post-migration audit.",
+      "version": "0.1.0",
+      "author": {
+        "name": "pventrapragada"
+      },
+      "keywords": [
+        "aws",
+        "migration",
+        "account-migration",
+        "terraform",
+        "iac",
+        "cutover",
+        "readiness",
+        "well-architected"
+      ],
+      "category": "cloud-migration"
+    }
+  ]
+}

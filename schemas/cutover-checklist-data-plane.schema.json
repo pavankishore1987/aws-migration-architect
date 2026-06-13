@@ -1,0 +1,142 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/cutover-checklist-data-plane.schema.json",
+  "title": "Cutover Checklist — Data Plane",
+  "description": "Day-of-cutover runbook for data-plane operations: pre-staging (snapshot share, KMS grants, AMI shares), bulk transfers (DataSync, DMS, S3 sync, snapshot-restore), app data (ECR push, secrets put), final cutover (freeze writes, DMS promote, DNS swap, traffic shift), data validation (counts, checksums, smoke). Reads data-migration-plan.json for sizing, strategy, freeze windows, validation criteria. Runs AFTER cutover-checklist-control-plane.json completes.",
+  "type": "object",
+  "required": ["metadata", "phases", "data_migration_plan_ref"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "target_account_id", "run_id", "plugin_version"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "target_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "run_id":             { "type": "string" },
+        "plugin_version":     { "type": "string" },
+        "iam_policy_required": { "type": "array", "items": { "type": "string", "enum": ["target-cutover-control-plane", "target-cutover-data-plane"] }, "description": "Both policies must be attached during data-plane runbook execution." }
+      }
+    },
+    "data_migration_plan_ref": { "type": "string", "description": "Path to data-migration-plan.json. Per-datastore sizing, strategy, freeze windows, and validation criteria are sourced from there." },
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_data_bytes":                       { "type": "integer", "minimum": 0 },
+        "estimated_total_transfer_hours":         { "type": "number", "minimum": 0 },
+        "longest_freeze_window_minutes":          { "type": "integer", "minimum": 0 },
+        "datastore_count":                        { "type": "integer", "minimum": 0 }
+      }
+    },
+    "phases": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": {
+        "type": "object",
+        "required": ["number", "name", "pre_cutover", "during_cutover", "post_cutover"],
+        "properties": {
+          "number":   { "type": "integer", "minimum": 1, "maximum": 5 },
+          "name":     { "type": "string", "enum": ["Pre-Staging", "Bulk Transfers", "Application Data", "Cutover", "Data Validation"] },
+          "description": { "type": "string" },
+          "estimated_duration_minutes": { "type": "integer", "minimum": 0 },
+          "pre_cutover": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "description"],
+              "properties": {
+                "id":           { "type": "string" },
+                "description":  { "type": "string" },
+                "owner_team":   { "type": ["string", "null"] },
+                "datastore_arn": { "type": ["string", "null"] },
+                "verification_command": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "during_cutover": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "description", "operation_type"],
+              "properties": {
+                "id":           { "type": "string" },
+                "description":  { "type": "string" },
+                "owner_team":   { "type": ["string", "null"] },
+                "datastore_arn": { "type": ["string", "null"] },
+                "operation_type": {
+                  "type": "string",
+                  "enum": [
+                    "snapshot-share",
+                    "kms-grant",
+                    "ami-share",
+                    "snapshot-restore",
+                    "datasync-start",
+                    "dms-start",
+                    "s3-sync",
+                    "s3-batch-replication",
+                    "dynamodb-export",
+                    "dynamodb-import",
+                    "ecr-push",
+                    "secret-put-value",
+                    "lambda-code-upload",
+                    "freeze-writes",
+                    "dms-promote",
+                    "rds-promote-read-replica",
+                    "route53-change",
+                    "traffic-shift",
+                    "manual-decision"
+                  ]
+                },
+                "tool":         { "type": ["string", "null"], "description": "DataSync | DMS | aws-cli | s3-batch | aws-backup | manual" },
+                "command":      { "type": ["string", "null"] },
+                "long_running": { "type": "boolean", "description": "True if the operation kicks off a job that completes asynchronously (DMS, DataSync, S3 Batch, DynamoDB export/import). The data-plane executor polls these instead of blocking." },
+                "poll_cmd":     { "type": ["string", "null"] },
+                "poll_terminal_states": { "type": "array", "items": { "type": "string" } },
+                "time_box_minutes": { "type": "integer", "minimum": 0 },
+                "verification_command": { "type": ["string", "null"] },
+                "irreversible": { "type": "boolean", "description": "Set when the operation cannot be cleanly rolled back (route53-change, dms-promote, certain snapshot deletions)." }
+              }
+            }
+          },
+          "post_cutover": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id", "description"],
+              "properties": {
+                "id":           { "type": "string" },
+                "description":  { "type": "string" },
+                "owner_team":   { "type": ["string", "null"] },
+                "datastore_arn": { "type": ["string", "null"] },
+                "verification_command": { "type": ["string", "null"] }
+              }
+            }
+          },
+          "go_no_go_gate": {
+            "type": "object",
+            "properties": {
+              "criteria":  { "type": "array", "items": { "type": "string" } },
+              "approvers": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
+      }
+    },
+    "freeze_windows": {
+      "type": "array",
+      "description": "Sourced from data-migration-plan.json. The data-plane runbook is the only place freeze windows are enforced — control-plane runbook never touches writable data.",
+      "items": {
+        "type": "object",
+        "required": ["datastore_arn", "duration_minutes", "begins_at_step_id"],
+        "properties": {
+          "datastore_arn":        { "type": "string" },
+          "duration_minutes":     { "type": "integer", "minimum": 0 },
+          "begins_at_step_id":    { "type": "string" },
+          "enforcement_command":  { "type": ["string", "null"] },
+          "release_step_id":      { "type": ["string", "null"] }
+        }
+      }
+    }
+  }
+}

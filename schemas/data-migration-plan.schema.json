@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/data-migration-plan.schema.json",
+  "title": "Data Migration Plan",
+  "description": "Per-datastore data-movement plan: sizing, strategy, encryption, transfer time, cost, RPO/RTO, freeze windows, validation, rollback retention. Consumed by cutover-manager to inject real timings and freeze windows into the cutover checklist.",
+  "type": "object",
+  "required": ["metadata", "summary", "datastores"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "target_account_id", "run_id", "plugin_version"],
+      "properties": {
+        "captured_at":            { "type": "string", "format": "date-time" },
+        "source_account_id":      { "type": "string", "pattern": "^[0-9]{12}$" },
+        "target_account_id":      { "type": "string", "pattern": "^[0-9]{12}$" },
+        "source_region":          { "type": "string" },
+        "target_region":          { "type": "string" },
+        "run_id":                 { "type": "string" },
+        "plugin_version":         { "type": "string" },
+        "inventory_ref":          { "type": "string" },
+        "dependency_graph_ref":   { "type": "string" },
+        "cost_baseline_ref":      { "type": "string" }
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["total_data_bytes", "estimated_total_transfer_hours", "estimated_total_transfer_cost_usd", "cutover_window_recommendation_hours"],
+      "properties": {
+        "total_data_bytes":                       { "type": "integer", "minimum": 0 },
+        "estimated_total_transfer_hours":         { "type": "number", "minimum": 0 },
+        "estimated_total_transfer_cost_usd":      { "type": "number", "minimum": 0 },
+        "estimated_double_storage_cost_usd":      { "type": "number", "minimum": 0, "description": "Cost of running source and target storage in parallel during transition." },
+        "cutover_window_recommendation_hours":    { "type": "number", "minimum": 0, "description": "Suggested cutover window length (the longest single freeze across critical datastores)." },
+        "datastore_count_by_service": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 }
+        },
+        "critical_path": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Datastore ARNs in order of longest transfer time — these gate the cutover window."
+        }
+      }
+    },
+    "datastores": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["resource_arn", "resource_type", "sizing", "strategy", "encryption", "transfer_estimate", "cost_estimate", "validation"],
+        "properties": {
+          "resource_arn":   { "type": "string" },
+          "resource_type":  { "type": "string", "description": "AWS::S3::Bucket | AWS::RDS::DBInstance | AWS::DynamoDB::Table | AWS::EFS::FileSystem | AWS::EC2::Volume | AWS::FSx::FileSystem | AWS::ECR::Repository" },
+          "name":           { "type": "string" },
+          "owner_team":     { "type": ["string", "null"] },
+          "criticality":    { "type": "string", "enum": ["tier-1", "tier-2", "tier-3"] },
+
+          "sizing": {
+            "type": "object",
+            "required": ["bytes", "sizing_method"],
+            "properties": {
+              "bytes":          { "type": "integer", "minimum": 0 },
+              "object_count":   { "type": ["integer", "null"], "minimum": 0, "description": "For S3, DynamoDB items, ECR images, etc." },
+              "sizing_method":  { "type": "string", "enum": ["cloudwatch", "describe-api", "estimated-from-allocated", "sampled", "manual"] },
+              "sized_at":       { "type": ["string", "null"], "format": "date-time" }
+            }
+          },
+
+          "strategy": {
+            "type": "object",
+            "required": ["tool", "mode", "reason"],
+            "properties": {
+              "tool": {
+                "type": "string",
+                "enum": [
+                  "aws-s3-sync",
+                  "s3-batch-replication",
+                  "aws-rds-snapshot-share",
+                  "aws-dms",
+                  "aws-backup-cross-account",
+                  "dynamodb-export-import",
+                  "aws-datasync",
+                  "ec2-snapshot-share",
+                  "ec2-ami-share",
+                  "ecr-push-pull",
+                  "manual"
+                ]
+              },
+              "mode": {
+                "type": "string",
+                "enum": ["bulk", "bulk-plus-delta", "continuous-replication", "snapshot-restore", "live-cutover"]
+              },
+              "reason": { "type": "string", "description": "Why this tool/mode was chosen (size, RPO target, encryption, schema migration, etc)." },
+              "alternatives_considered": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "tool":    { "type": "string" },
+                    "rejected_because": { "type": "string" }
+                  }
+                }
+              }
+            }
+          },
+
+          "encryption": {
+            "type": "object",
+            "required": ["at_rest", "requires_target_kms_grant"],
+            "properties": {
+              "at_rest":                     { "type": "boolean" },
+              "source_kms_key_arn":          { "type": ["string", "null"] },
+              "source_kms_key_type":         { "type": ["string", "null"], "enum": ["aws-managed", "customer-managed", "external", null] },
+              "target_kms_key_arn":          { "type": ["string", "null"] },
+              "requires_target_kms_grant":   { "type": "boolean", "description": "Source KMS key needs a grant for the target account before transfer." },
+              "requires_re_encryption":      { "type": "boolean", "description": "Data must be decrypted with source key and re-encrypted with target key in flight." }
+            }
+          },
+
+          "transfer_estimate": {
+            "type": "object",
+            "required": ["assumed_throughput_mbps"],
+            "properties": {
+              "assumed_throughput_mbps":  { "type": "number", "minimum": 0 },
+              "bulk_phase_hours":         { "type": "number", "minimum": 0 },
+              "delta_phase_hours":        { "type": "number", "minimum": 0 },
+              "cutover_phase_minutes":    { "type": "number", "minimum": 0, "description": "Final switchover step length (e.g. promote replica, redirect writes)." },
+              "total_wall_clock_hours":   { "type": "number", "minimum": 0 },
+              "confidence":               { "type": "string", "enum": ["high", "medium", "low"], "description": "low when sizing or throughput is estimated from defaults rather than measured." }
+            }
+          },
+
+          "cost_estimate": {
+            "type": "object",
+            "required": ["total_usd"],
+            "properties": {
+              "data_transfer_usd":             { "type": "number", "minimum": 0, "description": "Egress + cross-region + cross-account." },
+              "tool_runtime_usd":              { "type": "number", "minimum": 0, "description": "DMS instance-hours, DataSync per-GB, S3 Batch per-million-objects, etc." },
+              "double_storage_during_overlap_usd": { "type": "number", "minimum": 0, "description": "Cost of holding source + target storage during transition." },
+              "validation_usd":                { "type": "number", "minimum": 0 },
+              "total_usd":                     { "type": "number", "minimum": 0 },
+              "pricing_source":                { "type": "string", "description": "awspricing MCP, public list, manual." }
+            }
+          },
+
+          "rpo_target_minutes": { "type": "integer", "minimum": 0, "description": "Acceptable data loss window. 0 = zero data loss required (forces continuous replication)." },
+          "rto_target_minutes": { "type": "integer", "minimum": 0, "description": "Acceptable downtime window." },
+
+          "freeze_window": {
+            "type": "object",
+            "required": ["required"],
+            "properties": {
+              "required":           { "type": "boolean", "description": "True if writes to source must stop during cutover." },
+              "duration_minutes":   { "type": "integer", "minimum": 0 },
+              "begins_at_phase":    { "type": ["integer", "null"], "minimum": 1, "maximum": 6 },
+              "begins_at_step_id":  { "type": ["string", "null"] },
+              "notes":              { "type": ["string", "null"], "description": "What the operator does to enforce the freeze (set RDS to read-only, disable IAM write policies on bucket, etc)." }
+            }
+          },
+
+          "validation": {
+            "type": "object",
+            "required": ["methods", "acceptance_criteria"],
+            "properties": {
+              "methods": {
+                "type": "array",
+                "items": { "type": "string", "enum": ["row-count", "object-count", "byte-count", "checksum-sample", "checksum-full", "key-list-diff", "smoke-query", "application-replay"] }
+              },
+              "acceptance_criteria": { "type": "string", "description": "Concrete pass/fail (e.g. 'row counts match to within 0 rows', 'sampled checksums match 100/100')." },
+              "estimated_validation_minutes": { "type": "integer", "minimum": 0 }
+            }
+          },
+
+          "rollback": {
+            "type": "object",
+            "properties": {
+              "retain_source_for_hours":      { "type": "integer", "minimum": 0, "description": "How long to keep source data alive after cutover for rollback." },
+              "retention_cost_usd":           { "type": "number", "minimum": 0 },
+              "destruction_step_owner_team":  { "type": ["string", "null"] }
+            }
+          },
+
+          "bandwidth_constraints": {
+            "type": "object",
+            "properties": {
+              "throttle_business_hours":   { "type": "boolean" },
+              "business_hours_window":     { "type": ["string", "null"], "description": "e.g. 'Mon-Fri 09:00-18:00 America/New_York'" },
+              "max_throughput_mbps_business":  { "type": ["number", "null"], "minimum": 0 },
+              "max_throughput_mbps_off_hours": { "type": ["number", "null"], "minimum": 0 },
+              "max_concurrent_jobs":       { "type": ["integer", "null"], "minimum": 1 }
+            }
+          },
+
+          "depends_on": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Other datastore ARNs that must complete migration before this one starts (e.g. schema-owner DB before data DBs)."
+          },
+
+          "notes": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["severity", "message"],
+        "properties": {
+          "severity":      { "type": "string", "enum": ["info", "warning", "blocker"] },
+          "datastore_arn": { "type": ["string", "null"] },
+          "message":       { "type": "string" },
+          "remediation":   { "type": ["string", "null"] }
+        }
+      },
+      "description": "Surfaces things like: data size > target storage quota, cross-region egress > $X, no measured throughput available, KMS key is external (cannot grant)."
+    }
+  }
+}

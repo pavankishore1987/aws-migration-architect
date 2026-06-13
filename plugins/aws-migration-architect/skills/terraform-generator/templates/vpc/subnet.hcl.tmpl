@@ -1,0 +1,8 @@
+resource "aws_subnet" "{{slug}}" {
+  vpc_id                  = {{ref:vpc_arn}}
+  cidr_block              = "{{cidr_block}}"
+  availability_zone       = data.aws_availability_zones.available.names[{{az_index}}]
+  map_public_ip_on_launch = {{map_public_ip_on_launch}}
+
+  tags = merge(var.common_tags, {{tags}})
+}

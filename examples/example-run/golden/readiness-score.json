@@ -1,0 +1,42 @@
+{
+  "metadata": {
+    "captured_at":       "2026-06-12T14:32:00Z",
+    "source_account_id": "111111111111",
+    "target_account_id": "222222222222",
+    "run_id":            "example-run",
+    "plugin_version":    "0.1.0"
+  },
+  "score": 72,
+  "label": "Mostly ready — review blockers before scheduling cutover",
+  "blockers": [
+    "2 CloudFormation stacks (orders-api-base, orders-monitoring) require a per-stack decision: port to Terraform / re-deploy as CFN in target / re-implement.",
+    "GitHub OIDC trust on role `github-actions-deploy` requires a new OIDC provider in the target account plus updates to GitHub Actions workflows.",
+    "Cross-account trust on role `analytics-cross-account` (trusted by 333333333333) requires the consumer account to add the target role ARN to their trust policy.",
+    "1 SageMaker notebook instance — not in MVP, plan manually via SageMaker Studio."
+  ],
+  "warnings": [
+    "Hard-coded EIP literal `54.231.45.67` in `orders-api-handler` env var `ALLOWED_INGRESS_IP` — target gets a new EIP; consumer must be updated.",
+    "External domain `api.internal.acme-corp.example.com` referenced in Lambda env var — verify whether the same domain points at target or a new one is needed.",
+    "RI exposure: $24k/yr in EC2 RIs — first 90 days in target will run at full on-demand pricing."
+  ],
+  "factors": {
+    "mvp_coverage":            93,
+    "unsupported_services":    90,
+    "hardcoded_value_density": 80,
+    "iam_trust_complexity":    60,
+    "ri_sp_exposure":          75,
+    "cidr_conflicts":         100,
+    "stateful_share":          70,
+    "cutover_window":          60
+  },
+  "weights": {
+    "mvp_coverage":            0.20,
+    "unsupported_services":    0.15,
+    "hardcoded_value_density": 0.15,
+    "iam_trust_complexity":    0.15,
+    "ri_sp_exposure":          0.10,
+    "cidr_conflicts":          0.10,
+    "stateful_share":          0.10,
+    "cutover_window":          0.05
+  }
+}

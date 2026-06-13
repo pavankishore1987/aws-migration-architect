@@ -1,0 +1,74 @@
+resource "aws_lambda_function" "{{slug}}" {
+  function_name = "{{name}}"
+  role          = {{ref:role_arn}}
+
+  runtime = "{{runtime}}"
+  handler = "{{handler}}"
+  memory_size = {{memory_size}}
+  timeout     = {{timeout}}
+
+  # Code package: the function code is not migrated by Terraform.
+  # During cutover, the build artifact must be uploaded to the target deployment bucket
+  # (see cutover-checklist.md). For now, point at a placeholder.
+  s3_bucket = var.lambda_artifact_bucket
+  s3_key    = "{{name}}/${var.lambda_artifact_version}.zip"
+
+  # Or, if using image-based deployment:
+  # image_uri = "${var.target_ecr_registry}/{{name}}:${var.lambda_image_tag}"
+  # package_type = "Image"
+
+  environment {
+    variables = {
+      # Env vars below have been auto-parameterized where possible.
+      # Original source-account-bound values have been replaced with target equivalents.
+{{#environment_variables}}
+      "{{key}}" = {{value_parameterized}}
+{{/environment_variables}}
+    }
+  }
+
+  {{#has_vpc_config}}
+  vpc_config {
+    subnet_ids         = [{{#subnet_refs}}{{ref:subnet_arn}},{{/subnet_refs}}]
+    security_group_ids = [{{#security_group_refs}}{{ref:sg_arn}},{{/security_group_refs}}]
+  }
+  {{/has_vpc_config}}
+
+  {{#has_dead_letter_config}}
+  dead_letter_config {
+    target_arn = {{ref:dead_letter_arn}}
+  }
+  {{/has_dead_letter_config}}
+
+  {{#has_tracing_config}}
+  tracing_config {
+    mode = "{{tracing_mode}}"
+  }
+  {{/has_tracing_config}}
+
+  reserved_concurrent_executions = {{reserved_concurrent_executions}}
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name       = "{{name}}"
+    MigratedAt = formatdate("YYYY-MM-DD", timestamp())
+    SourceArn  = "{{source_arn}}"
+  })
+
+  lifecycle {
+    ignore_changes = [
+      # Code version is managed by the deployment pipeline, not Terraform.
+      s3_key,
+      image_uri,
+    ]
+  }
+}
+
+{{#event_source_mappings}}
+resource "aws_lambda_event_source_mapping" "{{slug}}_{{mapping_index}}" {
+  event_source_arn = {{ref:event_source_arn}}
+  function_name    = aws_lambda_function.{{slug}}.arn
+  batch_size       = {{batch_size}}
+  starting_position = "{{starting_position}}"
+  enabled          = {{enabled}}
+}
+{{/event_source_mappings}}

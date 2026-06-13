@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/readiness-score.schema.json",
+  "title": "Migration Readiness Score",
+  "type": "object",
+  "required": ["metadata", "score", "label", "blockers", "warnings", "factors"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "run_id", "plugin_version"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "target_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "run_id":             { "type": "string" },
+        "plugin_version":     { "type": "string" }
+      }
+    },
+    "score":   { "type": "integer", "minimum": 0, "maximum": 100 },
+    "label":   { "type": "string", "description": "Human-readable summary of the score" },
+    "blockers": {
+      "type": "array",
+      "description": "Issues that should be resolved before migration. Below 50 the orchestrator halts unless --force.",
+      "items": { "type": "string" }
+    },
+    "warnings": {
+      "type": "array",
+      "description": "Issues the user should be aware of but that do not block migration.",
+      "items": { "type": "string" }
+    },
+    "factors": {
+      "type": "object",
+      "description": "0-100 sub-scores per factor. Weighted sum produces overall score.",
+      "required": ["mvp_coverage", "unsupported_services", "hardcoded_value_density", "iam_trust_complexity", "ri_sp_exposure", "cidr_conflicts", "stateful_share", "cutover_window"],
+      "properties": {
+        "mvp_coverage":            { "type": "integer", "minimum": 0, "maximum": 100 },
+        "unsupported_services":    { "type": "integer", "minimum": 0, "maximum": 100 },
+        "hardcoded_value_density": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "iam_trust_complexity":    { "type": "integer", "minimum": 0, "maximum": 100 },
+        "ri_sp_exposure":          { "type": "integer", "minimum": 0, "maximum": 100 },
+        "cidr_conflicts":          { "type": "integer", "minimum": 0, "maximum": 100 },
+        "stateful_share":          { "type": "integer", "minimum": 0, "maximum": 100 },
+        "cutover_window":          { "type": "integer", "minimum": 0, "maximum": 100 }
+      }
+    },
+    "weights": {
+      "type": "object",
+      "description": "Factor weights (must sum to 1.0). Exposed for transparency.",
+      "properties": {
+        "mvp_coverage":            { "type": "number", "default": 0.20 },
+        "unsupported_services":    { "type": "number", "default": 0.15 },
+        "hardcoded_value_density": { "type": "number", "default": 0.15 },
+        "iam_trust_complexity":    { "type": "number", "default": 0.15 },
+        "ri_sp_exposure":          { "type": "number", "default": 0.10 },
+        "cidr_conflicts":          { "type": "number", "default": 0.10 },
+        "stateful_share":          { "type": "number", "default": 0.10 },
+        "cutover_window":          { "type": "number", "default": 0.05 }
+      }
+    }
+  }
+}

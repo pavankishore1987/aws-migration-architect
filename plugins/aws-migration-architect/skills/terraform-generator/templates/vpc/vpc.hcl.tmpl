@@ -1,0 +1,8 @@
+resource "aws_vpc" "{{slug}}" {
+  cidr_block           = "{{cidr_block}}"
+  enable_dns_support   = {{enable_dns_support}}
+  enable_dns_hostnames = {{enable_dns_hostnames}}
+  instance_tenancy     = "{{instance_tenancy}}"
+
+  tags = merge(var.common_tags, {{tags}})
+}

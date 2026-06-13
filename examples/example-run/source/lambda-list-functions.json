@@ -1,0 +1,52 @@
+{
+  "Functions": [
+    {
+      "FunctionName": "orders-api-handler",
+      "FunctionArn": "arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler",
+      "Runtime": "nodejs20.x",
+      "Role": "arn:aws:iam::111111111111:role/orders-api-lambda-role",
+      "Handler": "index.handler",
+      "MemorySize": 512,
+      "Timeout": 30,
+      "Environment": {
+        "Variables": {
+          "DB_HOST": "prod-orders.cluster-abcdef.us-east-1.rds.amazonaws.com",
+          "DB_SECRET_ARN": "arn:aws:secretsmanager:us-east-1:111111111111:secret:prod/orders/db-AbCdEf",
+          "API_BASE_URL": "https://api.internal.acme-corp.example.com",
+          "ALLOWED_INGRESS_IP": "54.231.45.67",
+          "AWS_REGION_HINT": "us-east-1",
+          "FEATURE_FLAGS_PARAM": "/orders-api/feature-flags"
+        }
+      },
+      "VpcConfig": {
+        "SubnetIds": ["subnet-private-1a", "subnet-private-1b"],
+        "SecurityGroupIds": ["sg-lambda-orders"],
+        "VpcId": "vpc-0a1b2c3d4e5f6789a"
+      },
+      "Tags": {
+        "Owner": "platform",
+        "Project": "orders-api",
+        "Environment": "production"
+      }
+    },
+    {
+      "FunctionName": "orders-stream-processor",
+      "FunctionArn": "arn:aws:lambda:us-east-1:111111111111:function:orders-stream-processor",
+      "Runtime": "python3.12",
+      "Role": "arn:aws:iam::111111111111:role/stream-processor-role",
+      "Handler": "main.lambda_handler",
+      "MemorySize": 1024,
+      "Timeout": 60,
+      "Environment": {
+        "Variables": {
+          "STREAM_ARN": "arn:aws:kinesis:us-east-1:111111111111:stream/orders-events",
+          "SOURCE_ACCOUNT": "111111111111"
+        }
+      },
+      "Tags": {
+        "Owner": "data-platform",
+        "Project": "orders-api"
+      }
+    }
+  ]
+}
