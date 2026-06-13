@@ -1,0 +1,12 @@
+resource "aws_wafv2_ip_set" "{{slug}}" {
+  name               = "{{name}}"
+  description        = "{{description}}"
+  scope              = "{{scope}}"
+  ip_address_version = "{{ip_address_version}}"
+  addresses          = {{addresses}}
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}

@@ -68,7 +68,24 @@
             }
           }
         },
-        "skipped_service_linked_roles": { "type": "array", "items": { "type": "string" } }
+        "skipped_service_linked_roles": { "type": "array", "items": { "type": "string" } },
+        "eks_handoff_resources": {
+          "type": "array",
+          "description": "Resources that are NOT migrated by IaC: in-cluster Kubernetes objects (deployment/service/ingress/etc.) and AWS Load Balancer Controller-managed ELB listeners + target groups. Operator must redeploy these via their GitOps/Helm pipeline against the new target cluster. Recorded here so post-migration-auditor reports them as 'expected gap' rather than 'missing in target'.",
+          "items": {
+            "type": "object",
+            "required": ["cluster", "kind", "name", "not_migrated_by_iac"],
+            "properties": {
+              "cluster":             { "type": "string", "description": "EKS cluster name" },
+              "kind":                { "type": "string", "description": "k8s kind (deployment | service | ingress | statefulset | daemonset | ...) or 'controller-managed-elb'" },
+              "namespace":           { "type": ["string", "null"] },
+              "name":                { "type": "string" },
+              "source_arn":          { "type": ["string", "null"], "description": "AWS ARN for controller-managed ELB objects; null for in-cluster k8s objects" },
+              "not_migrated_by_iac": { "type": "boolean", "description": "Always true. Field is explicit so downstream code can filter without re-parsing intent." },
+              "handoff_owner_team":  { "type": ["string", "null"] }
+            }
+          }
+        }
       }
     },
     "resources": {

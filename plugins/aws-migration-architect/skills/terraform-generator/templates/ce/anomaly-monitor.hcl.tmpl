@@ -1,0 +1,20 @@
+# Cost Explorer anomaly monitor — Cost Explorer is global; the AWS provider
+# uses the us-east-1 endpoint regardless of var.aws_region. Anomaly history
+# from source does NOT transfer; monitors are recreated in target and start
+# fresh.
+
+resource "aws_ce_anomaly_monitor" "{{slug}}" {
+  name              = "{{name}}"
+  monitor_type      = "{{monitor_type}}"
+  monitor_dimension = "{{monitor_dimension}}"
+
+  {{#has_monitor_specification}}
+  monitor_specification = jsonencode({{monitor_specification_parameterized}})
+  {{/has_monitor_specification}}
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+    Notes     = "Anomaly history does not transfer — fresh baseline post-cutover"
+  })
+}

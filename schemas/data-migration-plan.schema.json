@@ -49,7 +49,7 @@
         "required": ["resource_arn", "resource_type", "sizing", "strategy", "encryption", "transfer_estimate", "cost_estimate", "validation"],
         "properties": {
           "resource_arn":   { "type": "string" },
-          "resource_type":  { "type": "string", "description": "AWS::S3::Bucket | AWS::RDS::DBInstance | AWS::DynamoDB::Table | AWS::EFS::FileSystem | AWS::EC2::Volume | AWS::FSx::FileSystem | AWS::ECR::Repository" },
+          "resource_type":  { "type": "string", "description": "AWS::S3::Bucket | AWS::RDS::DBInstance | AWS::DynamoDB::Table | AWS::EFS::FileSystem | AWS::EC2::Volume | AWS::FSx::FileSystem | AWS::ECR::Repository | AWS::Cognito::UserPool" },
           "name":           { "type": "string" },
           "owner_team":     { "type": ["string", "null"] },
           "criticality":    { "type": "string", "enum": ["tier-1", "tier-2", "tier-3"] },
@@ -82,6 +82,8 @@
                   "ec2-snapshot-share",
                   "ec2-ami-share",
                   "ecr-push-pull",
+                  "cognito-user-migration-lambda",
+                  "cognito-idp-import-job",
                   "manual"
                 ]
               },

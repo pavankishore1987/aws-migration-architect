@@ -36,13 +36,16 @@ Written to `<run-dir>/terraform/`:
 
 ```
 terraform/
-├── networking/         # vpc, subnets, route tables, IGW, NAT, VPC endpoints, SGs
+├── networking/         # vpc, subnets, route tables, IGW, NAT, VPC endpoints, SGs, wafv2
 │   ├── main.tf
 │   ├── variables.tf
 │   └── outputs.tf
-├── compute/            # EC2, Lambda, ECS, EKS, Auto Scaling
+├── compute/            # EC2, Lambda, ECS, EKS, Auto Scaling, App Runner
 ├── storage/            # S3, EFS, FSx, EBS volume definitions
-├── databases/          # RDS, Aurora, DynamoDB, ElastiCache, OpenSearch
+├── databases/          # RDS (+ proxies), Aurora, DynamoDB, ElastiCache, MemoryDB, OpenSearch
+├── identity/           # Cognito user pools, app clients, groups, identity providers
+├── analytics/          # Athena workgroups, data catalogs, named queries
+├── observability/      # CloudWatch alarms/dashboards, CE anomaly monitors/subscriptions
 ├── iam/                # roles, policies, KMS keys (NEW keys in target), Secrets Manager containers
 ├── dns/                # Route53, ACM, CloudFront, API Gateway
 └── root/
@@ -95,6 +98,10 @@ The sub-agent processes resources category-by-category. For each resource:
 **S3.** Bucket name: source bucket name + suffix configurable via `var.bucket_name_suffix` (default empty — assumes target naming conflicts are resolved by the user). Bucket policies parameterize source-account ARNs.
 
 **Route53.** Zones are recreated; record sets parameterize ALB/NLB DNS targets. Alias records updated to point at the new target ALB.
+
+**Cognito.** User pool *configuration* (policies, app clients, groups, identity providers, MFA, trigger Lambda ARNs) is generated as HCL. **User records and password hashes are NOT in the HCL** — Cognito doesn't export hashes. The data-migration-planner emits a Cognito user-migration plan (migrate-on-sign-in Lambda preferred; CSV import with forced password reset as fallback) that runs in the data-plane runbook. Trigger Lambda ARNs are parameterized to point at the target functions. App-client secrets and federated-IdP secrets are server-generated or operator-supplied at cutover — the templates carry `lifecycle.ignore_changes` on those fields and the `NEEDS_USER_MIGRATION = "true"` tag flags every migrated pool.
+
+**CloudFormation-managed resources (`provider_specific.aws.cfn_stack_owner` set).** **Skipped by default** — the generator does NOT emit HCL for any resource owned by a CFN stack. Auto-generated HCL would conflict with the stack's drift detection and either Terraform or CFN would clobber the other. The generation report lists every skipped CFN-managed resource and points the operator at `cloudformation-decisions.md` (a file the operator authors per stack: *redeploy CFN natively in target* OR *delete the stack in source, import each resource to Terraform here*). Override per-stack with the `MIGRATION_CFN_IMPORT_STACKS=stack-a,stack-b` env var — only then does the generator emit HCL for that stack's resources, on the assumption the operator will follow up with `terraform import` commands.
 
 ### Step 4 — Module wiring
 

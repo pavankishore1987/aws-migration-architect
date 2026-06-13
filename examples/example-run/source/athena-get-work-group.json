@@ -1,0 +1,22 @@
+{
+  "WorkGroup": {
+    "Name": "orders-analytics",
+    "State": "ENABLED",
+    "Description": "Workgroup for orders-team analyst queries",
+    "Configuration": {
+      "ResultConfiguration": {
+        "OutputLocation": "s3://acme-prod-orders-logs/athena-results/",
+        "EncryptionConfiguration": { "EncryptionOption": "SSE_S3" }
+      },
+      "EnforceWorkGroupConfiguration": true,
+      "PublishCloudWatchMetricsEnabled": true,
+      "BytesScannedCutoffPerQuery": 1099511627776,
+      "RequesterPaysEnabled": false,
+      "EngineVersion": { "SelectedEngineVersion": "Athena engine version 3" }
+    },
+    "Tags": [
+      { "Key": "Project", "Value": "orders-api" },
+      { "Key": "Owner", "Value": "data-platform" }
+    ]
+  }
+}

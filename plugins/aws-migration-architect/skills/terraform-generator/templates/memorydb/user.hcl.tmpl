@@ -1,0 +1,28 @@
+# MemoryDB user. The IAM-style authentication mode preserves the user's name/
+# access string, but the password (when authentication_mode.type = "password")
+# is NEVER inlined — operator supplies via the data-plane secret-put-value step
+# from a secure file.
+
+resource "aws_memorydb_user" "{{slug}}" {
+  user_name      = "{{user_name}}"
+  access_string  = "{{access_string}}"
+
+  authentication_mode {
+    type = "{{authentication_type}}"
+    # passwords = [] — populated via aws memorydb update-user from operator-supplied file at cutover.
+    # See cutover-checklist-data-plane.md.
+  }
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{user_name}}"
+    SourceArn = "{{source_arn}}"
+    NEEDS_PASSWORD_REPOPULATION = "{{needs_password_repopulation}}"
+  })
+
+  lifecycle {
+    ignore_changes = [
+      # Password is populated out-of-band via aws memorydb update-user.
+      authentication_mode,
+    ]
+  }
+}

@@ -82,6 +82,11 @@ Non-storage data that apps depend on:
 - For each Secrets Manager secret (where strategy is not snapshot-restore): `secret-put-value` — operator supplies value file path at runtime
 - For each SSM Parameter (non-secret): API call to put value in target
 - For each AppConfig configuration: deployment to target
+- For each Cognito federated identity provider: `cognito-update-idp-secret` — operator-supplied secret file (`client_secret`, SAML metadata, Apple `private_key`) put into the target IDP via `aws cognito-idp update-identity-provider`; never read from source
+- For each Cognito user pool: deploy the user-migration strategy chosen in `data-migration-plan.json`:
+  - `cognito-user-migration-lambda` — `cognito-deploy-user-migration-lambda` op: package the migration Lambda, attach as `UserMigration` trigger on the target pool, and validate it can reach the source pool (test sign-in with a known throwaway account). Migration happens lazily on first sign-in for the migration tail window.
+  - `cognito-idp-import-job` — `cognito-idp-import-job` op (long-running): upload the CSV of attributes (no passwords), start the import job, poll `describe-user-import-job` for `Succeeded`/`Failed`. Communicate the forced-reset to end-users BEFORE the job starts.
+- For each EKS cluster handoff: `k8s-redeploy-handoff` op — operator step. Re-establish the IRSA OIDC provider in target (new OIDC URL — every cluster gets a fresh one), point the user's GitOps/Helm pipeline at the new cluster context, and let the AWS Load Balancer Controller recreate target groups and listeners as in-cluster `Service` / `Ingress` objects reconcile. The plugin does not run `kubectl apply`; this step is a checkpoint with a verification command like `kubectl --context target get deploy -A | wc -l` against an expected count from the source cluster snapshot.
 
 ### Phase 4 — Cutover
 

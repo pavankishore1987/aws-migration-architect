@@ -29,6 +29,12 @@
       "value": "alias/orders-s3-cmk",
       "kind": "kms-key-alias",
       "var": "aws_kms_alias.orders_s3.target_key_arn"
+    },
+    {
+      "location": "wafv2:orders-edge-acl:association:0",
+      "value": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/orders-alb/abc123def456",
+      "kind": "resource-arn-internal",
+      "var": "aws_lb.orders_alb.arn"
     }
   ],
   "manual_review_required": [

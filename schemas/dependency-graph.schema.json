@@ -36,7 +36,16 @@
               "elb-target-group", "elb-target",
               "ecs-task-role", "eks-irsa",
               "kms-key-use",
-              "vpc-endpoint"
+              "vpc-endpoint",
+              "cognito-trigger", "cognito-callback-url", "cognito-idp-federation",
+              "memorydb-subnet-group", "memorydb-parameter-group", "memorydb-acl",
+              "wafv2-association",
+              "athena-results-bucket", "athena-glue-catalog",
+              "apprunner-image-source", "apprunner-instance-role", "apprunner-secret-env", "apprunner-vpc-connector",
+              "cfn-managed-resource",
+              "ce-anomaly-subscription",
+              "rds-proxy-secret", "rds-proxy-subnet", "rds-proxy-target",
+              "eks-handoff"
             ]
           },
           "context":  { "type": "string", "description": "Optional context (e.g., SG rule port range)" }

@@ -1,0 +1,22 @@
+# Athena data catalog. Non-default catalogs (LAMBDA, HIVE, GLUE federated)
+# reference external compute/datastores that are out of MVP — the source
+# Lambda connector ARN, federated Hive metastore, or non-AWSDataCatalog Glue
+# instance must be re-created in target. The Parameters block below is
+# parameterized but the underlying resources are NOT auto-migrated.
+
+resource "aws_athena_data_catalog" "{{slug}}" {
+  name        = "{{name}}"
+  description = "{{description}}"
+  type        = "{{type}}"
+
+  parameters = {
+    {{#parameters}}
+    "{{parameter_key}}" = "{{parameter_value_parameterized}}"
+    {{/parameters}}
+  }
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}

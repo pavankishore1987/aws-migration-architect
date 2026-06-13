@@ -10,9 +10,9 @@
   "data_migration_plan_ref": "./data-migration-plan.json",
   "summary": {
     "total_data_bytes": 9600000000000,
-    "estimated_total_transfer_hours": 14.6,
+    "estimated_total_transfer_hours": 15.1,
     "longest_freeze_window_minutes": 45,
-    "datastore_count": 3
+    "datastore_count": 4
   },
   "phases": [
     {
@@ -49,7 +49,9 @@
       "estimated_duration_minutes": 15,
       "pre_cutover": [],
       "during_cutover": [
-        { "id": "dp-phase3-010-secret-put", "description": "Put prod/orders/db value into the target secret from operator-supplied secure file.", "owner_team": "platform", "datastore_arn": null, "operation_type": "secret-put-value", "tool": "aws-cli", "command": "aws secretsmanager put-secret-value --secret-id prod/orders/db --secret-string file://<operator-supplied> --profile $MIGRATION_TARGET_PROFILE", "long_running": false, "poll_terminal_states": [], "time_box_minutes": 10, "verification_command": null, "irreversible": false }
+        { "id": "dp-phase3-010-secret-put", "description": "Put prod/orders/db value into the target secret from operator-supplied secure file.", "owner_team": "platform", "datastore_arn": null, "operation_type": "secret-put-value", "tool": "aws-cli", "command": "aws secretsmanager put-secret-value --secret-id prod/orders/db --secret-string file://<operator-supplied> --profile $MIGRATION_TARGET_PROFILE", "long_running": false, "poll_terminal_states": [], "time_box_minutes": 10, "verification_command": null, "irreversible": false },
+        { "id": "dp-phase3-020-cognito-deploy-migration-lambda", "description": "Package + deploy the UserMigration Lambda to target; attach as trigger on orders-customers pool; test sign-in with throwaway source account to validate connectivity.", "owner_team": "platform", "datastore_arn": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_AbCdEfGhI", "operation_type": "cognito-deploy-user-migration-lambda", "tool": "aws-cli", "command": "aws lambda update-function-code ... && aws cognito-idp update-user-pool --user-pool-id <target-pool-id> --lambda-config UserMigration=<target-lambda-arn> --profile $MIGRATION_TARGET_PROFILE", "long_running": false, "poll_terminal_states": [], "time_box_minutes": 20, "verification_command": "aws cognito-idp describe-user-pool --user-pool-id <target-pool-id> --query 'UserPool.LambdaConfig.UserMigration'", "irreversible": false },
+        { "id": "dp-phase3-030-eks-handoff-orders-eks", "description": "EKS handoff for orders-eks cluster. Operator: (1) re-establish IRSA OIDC provider in target with the new oidc URL from describe-cluster, (2) aws eks update-kubeconfig --name orders-eks --profile $MIGRATION_TARGET_PROFILE, (3) redeploy workloads via existing GitOps/Helm pipeline (kubectl/helm), (4) let AWS Load Balancer Controller recreate target groups + listeners. Plugin does NOT run kubectl.", "owner_team": "platform", "datastore_arn": null, "operation_type": "k8s-redeploy-handoff", "tool": "manual", "command": null, "long_running": false, "poll_terminal_states": [], "time_box_minutes": 60, "verification_command": "kubectl --context target get deploy -A --no-headers | wc -l  # compare to source snapshot", "irreversible": false }
       ],
       "post_cutover": []
     },

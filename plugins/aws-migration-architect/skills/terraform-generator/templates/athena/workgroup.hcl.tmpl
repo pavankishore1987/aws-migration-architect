@@ -1,0 +1,55 @@
+# Athena workgroup. The query-result S3 output_location MUST exist in target —
+# either an S3 bucket migrated by the storage module, or a target-account bucket
+# the user creates manually. The terraform-builder rewrites OutputLocation to
+# reference the target bucket; if no equivalent target bucket is in inventory,
+# the generation report flags this for manual fix-up.
+#
+# Glue Data Catalog references: if WorkGroupConfiguration uses a non-default
+# DataCatalog, the dependency-analyzer ensures the catalog exists in the
+# data_catalog module; otherwise queries against the workgroup fail post-cutover.
+
+resource "aws_athena_workgroup" "{{slug}}" {
+  name        = "{{name}}"
+  description = "{{description}}"
+  state       = "{{state}}"
+
+  configuration {
+    enforce_workgroup_configuration    = {{enforce_workgroup_configuration}}
+    publish_cloudwatch_metrics_enabled = {{publish_cloudwatch_metrics_enabled}}
+    bytes_scanned_cutoff_per_query     = {{bytes_scanned_cutoff_per_query}}
+    requester_pays_enabled             = {{requester_pays_enabled}}
+
+    {{#engine_version}}
+    engine_version {
+      selected_engine_version = "{{selected_engine_version}}"
+    }
+    {{/engine_version}}
+
+    result_configuration {
+      # Output location parameterized to the target bucket.
+      # If the source bucket isn't in scope, ResultConfiguration falls back to a
+      # default-named target bucket — see generation report.
+      output_location = "s3://${var.athena_results_bucket}/${var.athena_results_prefix}{{name}}/"
+
+      {{#has_encryption}}
+      encryption_configuration {
+        encryption_option = "{{encryption_option}}"
+        {{#has_kms}}kms_key_arn = {{kms_alias_var athena_results_kms_alias}}{{/has_kms}}
+      }
+      {{/has_encryption}}
+
+      {{#has_acl_config}}
+      acl_configuration {
+        s3_acl_option = "{{s3_acl_option}}"
+      }
+      {{/has_acl_config}}
+    }
+  }
+
+  force_destroy = false
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}

@@ -1,0 +1,38 @@
+# MemoryDB cluster. Cache data is treated as EPHEMERAL by this migration:
+# the target cluster is created empty and re-warmed by the application after cutover.
+# If the source cluster holds the only copy of any persistent state, the
+# data-migration-planner emits a blocker — halt and reclassify it as a datastore.
+#
+# Distinct from ElastiCache (templates/elasticache/). MemoryDB-for-Redis is a
+# separate service with its own subnet groups, parameter groups, ACLs.
+
+resource "aws_memorydb_cluster" "{{slug}}" {
+  name              = "{{name}}"
+  node_type         = "{{node_type}}"
+  num_shards        = {{num_shards}}
+  num_replicas_per_shard = {{num_replicas_per_shard}}
+
+  engine_version    = "{{engine_version}}"
+  port              = {{port}}
+
+  acl_name           = aws_memorydb_acl.{{acl_slug}}.id
+  subnet_group_name  = aws_memorydb_subnet_group.{{subnet_group_slug}}.id
+  parameter_group_name = aws_memorydb_parameter_group.{{parameter_group_slug}}.id
+  security_group_ids = [{{#security_group_refs}}{{ref:sg_arn}},{{/security_group_refs}}]
+
+  tls_enabled        = {{tls_enabled}}
+  kms_key_arn        = {{#has_kms}}{{kms_alias_var memorydb_kms_alias}}{{/has_kms}}{{^has_kms}}null{{/has_kms}}
+
+  maintenance_window     = "{{maintenance_window}}"
+  snapshot_retention_limit = {{snapshot_retention_limit}}
+  snapshot_window        = "{{snapshot_window}}"
+
+  # auto_minor_version_upgrade left at provider default; override per cluster.
+  auto_minor_version_upgrade = {{auto_minor_version_upgrade}}
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+    CacheDataPolicy = "ephemeral-recreated-at-cutover"
+  })
+}

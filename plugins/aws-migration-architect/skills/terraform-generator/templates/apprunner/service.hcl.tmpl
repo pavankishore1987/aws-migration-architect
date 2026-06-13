@@ -1,0 +1,116 @@
+# App Runner service. The image_identifier MUST point at the TARGET ECR registry
+# (different account, different registry ID); the terraform-builder rewrites
+# the URI from <source-acct>.dkr.ecr.<region>.amazonaws.com/... to the target
+# equivalent. ECR images themselves are migrated in the data-plane runbook
+# (Phase 3 — ecr-push).
+#
+# Secret env values (RuntimeEnvironmentSecrets) reference target-account
+# Secrets Manager ARNs — populated by the secret-put-value step at cutover.
+
+resource "aws_apprunner_service" "{{slug}}" {
+  service_name = "{{name}}"
+
+  source_configuration {
+    {{#has_image_repo}}
+    image_repository {
+      image_identifier      = "{{image_identifier_parameterized}}"
+      image_repository_type = "{{image_repository_type}}"
+      image_configuration {
+        port = "{{image_port}}"
+        runtime_environment_variables = {
+          {{#runtime_env_vars}}
+          "{{env_key}}" = "{{env_value_parameterized}}"
+          {{/runtime_env_vars}}
+        }
+        runtime_environment_secrets = {
+          {{#runtime_env_secrets}}
+          "{{secret_key}}" = {{ref:secret_arn}}
+          {{/runtime_env_secrets}}
+        }
+        start_command = "{{start_command}}"
+      }
+    }
+    {{/has_image_repo}}
+
+    {{#has_code_repo}}
+    code_repository {
+      repository_url   = "{{code_repository_url}}"
+      source_directory = "{{source_directory}}"
+      source_code_version {
+        type  = "{{source_code_version_type}}"
+        value = "{{source_code_version_value}}"
+      }
+      code_configuration {
+        configuration_source = "{{configuration_source}}"
+        code_configuration_values {
+          runtime       = "{{runtime}}"
+          build_command = "{{build_command}}"
+          start_command = "{{start_command}}"
+          port          = "{{port}}"
+        }
+      }
+    }
+    {{/has_code_repo}}
+
+    {{#has_authentication_configuration}}
+    authentication_configuration {
+      access_role_arn = {{ref:access_role_arn}}
+      {{#has_connection_arn}}connection_arn = {{ref:connection_arn}}{{/has_connection_arn}}
+    }
+    {{/has_authentication_configuration}}
+
+    auto_deployments_enabled = {{auto_deployments_enabled}}
+  }
+
+  instance_configuration {
+    cpu               = "{{cpu}}"
+    memory            = "{{memory}}"
+    instance_role_arn = {{ref:instance_role_arn}}
+  }
+
+  {{#has_network_configuration}}
+  network_configuration {
+    ingress_configuration {
+      is_publicly_accessible = {{is_publicly_accessible}}
+    }
+    egress_configuration {
+      egress_type       = "{{egress_type}}"
+      {{#has_vpc_connector}}vpc_connector_arn = aws_apprunner_vpc_connector.{{vpc_connector_slug}}.arn{{/has_vpc_connector}}
+    }
+  }
+  {{/has_network_configuration}}
+
+  {{#has_health_check}}
+  health_check_configuration {
+    protocol            = "{{health_check_protocol}}"
+    path                = "{{health_check_path}}"
+    interval            = {{health_check_interval}}
+    timeout             = {{health_check_timeout}}
+    healthy_threshold   = {{health_check_healthy_threshold}}
+    unhealthy_threshold = {{health_check_unhealthy_threshold}}
+  }
+  {{/has_health_check}}
+
+  {{#has_encryption}}
+  encryption_configuration {
+    kms_key = {{kms_alias_var apprunner_kms_alias}}
+  }
+  {{/has_encryption}}
+
+  auto_scaling_configuration_arn = aws_apprunner_auto_scaling_configuration_version.{{autoscaling_slug}}.arn
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}
+
+{{#has_vpc_connector}}
+resource "aws_apprunner_vpc_connector" "{{vpc_connector_slug}}" {
+  vpc_connector_name = "{{vpc_connector_name}}"
+  subnets            = [{{#vpc_connector_subnet_refs}}{{ref:subnet_arn}},{{/vpc_connector_subnet_refs}}]
+  security_groups    = [{{#vpc_connector_sg_refs}}{{ref:sg_arn}},{{/vpc_connector_sg_refs}}]
+
+  tags = merge(var.common_tags, {{tags}})
+}
+{{/has_vpc_connector}}

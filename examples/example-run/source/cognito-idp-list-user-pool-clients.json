@@ -1,0 +1,19 @@
+{
+  "UserPoolClients": [
+    {
+      "ClientId": "1234567890abcdefghij",
+      "ClientName": "orders-web-app",
+      "UserPoolId": "us-east-1_AbCdEfGhI",
+      "GenerateSecret": false,
+      "RefreshTokenValidity": 30,
+      "AccessTokenValidity": 60,
+      "IdTokenValidity": 60,
+      "TokenValidityUnits": { "AccessToken": "minutes", "IdToken": "minutes", "RefreshToken": "days" },
+      "ExplicitAuthFlows": ["ALLOW_USER_SRP_AUTH", "ALLOW_REFRESH_TOKEN_AUTH"],
+      "AllowedOAuthFlows": ["code"],
+      "AllowedOAuthScopes": ["openid", "email", "profile"],
+      "CallbackURLs": ["https://app.acme-corp.example.com/auth/callback"],
+      "LogoutURLs": ["https://app.acme-corp.example.com/logout"]
+    }
+  ]
+}

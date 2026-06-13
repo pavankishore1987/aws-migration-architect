@@ -1,0 +1,17 @@
+resource "aws_memorydb_parameter_group" "{{slug}}" {
+  name        = "{{name}}"
+  family      = "{{family}}"
+  description = "{{description}}"
+
+  {{#parameters}}
+  parameter {
+    name  = "{{parameter_name}}"
+    value = "{{parameter_value}}"
+  }
+  {{/parameters}}
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}

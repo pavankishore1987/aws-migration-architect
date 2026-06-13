@@ -41,7 +41,27 @@ These templates are shipped as representative examples; the sub-agent generates 
 | ec2 | aws_instance | `ec2/instance.hcl.tmpl` |
 | s3 | aws_s3_bucket | `s3/bucket.hcl.tmpl` |
 | rds | aws_db_instance | `rds/db-instance.hcl.tmpl` |
+| rds | aws_db_proxy (+ default target group + targets) | `rds/db-proxy.hcl.tmpl` |
 | lambda | aws_lambda_function | `lambda/function.hcl.tmpl` |
 | iam | aws_iam_role | `iam/role.hcl.tmpl` |
 | iam | aws_kms_key | `iam/kms-key.hcl.tmpl` |
 | iam | aws_secretsmanager_secret | `iam/secret.hcl.tmpl` |
+| cognito | aws_cognito_user_pool | `cognito/user-pool.hcl.tmpl` |
+| cognito | aws_cognito_user_pool_client | `cognito/user-pool-client.hcl.tmpl` |
+| cognito | aws_cognito_user_group | `cognito/user-pool-group.hcl.tmpl` |
+| cognito | aws_cognito_identity_provider | `cognito/identity-provider.hcl.tmpl` |
+| memorydb | aws_memorydb_cluster | `memorydb/cluster.hcl.tmpl` |
+| memorydb | aws_memorydb_parameter_group | `memorydb/parameter-group.hcl.tmpl` |
+| memorydb | aws_memorydb_subnet_group | `memorydb/subnet-group.hcl.tmpl` |
+| memorydb | aws_memorydb_user | `memorydb/user.hcl.tmpl` |
+| memorydb | aws_memorydb_acl | `memorydb/acl.hcl.tmpl` |
+| wafv2 | aws_wafv2_web_acl (+ aws_wafv2_web_acl_association) | `wafv2/web-acl.hcl.tmpl` |
+| wafv2 | aws_wafv2_ip_set | `wafv2/ip-set.hcl.tmpl` |
+| wafv2 | aws_wafv2_rule_group | `wafv2/rule-group.hcl.tmpl` |
+| athena | aws_athena_workgroup | `athena/workgroup.hcl.tmpl` |
+| athena | aws_athena_data_catalog | `athena/data-catalog.hcl.tmpl` |
+| athena | aws_athena_named_query | `athena/named-query.hcl.tmpl` |
+| apprunner | aws_apprunner_service (+ optional aws_apprunner_vpc_connector) | `apprunner/service.hcl.tmpl` |
+| apprunner | aws_apprunner_auto_scaling_configuration_version | `apprunner/autoscaling-configuration.hcl.tmpl` |
+| ce | aws_ce_anomaly_monitor | `ce/anomaly-monitor.hcl.tmpl` (optional, flag-only) |
+| ce | aws_ce_anomaly_subscription | `ce/anomaly-subscription.hcl.tmpl` (optional, flag-only) |

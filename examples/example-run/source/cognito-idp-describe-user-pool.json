@@ -1,0 +1,40 @@
+{
+  "UserPool": {
+    "Id": "us-east-1_AbCdEfGhI",
+    "Name": "orders-customers",
+    "Arn": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_AbCdEfGhI",
+    "MfaConfiguration": "OPTIONAL",
+    "DeletionProtection": "ACTIVE",
+    "EstimatedNumberOfUsers": 184230,
+    "AutoVerifiedAttributes": ["email"],
+    "UsernameAttributes": ["email"],
+    "Policies": {
+      "PasswordPolicy": {
+        "MinimumLength": 12,
+        "RequireUppercase": true,
+        "RequireLowercase": true,
+        "RequireNumbers": true,
+        "RequireSymbols": false,
+        "TemporaryPasswordValidityDays": 7
+      }
+    },
+    "LambdaConfig": {
+      "PreSignUp": "arn:aws:lambda:us-east-1:111111111111:function:orders-cognito-presignup",
+      "PostConfirmation": "arn:aws:lambda:us-east-1:111111111111:function:orders-cognito-postconfirmation"
+    },
+    "AdminCreateUserConfig": {
+      "AllowAdminCreateUserOnly": false
+    },
+    "AccountRecoverySetting": {
+      "RecoveryMechanisms": [
+        { "Name": "verified_email", "Priority": 1 }
+      ]
+    },
+    "UserPoolTags": {
+      "Project": "orders-api",
+      "Owner": "platform",
+      "Environment": "production",
+      "Criticality": "tier-1"
+    }
+  }
+}

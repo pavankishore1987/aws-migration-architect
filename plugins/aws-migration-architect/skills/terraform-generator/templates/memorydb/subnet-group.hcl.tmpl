@@ -1,0 +1,10 @@
+resource "aws_memorydb_subnet_group" "{{slug}}" {
+  name        = "{{name}}"
+  description = "{{description}}"
+  subnet_ids  = [{{#subnet_refs}}{{ref:subnet_arn}},{{/subnet_refs}}]
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}

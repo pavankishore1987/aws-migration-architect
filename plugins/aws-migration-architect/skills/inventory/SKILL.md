@@ -100,7 +100,10 @@ For each (confirmed region × MVP service), invoke the sub-agent `inventory-expl
 - Honors AWS CLI exponential backoff for throttling
 - Filters out `AWSServiceRoleFor*` (service-linked roles → `coverage.skipped_service_linked_roles[]`)
 - Tags each resource with criticality heuristic (P1 = stateful + tagged as production; P2 = used by P1; P3 = standalone non-prod)
-- Maps to the cloud-agnostic generic type (`compute_instance`, `load_balancer`, `object_store`, `block_storage`, etc.) with raw output under `provider_specific.aws`
+- Maps to the cloud-agnostic generic type (`compute_instance`, `load_balancer`, `object_store`, `block_storage`, `identity_directory`, etc.) with raw output under `provider_specific.aws`
+- **Cognito user pools:** inventory the *pool configuration* (policies, app clients, groups, identity providers, trigger Lambda ARNs, MFA config) but **never** call `list-users` or `admin-get-user`. User records and password hashes are not inventoried — the data-migration-planner emits a separate strategy (migrate-on-sign-in Lambda or CSV import with forced reset) and the cutover-data-plane runbook executes it.
+- **CloudFormation stacks:** counted in `coverage.cloudformation_stacks[]` only — never converted to `resources[]`. CFN-managed resources belong to the underlying services' inventories; the stack itself is an operator-decision flagged in `unsupported-report.md`.
+- **EKS in-cluster objects:** the cluster, nodegroups, Fargate profiles, and addons are inventoried (AWS-managed). Kubernetes-API objects (`deployment`, `replicaset`, `service`, `endpointslice`, `ingress`, `namespace`, `statefulset`, `daemonset`) and any ELB listeners/target-groups carrying the `kubernetes.io/cluster/<name>` or `elbv2.k8s.aws/cluster` tag are recorded under `coverage.eks_handoff_resources[]` with a `not_migrated_by_iac: true` flag — they must be redeployed by the user's GitOps/Helm pipeline against the new target cluster.
 
 ### Step 6 — Incremental mode (if enabled)
 

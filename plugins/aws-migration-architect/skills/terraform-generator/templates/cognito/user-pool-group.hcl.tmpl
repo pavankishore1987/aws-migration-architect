@@ -1,0 +1,14 @@
+# Cognito user pool group. Group membership of individual users is restored
+# during the user-migration data-plane step (the migrate-on-sign-in Lambda
+# assigns groups based on the source's admin-list-groups-for-user output, or
+# the CSV import job carries them).
+
+resource "aws_cognito_user_group" "{{slug}}" {
+  name         = "{{name}}"
+  user_pool_id = aws_cognito_user_pool.{{pool_slug}}.id
+  description  = "{{description}}"
+  precedence   = {{precedence}}
+  {{#has_role_arn}}
+  role_arn = {{ref:group_role_arn}}
+  {{/has_role_arn}}
+}

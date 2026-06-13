@@ -1,0 +1,97 @@
+# Cognito user pool: this resource creates the POOL CONFIGURATION ONLY.
+# User records are NOT migrated by Terraform — Cognito does not export password hashes.
+# See data-migration-plan.json for the user-migration strategy
+# (migrate-on-sign-in Lambda preferred; CSV import with forced reset as fallback).
+# Trigger Lambda ARNs below must point at the TARGET Lambda functions
+# (parameterized at HCL generation time from dependency-graph.json).
+
+resource "aws_cognito_user_pool" "{{slug}}" {
+  name = "{{name}}"
+
+  mfa_configuration          = "{{mfa_configuration}}"
+  deletion_protection        = "{{deletion_protection}}"
+  auto_verified_attributes   = {{auto_verified_attributes}}
+  username_attributes        = {{username_attributes}}
+  alias_attributes           = {{alias_attributes}}
+
+  password_policy {
+    minimum_length                   = {{password_min_length}}
+    require_lowercase                = {{password_require_lowercase}}
+    require_uppercase                = {{password_require_uppercase}}
+    require_numbers                  = {{password_require_numbers}}
+    require_symbols                  = {{password_require_symbols}}
+    temporary_password_validity_days = {{password_temp_validity_days}}
+  }
+
+  {{#has_account_recovery}}
+  account_recovery_setting {
+    {{#recovery_mechanisms}}
+    recovery_mechanism {
+      name     = "{{recovery_name}}"
+      priority = {{recovery_priority}}
+    }
+    {{/recovery_mechanisms}}
+  }
+  {{/has_account_recovery}}
+
+  admin_create_user_config {
+    allow_admin_create_user_only = {{allow_admin_create_user_only}}
+    {{#has_invite_message_template}}
+    invite_message_template {
+      email_subject = "{{invite_email_subject}}"
+      email_message = "{{invite_email_message}}"
+      sms_message   = "{{invite_sms_message}}"
+    }
+    {{/has_invite_message_template}}
+  }
+
+  {{#has_email_config}}
+  email_configuration {
+    email_sending_account  = "{{email_sending_account}}"
+    source_arn             = {{#email_source_arn}}{{ref:email_source_arn}}{{/email_source_arn}}{{^email_source_arn}}null{{/email_source_arn}}
+    reply_to_email_address = "{{email_reply_to}}"
+    from_email_address     = "{{email_from}}"
+  }
+  {{/has_email_config}}
+
+  {{#has_lambda_triggers}}
+  # Trigger Lambdas re-pointed to target-account function ARNs via dependency-graph parameterization.
+  lambda_config {
+    {{#pre_sign_up}}pre_sign_up                    = {{ref:pre_sign_up_arn}}{{/pre_sign_up}}
+    {{#post_confirmation}}post_confirmation         = {{ref:post_confirmation_arn}}{{/post_confirmation}}
+    {{#pre_authentication}}pre_authentication       = {{ref:pre_authentication_arn}}{{/pre_authentication}}
+    {{#post_authentication}}post_authentication     = {{ref:post_authentication_arn}}{{/post_authentication}}
+    {{#user_migration}}user_migration               = {{ref:user_migration_arn}}{{/user_migration}}
+    {{#define_auth_challenge}}define_auth_challenge = {{ref:define_auth_challenge_arn}}{{/define_auth_challenge}}
+    {{#create_auth_challenge}}create_auth_challenge = {{ref:create_auth_challenge_arn}}{{/create_auth_challenge}}
+    {{#verify_auth_challenge_response}}verify_auth_challenge_response = {{ref:verify_auth_challenge_response_arn}}{{/verify_auth_challenge_response}}
+    {{#custom_message}}custom_message               = {{ref:custom_message_arn}}{{/custom_message}}
+    {{#pre_token_generation}}pre_token_generation   = {{ref:pre_token_generation_arn}}{{/pre_token_generation}}
+  }
+  {{/has_lambda_triggers}}
+
+  {{#has_schema}}
+  {{#schema_attributes}}
+  schema {
+    name                     = "{{attribute_name}}"
+    attribute_data_type      = "{{attribute_data_type}}"
+    mutable                  = {{attribute_mutable}}
+    required                 = {{attribute_required}}
+    developer_only_attribute = {{attribute_developer_only}}
+  }
+  {{/schema_attributes}}
+  {{/has_schema}}
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+    NEEDS_USER_MIGRATION = "true"
+  })
+
+  lifecycle {
+    ignore_changes = [
+      # Once user-migration trigger is hot-swapped post-cutover, leave it alone.
+      lambda_config[0].user_migration,
+    ]
+  }
+}

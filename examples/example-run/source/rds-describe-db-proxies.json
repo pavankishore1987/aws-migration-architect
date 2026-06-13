@@ -1,0 +1,31 @@
+{
+  "DBProxies": [
+    {
+      "DBProxyName": "prod-orders-proxy",
+      "DBProxyArn": "arn:aws:rds:us-east-1:111111111111:db-proxy:prx-abcdef0123456789",
+      "Status": "available",
+      "EngineFamily": "POSTGRESQL",
+      "VpcId": "vpc-0a1b2c3d4e5f6789a",
+      "VpcSecurityGroupIds": ["sg-rds-orders"],
+      "VpcSubnetIds": ["subnet-private-1a", "subnet-private-1b"],
+      "Auth": [
+        {
+          "AuthScheme": "SECRETS",
+          "SecretArn": "arn:aws:secretsmanager:us-east-1:111111111111:secret:prod/orders/db-AbCdEf",
+          "Description": "Proxy auth for prod-orders DB",
+          "IAMAuth": "DISABLED",
+          "ClientPasswordAuthType": "POSTGRES_SCRAM_SHA_256"
+        }
+      ],
+      "RoleArn": "arn:aws:iam::111111111111:role/rds-proxy-role",
+      "Endpoint": "prod-orders-proxy.proxy-abcdef.us-east-1.rds.amazonaws.com",
+      "RequireTLS": true,
+      "IdleClientTimeout": 1800,
+      "DebugLogging": false,
+      "Tags": [
+        { "Key": "Project", "Value": "orders-api" },
+        { "Key": "Owner", "Value": "platform" }
+      ]
+    }
+  ]
+}

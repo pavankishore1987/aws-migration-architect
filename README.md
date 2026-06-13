@@ -248,6 +248,8 @@ Honest list of things explicitly out of scope so you know where to plan manually
 - **RI / Savings Plan purchase decisions in target.** The planner quotes on-demand baseline; buying commitments is a finance decision.
 - **Multi-region within one account.** Different problem.
 - **Reversal of irreversible operations.** The executor's rollback dialog runs the best-effort `rollback_cmd` from the migration plan, but some state changes (DNS TTL propagation, deleted snapshots, completed cross-account replications) cannot be fully undone. Per-step approval reduces blast radius; it does not undo physics.
+- **EKS in-cluster workloads.** Kubernetes API objects (`deployment`, `replicaset`, `service`, `endpointslice`, `ingress`, `namespace`, `statefulset`, `daemonset`, ConfigMaps, Secrets) and ELB listeners/target groups managed by the AWS Load Balancer Controller live in the cluster — not in any AWS API — so they're not inventoried, not Terraformed, and not migrated by this plugin. The plugin migrates the AWS-managed parts (cluster, nodegroups, Fargate profiles, addons, IAM/OIDC) and emits an explicit `k8s-redeploy-handoff` operation in Phase 4 of the data-plane runbook. The operator is responsible for: re-establishing the IRSA OIDC provider in target (every cluster gets a fresh OIDC URL), pointing the existing GitOps/Helm/CI pipeline at the new cluster, and letting the AWS Load Balancer Controller recreate the ELB resources as ingresses/services reconcile.
+- **Cognito user passwords.** AWS does not expose password hashes via any API. The plugin migrates the user pool configuration; user records arrive via either (a) a migrate-on-sign-in Lambda (preferred — no forced reset) or (b) `cognito-idp create-user-import-job` with forced reset. Communicate the UX choice to the owner team before cutover.
 
 ---
 
@@ -267,6 +269,13 @@ These are the recurring AWS-specific footguns; the plugin addresses each (full d
 | IAM trust types break in target (OIDC, IRSA, SAML, cross-account) | Classified per-role in `dependency-graph.iam_trusts[]`; needs_target_rework explicit |
 | Service-linked roles like `AWSServiceRoleFor*` | Filtered out (AWS recreates them); listed in `coverage.skipped_service_linked_roles[]` |
 | Hard-coded source account IDs / domains / EIPs in configs | Detected by `dependency-analyzer`; `terraform-generator` parameterizes what it can; the rest go to the cutover checklist |
+| WAFv2 associations break (target ALB/API-GW ARNs differ) | `dependency-analyzer` records every association in `hardcoded-values.auto_parameterized[]`; `terraform-generator` re-points the `aws_wafv2_web_acl_association` to the target resource's module output |
+| Cognito passwords cannot be bulk-migrated | `data-migration-planner` picks migrate-on-sign-in Lambda (preferred) or CSV import with forced reset; emits a mandatory `warning` so the operator communicates UX before cutover |
+| MemoryDB has no data export | Cache treated as ephemeral — target cluster is empty and warms post-cutover; `data-migration-planner` emits an `info` per cluster (halt + reclassify if the cluster holds the only copy of any state) |
+| RDS Proxy depends on a populated target secret + target DB | `dependency-analyzer` emits `rds-proxy-secret`, `rds-proxy-subnet`, `rds-proxy-target` edges; migration-plan orders DB containers first, secret value populated second, proxy registers targets last |
+| Athena workgroup output bucket / Glue catalog must exist in target | `dependency-analyzer` emits `athena-results-bucket` / `athena-glue-catalog` edges; missing-in-target lands in `manual_review_required[]` |
+| CloudFormation drift if you regenerate HCL for stack-owned resources | `terraform-generator` **skips HCL emission** for any resource where `provider_specific.aws.cfn_stack_owner` is set; per-stack decision recorded in `cloudformation-decisions.md` |
+| EKS in-cluster objects are invisible to AWS APIs | Tracked separately in `coverage.eks_handoff_resources[]` with `not_migrated_by_iac: true`; data-plane runbook emits `k8s-redeploy-handoff` step; auditor treats them as expected gap |
 
 ---
 

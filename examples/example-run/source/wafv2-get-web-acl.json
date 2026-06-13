@@ -1,0 +1,31 @@
+{
+  "WebACL": {
+    "Name": "orders-edge-acl",
+    "Id": "abcd1234-5678-9012-3456-abcdef012345",
+    "ARN": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/orders-edge-acl/abcd1234-5678-9012-3456-abcdef012345",
+    "Description": "Edge ACL for orders ALB",
+    "DefaultAction": { "Allow": {} },
+    "Rules": [
+      {
+        "Name": "block-ip-blocklist",
+        "Priority": 0,
+        "Action": { "Block": {} },
+        "Statement": {
+          "IPSetReferenceStatement": {
+            "ARN": "arn:aws:wafv2:us-east-1:111111111111:regional/ipset/orders-blocklist/ipset-id-1"
+          }
+        },
+        "VisibilityConfig": {
+          "SampledRequestsEnabled": true,
+          "CloudWatchMetricsEnabled": true,
+          "MetricName": "block-ip-blocklist"
+        }
+      }
+    ],
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "orders-edge-acl"
+    }
+  }
+}

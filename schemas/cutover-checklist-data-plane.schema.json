@@ -85,6 +85,11 @@
                     "rds-promote-read-replica",
                     "route53-change",
                     "traffic-shift",
+                    "cognito-deploy-user-migration-lambda",
+                    "cognito-idp-import-job",
+                    "cognito-update-idp-secret",
+                    "wafv2-associate",
+                    "k8s-redeploy-handoff",
                     "manual-decision"
                   ]
                 },

@@ -1,0 +1,54 @@
+{
+  "Service": {
+    "ServiceName": "orders-public-api",
+    "ServiceId": "abcd1234efgh5678",
+    "ServiceArn": "arn:aws:apprunner:us-east-1:111111111111:service/orders-public-api/abcd1234efgh5678",
+    "ServiceUrl": "abc12345.us-east-1.awsapprunner.com",
+    "Status": "RUNNING",
+    "SourceConfiguration": {
+      "ImageRepository": {
+        "ImageIdentifier": "111111111111.dkr.ecr.us-east-1.amazonaws.com/orders-public-api:v42",
+        "ImageRepositoryType": "ECR",
+        "ImageConfiguration": {
+          "Port": "8080",
+          "StartCommand": null,
+          "RuntimeEnvironmentVariables": {
+            "LOG_LEVEL": "info",
+            "REGION": "us-east-1"
+          },
+          "RuntimeEnvironmentSecrets": {
+            "DB_PASSWORD": "arn:aws:secretsmanager:us-east-1:111111111111:secret:prod/orders/db-AbCdEf"
+          }
+        }
+      },
+      "AutoDeploymentsEnabled": true,
+      "AuthenticationConfiguration": {
+        "AccessRoleArn": "arn:aws:iam::111111111111:role/orders-apprunner-ecr-access"
+      }
+    },
+    "InstanceConfiguration": {
+      "Cpu": "1024",
+      "Memory": "2048",
+      "InstanceRoleArn": "arn:aws:iam::111111111111:role/orders-apprunner-instance-role"
+    },
+    "AutoScalingConfigurationSummary": {
+      "AutoScalingConfigurationArn": "arn:aws:apprunner:us-east-1:111111111111:autoscalingconfiguration/orders-asg/1/abcd1234"
+    },
+    "NetworkConfiguration": {
+      "IngressConfiguration": { "IsPubliclyAccessible": true },
+      "EgressConfiguration": { "EgressType": "DEFAULT" }
+    },
+    "HealthCheckConfiguration": {
+      "Protocol": "HTTP",
+      "Path": "/health",
+      "Interval": 10,
+      "Timeout": 5,
+      "HealthyThreshold": 1,
+      "UnhealthyThreshold": 5
+    },
+    "Tags": [
+      { "Key": "Project", "Value": "orders-api" },
+      { "Key": "Owner", "Value": "platform" }
+    ]
+  }
+}

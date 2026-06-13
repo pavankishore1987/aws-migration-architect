@@ -1,0 +1,75 @@
+# WAFv2 Web ACL. Resource associations (ALB / API Gateway / AppSync ARNs) are
+# emitted as separate aws_wafv2_web_acl_association resources and MUST point at
+# the NEW target ALB/API-GW ARNs — source ARNs would silently fail to attach.
+# The dependency-analyzer records every source association in the remap list;
+# the terraform-builder consumes that list to wire associations to target.
+#
+# scope = REGIONAL for ALB/API-Gateway/AppSync; CLOUDFRONT for distributions.
+# CloudFront-scoped Web ACLs MUST be created in us-east-1 regardless of target_region.
+
+resource "aws_wafv2_web_acl" "{{slug}}" {
+  name        = "{{name}}"
+  description = "{{description}}"
+  scope       = "{{scope}}"
+
+  default_action {
+    {{#default_allow}}allow {}{{/default_allow}}
+    {{#default_block}}block {}{{/default_block}}
+  }
+
+  {{#rules}}
+  rule {
+    name     = "{{rule_name}}"
+    priority = {{rule_priority}}
+
+    {{#has_action}}
+    action {
+      {{#rule_allow}}allow {}{{/rule_allow}}
+      {{#rule_block}}block {}{{/rule_block}}
+      {{#rule_count}}count {}{{/rule_count}}
+      {{#rule_captcha}}captcha {}{{/rule_captcha}}
+    }
+    {{/has_action}}
+
+    {{#has_override_action}}
+    override_action {
+      {{#override_none}}none {}{{/override_none}}
+      {{#override_count}}count {}{{/override_count}}
+    }
+    {{/has_override_action}}
+
+    statement {
+      # The body of this statement was rendered from source describe-web-acl.
+      # Any nested IPSetReferenceStatement / RuleGroupReferenceStatement / RegexPatternSetReferenceStatement
+      # is auto-rewritten to point at the NEW target ARN of the same name.
+      {{rule_statement_parameterized}}
+    }
+
+    visibility_config {
+      sampled_requests_enabled    = {{rule_sampled_requests_enabled}}
+      cloudwatch_metrics_enabled = {{rule_cloudwatch_metrics_enabled}}
+      metric_name                = "{{rule_metric_name}}"
+    }
+  }
+  {{/rules}}
+
+  visibility_config {
+    sampled_requests_enabled    = {{sampled_requests_enabled}}
+    cloudwatch_metrics_enabled = {{cloudwatch_metrics_enabled}}
+    metric_name                = "{{metric_name}}"
+  }
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}
+
+# Resource associations — re-pointed to target ARNs by the terraform-builder
+# (see dependency-graph.json wafv2-association edges + hardcoded-values.json).
+{{#associations}}
+resource "aws_wafv2_web_acl_association" "{{slug}}_{{association_index}}" {
+  resource_arn = {{ref:associated_resource_arn}}
+  web_acl_arn  = aws_wafv2_web_acl.{{slug}}.arn
+}
+{{/associations}}

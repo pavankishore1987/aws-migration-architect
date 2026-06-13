@@ -54,8 +54,11 @@ Walk `inventory.json` and select resources where data movement is required. The 
 | Redshift | Clusters |
 | ElastiCache | Replication groups (if persistence enabled) |
 | Backup | Vaults (if cross-account copy is the strategy) |
+| **Cognito** | **User pools (user records — never password hashes; see Cognito-specific strategy below)** |
 
 Empty buckets, empty tables, and empty file systems should be flagged but not planned for transfer — they get created by Terraform, no data to move.
+
+**MemoryDB:** explicitly **NOT** in the data-bearing set. MemoryDB-for-Redis is treated as ephemeral cache: the target cluster is created empty by Terraform (Phase 3 control-plane) and re-warmed by the application after cutover. Emit an `info`-severity warning per source cluster: *"<cluster> data is not migrated; cache will be cold post-cutover. If this cluster holds the only copy of any persistent state, halt and reclassify it as a data store."* This protects against the (rare) misuse of MemoryDB as a primary store.
 
 ### Step 2 — Size each datastore
 
@@ -96,6 +99,15 @@ Special cases:
 - **DynamoDB Global Tables** — if the table already replicates to the target region in the same account, the migration is just adding a replica in the target *account* (often easier than export/import). Flag this in the plan.
 - **RDS Multi-AZ** — snapshot from the standby (no impact). Note in the plan.
 - **Aurora Global Database** — different problem; flag for manual review.
+- **Cognito user pools** — passwords **cannot be bulk-migrated**. AWS does not expose password hashes via any API; `admin-get-user` returns metadata only. The two viable strategies:
+  1. **Migrate-on-sign-in Lambda (preferred for active user bases).** Deploy a `UserMigration` Lambda trigger on the *target* pool. The first time a user signs in to target, the trigger calls source's `AdminInitiateAuth` over a short-lived federated identity, verifies credentials, then creates the user in target with the same attributes. Zero forced resets; only active users are migrated. Tool = `cognito-user-migration-lambda`, mode = `live-cutover`. Requires the source pool to remain reachable from the target Lambda for the migration window (set `retain_source_for_hours` ≥ 24 × estimated migration tail).
+  2. **CSV import with forced reset (fallback for read-only / dormant pools).** `cognito-idp create-user-import-job` accepts a CSV of attributes; users are created in `FORCE_CHANGE_PASSWORD` state and must reset their password at next sign-in. Tool = `cognito-idp-import-job`, mode = `bulk`. Use when the source pool is decommissioned at cutover and a forced reset is acceptable.
+
+  Pick (1) by default; pick (2) only when the user pool's owner team explicitly accepts forced resets. Record the choice and `reason` in `strategy`. Required output fields specific to Cognito:
+  - `sizing.object_count` = source pool's user count (`describe-user-pool.EstimatedNumberOfUsers`)
+  - `validation.methods` = `["object-count"]` (the only cross-pool parity check that doesn't require reading user records)
+  - `validation.acceptance_criteria` = "Target pool's `EstimatedNumberOfUsers` reaches ≥ X% of source within the migration tail window (X = 95% for tier-1, 80% for tier-2, no SLA for tier-3)."
+  - **Always emit a top-level `warning`-severity entry: "Cognito passwords cannot be bulk-migrated. Strategy `<chosen>` was selected. Communicate the user-experience implications to the owner team before cutover."**
 
 ### Step 4 — Encryption handling per datastore
 

@@ -185,6 +185,30 @@
       "Resource": "*"
     },
     {
+      "Sid": "CognitoUserMigrationDataPlane",
+      "Effect": "Allow",
+      "Action": [
+        "cognito-idp:CreateUserImportJob",
+        "cognito-idp:StartUserImportJob",
+        "cognito-idp:DescribeUserImportJob",
+        "cognito-idp:ListUserImportJobs",
+        "cognito-idp:StopUserImportJob",
+        "cognito-idp:UpdateIdentityProvider",
+        "cognito-idp:DescribeIdentityProvider",
+        "cognito-idp:UpdateUserPool",
+        "cognito-idp:DescribeUserPool",
+        "cognito-idp:AdminCreateUser",
+        "cognito-idp:AdminUpdateUserAttributes",
+        "cognito-idp:AdminAddUserToGroup"
+      ],
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "aws:ResourceTag/ManagedBy": "terraform"
+        }
+      }
+    },
+    {
       "Sid": "DenyDestructiveDataPlane",
       "Effect": "Deny",
       "Action": [
@@ -200,7 +224,10 @@
         "datasync:DeleteLocation*",
         "dms:DeleteReplicationTask",
         "dms:DeleteReplicationInstance",
-        "dms:DeleteEndpoint"
+        "dms:DeleteEndpoint",
+        "cognito-idp:DeleteUserPool",
+        "cognito-idp:AdminDeleteUser",
+        "cognito-idp:DeleteIdentityProvider"
       ],
       "Resource": "*"
     }

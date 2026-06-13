@@ -17,11 +17,12 @@
     "estimated_total_transfer_cost_usd": 215.4,
     "estimated_double_storage_cost_usd": 58.0,
     "cutover_window_recommendation_hours": 2.0,
-    "datastore_count_by_service": { "s3": 2, "rds": 1 },
+    "datastore_count_by_service": { "s3": 2, "rds": 1, "cognito-idp": 1 },
     "critical_path": [
       "arn:aws:s3:::acme-prod-orders-assets",
       "arn:aws:s3:::acme-prod-orders-logs",
-      "arn:aws:rds:us-east-1:111111111111:db:prod-orders"
+      "arn:aws:rds:us-east-1:111111111111:db:prod-orders",
+      "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_AbCdEfGhI"
     ]
   },
   "datastores": [
@@ -113,10 +114,37 @@
       "bandwidth_constraints": { "throttle_business_hours": false, "business_hours_window": null, "max_throughput_mbps_business": null, "max_throughput_mbps_off_hours": null, "max_concurrent_jobs": 1 },
       "depends_on": [],
       "notes": "Snapshot taken from the MultiAZ standby — no impact to the primary."
+    },
+    {
+      "resource_arn": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_AbCdEfGhI",
+      "resource_type": "AWS::Cognito::UserPool",
+      "name": "orders-customers",
+      "owner_team": "platform",
+      "criticality": "tier-1",
+      "sizing": { "bytes": 0, "object_count": 184230, "sizing_method": "describe-api", "sized_at": "2026-06-12T14:30:00Z" },
+      "strategy": {
+        "tool": "cognito-user-migration-lambda",
+        "mode": "live-cutover",
+        "reason": "Active user base; passwords cannot be bulk-migrated. Migrate-on-sign-in trigger validates the source pool on first sign-in, then creates the user in target. No forced reset for the customer.",
+        "alternatives_considered": [{ "tool": "cognito-idp-import-job", "rejected_because": "would force a password reset on all 184k customers; owner team declined the UX impact." }]
+      },
+      "encryption": { "at_rest": true, "source_kms_key_arn": null, "source_kms_key_type": "aws-managed", "target_kms_key_arn": null, "requires_target_kms_grant": false, "requires_re_encryption": false },
+      "transfer_estimate": { "assumed_throughput_mbps": 0, "bulk_phase_hours": 0.0, "delta_phase_hours": 0.0, "cutover_phase_minutes": 30, "total_wall_clock_hours": 0.5, "confidence": "low" },
+      "cost_estimate": { "data_transfer_usd": 0.0, "tool_runtime_usd": 1.0, "double_storage_during_overlap_usd": 0.0, "validation_usd": 0.0, "total_usd": 1.0, "pricing_source": "awspricing MCP" },
+      "rpo_target_minutes": 0,
+      "rto_target_minutes": 30,
+      "freeze_window": { "required": false, "duration_minutes": 0, "begins_at_phase": null, "begins_at_step_id": null, "notes": "No freeze: source pool stays active until the migration tail finishes (≥ 168h). New target sign-ins migrate the user on-demand." },
+      "validation": { "methods": ["object-count"], "acceptance_criteria": "Target pool EstimatedNumberOfUsers reaches >= 95% of source within 168h migration-tail window.", "estimated_validation_minutes": 15 },
+      "rollback": { "retain_source_for_hours": 168, "retention_cost_usd": 0.0, "destruction_step_owner_team": "platform" },
+      "bandwidth_constraints": { "throttle_business_hours": false, "business_hours_window": null, "max_throughput_mbps_business": null, "max_throughput_mbps_off_hours": null, "max_concurrent_jobs": null },
+      "depends_on": [],
+      "notes": "Source pool must remain reachable from the target user-migration Lambda for the full retain_source_for_hours window."
     }
   ],
   "warnings": [
     { "severity": "warning", "datastore_arn": "arn:aws:s3:::acme-prod-orders-assets", "message": "Transfer time estimate uses default 1 Gbps throughput, not a measured trial.", "remediation": "Run a measured 10 GB sample sync to calibrate before scheduling the cutover window." },
-    { "severity": "info", "datastore_arn": "arn:aws:s3:::acme-prod-orders-logs", "message": "Append-only logs migrate without a freeze window.", "remediation": null }
+    { "severity": "info", "datastore_arn": "arn:aws:s3:::acme-prod-orders-logs", "message": "Append-only logs migrate without a freeze window.", "remediation": null },
+    { "severity": "warning", "datastore_arn": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_AbCdEfGhI", "message": "Cognito passwords cannot be bulk-migrated. Strategy cognito-user-migration-lambda was selected. Communicate UX (no forced reset, dual-write window) to platform team before cutover.", "remediation": "Platform team to sign off on the migrate-on-sign-in strategy in cutover-checklist-data-plane approval." },
+    { "severity": "info", "datastore_arn": "arn:aws:memorydb:us-east-1:111111111111:cluster/orders-session-cache", "message": "MemoryDB orders-session-cache data is not migrated; target cluster will be cold post-cutover. If this cluster holds the only copy of any persistent state, halt and reclassify it as a datastore.", "remediation": "Confirm with platform team that all data in this cluster is reproducible from source-of-truth (RDS, S3, etc.) before cutover." }
   ]
 }

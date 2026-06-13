@@ -12,7 +12,7 @@
   "coverage": {
     "regions_scanned": ["us-east-1", "us-west-2"],
     "regions_skipped": [],
-    "services_scanned": ["ec2", "elasticloadbalancing", "rds", "lambda", "s3", "iam", "route53", "kms", "secretsmanager"],
+    "services_scanned": ["ec2", "elasticloadbalancing", "rds", "lambda", "s3", "iam", "route53", "kms", "secretsmanager", "cognito-idp", "memorydb", "wafv2", "athena", "apprunner", "ce"],
     "services_skipped": [
       { "service": "sagemaker", "reason": "not in MVP — 1 resource seen at discovery", "resource_count_seen": 1 }
     ],
@@ -24,7 +24,13 @@
       { "stack_name": "orders-api-base", "region": "us-east-1", "status": "CREATE_COMPLETE", "resource_count": 47 },
       { "stack_name": "orders-monitoring", "region": "us-east-1", "status": "CREATE_COMPLETE", "resource_count": 12 }
     ],
-    "skipped_service_linked_roles": ["AWSServiceRoleForRDS"]
+    "skipped_service_linked_roles": ["AWSServiceRoleForRDS"],
+    "eks_handoff_resources": [
+      { "cluster": "orders-eks", "kind": "deployment", "namespace": "orders-api", "name": "orders-api", "source_arn": null, "not_migrated_by_iac": true, "handoff_owner_team": "platform" },
+      { "cluster": "orders-eks", "kind": "service", "namespace": "orders-api", "name": "orders-api", "source_arn": null, "not_migrated_by_iac": true, "handoff_owner_team": "platform" },
+      { "cluster": "orders-eks", "kind": "ingress", "namespace": "orders-api", "name": "orders-api", "source_arn": null, "not_migrated_by_iac": true, "handoff_owner_team": "platform" },
+      { "cluster": "orders-eks", "kind": "controller-managed-elb", "namespace": null, "name": "k8s-orders-orders-api-abc123def4", "source_arn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:targetgroup/k8s-orders-orders-api-abc123def4/1234567890abcdef", "not_migrated_by_iac": true, "handoff_owner_team": "platform" }
+    ]
   },
   "resources": [
     {
@@ -112,6 +118,24 @@
       "provider_specific": { "aws": { "Engine": "postgres", "EngineVersion": "15.4", "AllocatedStorage": 100, "MultiAZ": true, "StorageEncrypted": true, "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2" } }
     },
     {
+      "arn": "arn:aws:rds:us-east-1:111111111111:db-proxy:prx-abcdef0123456789",
+      "type": "database_proxy", "service": "rds", "region": "us-east-1", "name": "prod-orders-proxy",
+      "tags": { "Project": "orders-api", "Owner": "platform" },
+      "criticality": "P1", "stateful": false,
+      "provider_specific": {
+        "aws": {
+          "EngineFamily": "POSTGRESQL",
+          "VpcSubnetIds": ["subnet-private-1a", "subnet-private-1b"],
+          "VpcSecurityGroupIds": ["sg-rds-orders"],
+          "AuthSecretArns": ["arn:aws:secretsmanager:us-east-1:111111111111:secret:prod/orders/db-AbCdEf"],
+          "RoleArn": "arn:aws:iam::111111111111:role/rds-proxy-role",
+          "Endpoint": "prod-orders-proxy.proxy-abcdef.us-east-1.rds.amazonaws.com",
+          "RequireTLS": true,
+          "TargetDBs": ["prod-orders"]
+        }
+      }
+    },
+    {
       "arn": "arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler",
       "type": "function", "service": "lambda", "region": "us-east-1", "name": "orders-api-handler",
       "tags": { "Owner": "platform", "Project": "orders-api", "Environment": "production" },
@@ -144,7 +168,7 @@
       "type": "iam_principal", "service": "iam", "region": "global", "name": "orders-api-lambda-role",
       "tags": { "Owner": "platform", "Project": "orders-api" },
       "criticality": "P2", "stateful": false,
-      "provider_specific": { "aws": { "trust": "lambda.amazonaws.com" } }
+      "provider_specific": { "aws": { "trust": "lambda.amazonaws.com", "cfn_stack_owner": "orders-api-base" } }
     },
     {
       "arn": "arn:aws:iam::111111111111:role/github-actions-deploy",
@@ -187,6 +211,182 @@
       "tags": { "Project": "orders-api", "Owner": "platform" },
       "criticality": "P1", "stateful": true,
       "provider_specific": { "aws": { "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2", "value_read": false } }
+    },
+    {
+      "arn": "arn:aws:lambda:us-east-1:111111111111:function:orders-cognito-presignup",
+      "type": "function", "service": "lambda", "region": "us-east-1", "name": "orders-cognito-presignup",
+      "tags": { "Project": "orders-api", "Owner": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "Runtime": "nodejs20.x", "Role": "arn:aws:iam::111111111111:role/orders-api-lambda-role" } }
+    },
+    {
+      "arn": "arn:aws:lambda:us-east-1:111111111111:function:orders-cognito-postconfirmation",
+      "type": "function", "service": "lambda", "region": "us-east-1", "name": "orders-cognito-postconfirmation",
+      "tags": { "Project": "orders-api", "Owner": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "Runtime": "nodejs20.x", "Role": "arn:aws:iam::111111111111:role/orders-api-lambda-role" } }
+    },
+    {
+      "arn": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_AbCdEfGhI",
+      "type": "identity_directory", "service": "cognito-idp", "region": "us-east-1", "name": "orders-customers",
+      "tags": { "Project": "orders-api", "Owner": "platform", "Environment": "production", "Criticality": "tier-1" },
+      "criticality": "P1", "stateful": true,
+      "provider_specific": {
+        "aws": {
+          "Id": "us-east-1_AbCdEfGhI",
+          "MfaConfiguration": "OPTIONAL",
+          "EstimatedNumberOfUsers": 184230,
+          "UsernameAttributes": ["email"],
+          "AutoVerifiedAttributes": ["email"],
+          "LambdaConfig": {
+            "PreSignUp": "arn:aws:lambda:us-east-1:111111111111:function:orders-cognito-presignup",
+            "PostConfirmation": "arn:aws:lambda:us-east-1:111111111111:function:orders-cognito-postconfirmation"
+          },
+          "app_clients": ["1234567890abcdefghij"],
+          "groups": [],
+          "identity_providers": [],
+          "users_inventoried": false
+        }
+      }
+    },
+    {
+      "arn": "arn:aws:cognito-idp:us-east-1:111111111111:userpool/us-east-1_AbCdEfGhI/client/1234567890abcdefghij",
+      "type": "identity_client", "service": "cognito-idp", "region": "us-east-1", "name": "orders-web-app",
+      "tags": { "Project": "orders-api", "Owner": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": {
+        "aws": {
+          "UserPoolId": "us-east-1_AbCdEfGhI",
+          "GenerateSecret": false,
+          "AllowedOAuthFlows": ["code"],
+          "CallbackURLs": ["https://app.acme-corp.example.com/auth/callback"],
+          "LogoutURLs": ["https://app.acme-corp.example.com/logout"]
+        }
+      }
+    },
+    {
+      "arn": "arn:aws:memorydb:us-east-1:111111111111:subnetgroup/orders-memorydb-subnets",
+      "type": "network_subnet_group", "service": "memorydb", "region": "us-east-1", "name": "orders-memorydb-subnets",
+      "tags": { "Project": "orders-api", "Owner": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "Subnets": ["subnet-private-1a", "subnet-private-1b"] } }
+    },
+    {
+      "arn": "arn:aws:memorydb:us-east-1:111111111111:parametergroup/orders-memorydb-params",
+      "type": "parameter_group", "service": "memorydb", "region": "us-east-1", "name": "orders-memorydb-params",
+      "tags": { "Project": "orders-api", "Owner": "platform" },
+      "criticality": "P3", "stateful": false,
+      "provider_specific": { "aws": { "Family": "memorydb_redis7", "Description": "Custom params for orders cache" } }
+    },
+    {
+      "arn": "arn:aws:memorydb:us-east-1:111111111111:acl/orders-memorydb-acl",
+      "type": "cache_acl", "service": "memorydb", "region": "us-east-1", "name": "orders-memorydb-acl",
+      "tags": { "Project": "orders-api", "Owner": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "UserNames": ["orders-app-user"] } }
+    },
+    {
+      "arn": "arn:aws:memorydb:us-east-1:111111111111:user/orders-app-user",
+      "type": "cache_user", "service": "memorydb", "region": "us-east-1", "name": "orders-app-user",
+      "tags": { "Project": "orders-api", "Owner": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "AccessString": "on ~* &* +@all", "AuthenticationMode": { "Type": "password" } } }
+    },
+    {
+      "arn": "arn:aws:memorydb:us-east-1:111111111111:cluster/orders-session-cache",
+      "type": "cache_cluster", "service": "memorydb", "region": "us-east-1", "name": "orders-session-cache",
+      "tags": { "Project": "orders-api", "Owner": "platform", "Criticality": "tier-2" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": {
+        "aws": {
+          "NodeType": "db.r6g.large",
+          "NumberOfShards": 2,
+          "NumberOfReplicasPerShard": 1,
+          "EngineVersion": "7.1",
+          "ParameterGroupName": "orders-memorydb-params",
+          "SubnetGroupName": "orders-memorydb-subnets",
+          "ACLName": "orders-memorydb-acl",
+          "TLSEnabled": true,
+          "Port": 6379,
+          "data_policy": "ephemeral-recreated-at-cutover"
+        }
+      }
+    },
+    {
+      "arn": "arn:aws:wafv2:us-east-1:111111111111:regional/ipset/orders-blocklist/ipset-id-1",
+      "type": "waf_ip_set", "service": "wafv2", "region": "us-east-1", "name": "orders-blocklist",
+      "tags": { "Project": "orders-api", "Owner": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "Scope": "REGIONAL", "IPAddressVersion": "IPV4", "Addresses": ["198.51.100.0/24"] } }
+    },
+    {
+      "arn": "arn:aws:wafv2:us-east-1:111111111111:regional/webacl/orders-edge-acl/abcd1234-5678-9012-3456-abcdef012345",
+      "type": "waf_web_acl", "service": "wafv2", "region": "us-east-1", "name": "orders-edge-acl",
+      "tags": { "Project": "orders-api", "Owner": "platform", "Criticality": "tier-1" },
+      "criticality": "P1", "stateful": false,
+      "provider_specific": {
+        "aws": {
+          "Scope": "REGIONAL",
+          "DefaultAction": "Allow",
+          "RuleCount": 1,
+          "associated_resources": [
+            "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/orders-alb/abc123def456"
+          ]
+        }
+      }
+    },
+    {
+      "arn": "arn:aws:athena:us-east-1:111111111111:workgroup/orders-analytics",
+      "type": "query_workgroup", "service": "athena", "region": "us-east-1", "name": "orders-analytics",
+      "tags": { "Project": "orders-api", "Owner": "data-platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": {
+        "aws": {
+          "State": "ENABLED",
+          "EngineVersion": "Athena engine version 3",
+          "ResultConfiguration": {
+            "OutputLocation": "s3://acme-prod-orders-logs/athena-results/",
+            "EncryptionOption": "SSE_S3"
+          },
+          "EnforceWorkGroupConfiguration": true,
+          "BytesScannedCutoffPerQuery": 1099511627776
+        }
+      }
+    },
+    {
+      "arn": "arn:aws:apprunner:us-east-1:111111111111:autoscalingconfiguration/orders-asg/1/abcd1234",
+      "type": "autoscaling_config", "service": "apprunner", "region": "us-east-1", "name": "orders-asg",
+      "tags": { "Project": "orders-api", "Owner": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "MaxConcurrency": 100, "MinSize": 1, "MaxSize": 10 } }
+    },
+    {
+      "arn": "arn:aws:apprunner:us-east-1:111111111111:service/orders-public-api/abcd1234efgh5678",
+      "type": "managed_container_service", "service": "apprunner", "region": "us-east-1", "name": "orders-public-api",
+      "tags": { "Project": "orders-api", "Owner": "platform", "Criticality": "tier-1" },
+      "criticality": "P1", "stateful": false,
+      "provider_specific": {
+        "aws": {
+          "Status": "RUNNING",
+          "ImageIdentifier": "111111111111.dkr.ecr.us-east-1.amazonaws.com/orders-public-api:v42",
+          "ImageRepositoryType": "ECR",
+          "Cpu": "1024",
+          "Memory": "2048",
+          "InstanceRoleArn": "arn:aws:iam::111111111111:role/orders-apprunner-instance-role",
+          "AccessRoleArn": "arn:aws:iam::111111111111:role/orders-apprunner-ecr-access",
+          "RuntimeEnvironmentSecrets": {
+            "DB_PASSWORD": "arn:aws:secretsmanager:us-east-1:111111111111:secret:prod/orders/db-AbCdEf"
+          },
+          "AutoScalingConfigurationArn": "arn:aws:apprunner:us-east-1:111111111111:autoscalingconfiguration/orders-asg/1/abcd1234"
+        }
+      }
+    },
+    {
+      "arn": "arn:aws:ce::111111111111:anomalymonitor/aaaa-bbbb-cccc-dddd",
+      "type": "cost_anomaly_monitor", "service": "ce", "region": "global", "name": "orders-spend-monitor",
+      "tags": {},
+      "criticality": "P3", "stateful": false,
+      "provider_specific": { "aws": { "MonitorType": "DIMENSIONAL", "MonitorDimension": "SERVICE", "history_transferable": false, "recommended_action": "Recreate in target post-cutover (console or optional ce/anomaly-monitor.hcl.tmpl). Not on the critical path." } }
     }
   ]
 }

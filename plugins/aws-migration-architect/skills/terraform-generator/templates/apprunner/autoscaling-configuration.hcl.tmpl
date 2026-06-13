@@ -1,0 +1,12 @@
+resource "aws_apprunner_auto_scaling_configuration_version" "{{slug}}" {
+  auto_scaling_configuration_name = "{{name}}"
+
+  max_concurrency = {{max_concurrency}}
+  max_size        = {{max_size}}
+  min_size        = {{min_size}}
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}

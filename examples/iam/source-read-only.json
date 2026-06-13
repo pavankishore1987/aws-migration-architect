@@ -89,12 +89,29 @@
         "sts:GetCallerIdentity",
         "cloudformation:Describe*",
         "cloudformation:List*",
-        "cloudformation:GetTemplate",
+        "cloudformation:Get*",
         "ce:GetCostAndUsage",
         "ce:GetReservationCoverage",
         "ce:GetReservationUtilization",
         "ce:GetSavingsPlansCoverage",
-        "ce:GetSavingsPlansUtilization"
+        "ce:GetSavingsPlansUtilization",
+        "ce:GetAnomalies",
+        "ce:GetAnomalyMonitors",
+        "ce:GetAnomalySubscriptions",
+        "cognito-idp:Describe*",
+        "cognito-idp:List*",
+        "cognito-idp:Get*",
+        "memorydb:Describe*",
+        "memorydb:List*",
+        "wafv2:Get*",
+        "wafv2:List*",
+        "wafv2:Describe*",
+        "athena:Get*",
+        "athena:List*",
+        "athena:BatchGetNamedQuery",
+        "athena:BatchGetPreparedStatement",
+        "apprunner:List*",
+        "apprunner:Describe*"
       ],
       "Resource": "*"
     },
@@ -114,6 +131,19 @@
           "ssm:ParameterType": "SecureString"
         }
       }
+    },
+    {
+      "Sid": "ExplicitlyDenyCognitoUserRecordReads",
+      "Effect": "Deny",
+      "Action": [
+        "cognito-idp:ListUsers",
+        "cognito-idp:ListUsersInGroup",
+        "cognito-idp:AdminGetUser",
+        "cognito-idp:AdminListGroupsForUser",
+        "cognito-idp:AdminListUserAuthEvents",
+        "cognito-idp:GetUser"
+      ],
+      "Resource": "*"
     },
     {
       "Sid": "AllowNonSecureSSMParameterReads",

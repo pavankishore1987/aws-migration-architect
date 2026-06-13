@@ -1,0 +1,9 @@
+resource "aws_memorydb_acl" "{{slug}}" {
+  name       = "{{name}}"
+  user_names = [{{#user_refs}}aws_memorydb_user.{{user_slug}}.user_name,{{/user_refs}}]
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}

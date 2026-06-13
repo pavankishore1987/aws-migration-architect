@@ -1,0 +1,51 @@
+# RDS Proxy. Auth references Secrets Manager secrets in the TARGET account
+# (the proxy reads the DB password from the secret it points at). The secret
+# CONTAINERS are created by the secrets module; values are populated by the
+# data-plane secret-put-value step BEFORE the proxy can serve traffic.
+
+resource "aws_db_proxy" "{{slug}}" {
+  name                   = "{{name}}"
+  engine_family          = "{{engine_family}}"
+  role_arn               = {{ref:proxy_role_arn}}
+  vpc_subnet_ids         = [{{#subnet_refs}}{{ref:subnet_arn}},{{/subnet_refs}}]
+  vpc_security_group_ids = [{{#security_group_refs}}{{ref:sg_arn}},{{/security_group_refs}}]
+  require_tls            = {{require_tls}}
+  idle_client_timeout    = {{idle_client_timeout}}
+  debug_logging          = {{debug_logging}}
+
+  {{#auths}}
+  auth {
+    auth_scheme  = "{{auth_scheme}}"
+    iam_auth     = "{{iam_auth}}"
+    secret_arn   = {{ref:auth_secret_arn}}
+    description  = "{{auth_description}}"
+    client_password_auth_type = "{{client_password_auth_type}}"
+  }
+  {{/auths}}
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}
+
+resource "aws_db_proxy_default_target_group" "{{slug}}" {
+  db_proxy_name = aws_db_proxy.{{slug}}.name
+
+  connection_pool_config {
+    max_connections_percent      = {{max_connections_percent}}
+    max_idle_connections_percent = {{max_idle_connections_percent}}
+    connection_borrow_timeout    = {{connection_borrow_timeout}}
+    init_query                   = "{{init_query}}"
+    session_pinning_filters      = {{session_pinning_filters}}
+  }
+}
+
+{{#proxy_targets}}
+resource "aws_db_proxy_target" "{{slug}}_{{target_index}}" {
+  db_proxy_name          = aws_db_proxy.{{slug}}.name
+  target_group_name      = aws_db_proxy_default_target_group.{{slug}}.name
+  {{#is_instance}}db_instance_identifier = aws_db_instance.{{target_db_slug}}.identifier{{/is_instance}}
+  {{#is_cluster}}db_cluster_identifier  = aws_rds_cluster.{{target_db_slug}}.cluster_identifier{{/is_cluster}}
+}
+{{/proxy_targets}}

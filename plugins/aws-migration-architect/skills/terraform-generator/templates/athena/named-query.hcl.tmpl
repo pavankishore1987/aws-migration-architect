@@ -1,0 +1,13 @@
+# Athena named query (saved query). Table/database references in the SQL body
+# are re-parameterized if they point at Glue catalogs in scope; literal source-
+# account or source-region tokens get rewritten.
+
+resource "aws_athena_named_query" "{{slug}}" {
+  name        = "{{name}}"
+  description = "{{description}}"
+  database    = "{{database}}"
+  workgroup   = aws_athena_workgroup.{{workgroup_slug}}.name
+  query       = <<-SQL
+{{query_parameterized}}
+SQL
+}

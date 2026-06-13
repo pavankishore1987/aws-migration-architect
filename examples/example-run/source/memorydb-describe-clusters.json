@@ -1,0 +1,29 @@
+{
+  "Clusters": [
+    {
+      "Name": "orders-session-cache",
+      "ARN": "arn:aws:memorydb:us-east-1:111111111111:cluster/orders-session-cache",
+      "Description": "Session-token cache for orders-api. Ephemeral; recreated empty in target.",
+      "Status": "available",
+      "NodeType": "db.r6g.large",
+      "NumberOfShards": 2,
+      "NumberOfReplicasPerShard": 1,
+      "EngineVersion": "7.1",
+      "ParameterGroupName": "orders-memorydb-params",
+      "SubnetGroupName": "orders-memorydb-subnets",
+      "SecurityGroupIds": ["sg-memorydb-orders"],
+      "ACLName": "orders-memorydb-acl",
+      "Port": 6379,
+      "TLSEnabled": true,
+      "MaintenanceWindow": "sun:08:00-sun:09:00",
+      "SnapshotRetentionLimit": 0,
+      "SnapshotWindow": "07:00-08:00",
+      "AutoMinorVersionUpgrade": true,
+      "Tags": [
+        { "Key": "Project", "Value": "orders-api" },
+        { "Key": "Owner", "Value": "platform" },
+        { "Key": "Criticality", "Value": "tier-2" }
+      ]
+    }
+  ]
+}

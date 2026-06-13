@@ -1,0 +1,27 @@
+# Subscriber email addresses are NOT rewritten — they're the same humans before
+# and after migration. If a subscriber is an SNS topic, the ARN is parameterized
+# to the target topic.
+
+resource "aws_ce_anomaly_subscription" "{{slug}}" {
+  name      = "{{name}}"
+  frequency = "{{frequency}}"
+  threshold_expression {
+    {{threshold_expression_parameterized}}
+  }
+
+  monitor_arn_list = [
+    {{#monitor_refs}}aws_ce_anomaly_monitor.{{monitor_slug}}.arn,{{/monitor_refs}}
+  ]
+
+  {{#subscribers}}
+  subscriber {
+    type    = "{{subscriber_type}}"
+    address = "{{subscriber_address_parameterized}}"
+  }
+  {{/subscribers}}
+
+  tags = merge(var.common_tags, {{tags}}, {
+    Name      = "{{name}}"
+    SourceArn = "{{source_arn}}"
+  })
+}

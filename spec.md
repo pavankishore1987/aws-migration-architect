@@ -196,21 +196,25 @@ To avoid users either over-granting (`AdministratorAccess` to debug a permission
 
 ### Services — the MVP coverage list
 
-The plugin covers the ~30-40 services that hit ~95% of real accounts:
+The plugin covers the ~40 services that hit ~95% of real accounts:
 
 | Category | Services in MVP |
 |---|---|
-| **Compute** | EC2 (+ AMIs, EBS, key pairs), Lambda, ECS, EKS, ECR, Auto Scaling |
-| **Networking** | VPC (subnets, RTs, IGW, NAT, VPC endpoints), Security Groups, ELB/ALB/NLB, Route53, CloudFront, ACM, API Gateway (REST + HTTP) |
+| **Compute** | EC2 (+ AMIs, EBS, key pairs), Lambda, ECS, EKS (cluster + nodegroups + Fargate profiles + addons; in-cluster K8s objects + AWS-Load-Balancer-Controller-managed ELB objects go to an explicit operator handoff — see EKS handoff section), ECR, Auto Scaling |
+| **Networking** | VPC (subnets, RTs, IGW, NAT, VPC endpoints), Security Groups, ELB/ALB/NLB, Route53, CloudFront, ACM, API Gateway (REST + HTTP), WAFv2 (WebACLs + IPSets + RuleGroups + resource associations — associations remapped to target ALB/API-GW ARNs) |
 | **Storage** | S3 (incl. bucket policies, lifecycle), EFS, FSx |
-| **Databases** | RDS, Aurora, DynamoDB, ElastiCache, OpenSearch |
-| **Identity/secrets** | IAM (roles, policies, users), KMS, Secrets Manager, SSM Parameter Store |
+| **Databases** | RDS (incl. proxies + proxy target groups), Aurora, DynamoDB, ElastiCache, MemoryDB (cluster + parameter group + subnet group + user + ACL — cache data treated as ephemeral, recreated empty), OpenSearch |
+| **Identity/secrets** | IAM (roles, policies, users), KMS, Secrets Manager, SSM Parameter Store, Cognito (user pool config + app clients + groups + identity providers + Lambda triggers; users via data-plane Lambda or CSV-import — passwords cannot be bulk-migrated) |
 | **Messaging** | SNS, SQS, EventBridge, Step Functions |
-| **Observability** | CloudWatch (logs, alarms, dashboards), X-Ray |
+| **Observability** | CloudWatch (logs, alarms, dashboards), X-Ray, Cost Explorer anomaly monitors / subscriptions (flag-only — recreate via console/IaC, not on critical path) |
+| **Analytics** | Athena (workgroups + data catalogs + named queries / prepared statements — flags missing Glue catalogs and external federated sources) |
+| **Web/edge** | WAFv2 — covered under Networking above |
+| **App platform** | App Runner (service + autoscaling config) |
+| **Account-shape (flag-only)** | CloudFormation stacks (inventoried in `coverage.cloudformation_stacks[]`; **never auto-converted to HCL**; planner flags every CFN-managed resource as a per-stack decision: redeploy CFN natively in target, or import to Terraform per-resource) |
 
 **Explicitly NOT in MVP** (printed to the user when discovery sees them):
 - ML/AI: SageMaker, Bedrock, Comprehend, Rekognition
-- Data: Glue, Athena, Redshift, EMR, Kinesis
+- Data: Glue, Redshift, EMR, Kinesis (Athena workgroups + data catalogs + named queries are now covered; the Glue catalogs and external Hive/Lambda federated sources that Athena queries are NOT in MVP and must be re-created in target manually)
 - End-user: Connect, Chime, WorkSpaces, AppStream
 - Cross-account/network specials: Direct Connect, Transit Gateway peering, RAM-shared resources
 - Marketplace subscriptions
@@ -282,9 +286,17 @@ Real migrations are rarely "everything in the account" — they're "everything t
 
 ### CloudFormation stacks in source
 
-If source has CFN-managed resources, the discovery snapshot prints them in `coverage.cloudformation_stacks[]`. **MVP does not auto-convert CFN to Terraform** — that's a separate problem. The user decides per stack:
-- Export from CFN, hand-port to Terraform, retire the stack
-- Re-deploy the CFN template directly in target
+If source has CFN-managed resources, the discovery snapshot prints them in `coverage.cloudformation_stacks[]`. **MVP does not auto-convert CFN to Terraform** — that's a separate problem and auto-generated HCL would conflict with the stack's drift detection. The plugin's CFN handling:
+
+1. Inventory each stack (`list-stacks`) and call `list-stack-resources` per stack.
+2. Tag every inventoried resource owned by a stack with `provider_specific.aws.cfn_stack_owner = "<stack-name>"`.
+3. dependency-analyzer emits a `cfn-managed-resource` edge per CFN-owned resource and adds a high-severity `fragile_couplings[]` entry.
+4. terraform-generator **skips** emitting HCL for any CFN-managed resource by default; the generation report lists each skipped resource.
+5. unsupported-report.md prints each stack with three recommended actions (redeploy CFN in target / port to Terraform with `MIGRATION_CFN_IMPORT_STACKS=<stack>` + manual `terraform import` / re-implement). The operator records a per-stack decision in `cloudformation-decisions.md` in the run directory.
+
+The user decides per stack:
+- Re-deploy the CFN template directly in target (the default safe path; the plugin won't fight it)
+- Set `MIGRATION_CFN_IMPORT_STACKS=<stack>` to opt that stack's resources into HCL generation, then follow up with `terraform import`
 - Skip and re-implement in target
 
 Flagged in `migration-plan.md` as a manual phase prerequisite that blocks the planner from proceeding until the user picks an approach per stack.

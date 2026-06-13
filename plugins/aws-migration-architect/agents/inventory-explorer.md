@@ -53,6 +53,8 @@ For each service: count resources, track region. Apply `$MIGRATION_TAG_FILTER` (
 
 Identify CloudFormation stacks: `aws cloudformation list-stacks --stack-status-filter CREATE_COMPLETE UPDATE_COMPLETE`.
 
+For every active stack, also run `aws cloudformation list-stack-resources --stack-name <name>` to collect the underlying resources' physical IDs/ARNs. **Do NOT convert the stack itself into the `resources[]` list** — a CFN stack is a wrapper, not a migratable resource. Instead, for every resource in `resources[]` whose ARN appears in any `list-stack-resources` output, set `provider_specific.aws.cfn_stack_owner = "<stack-name>"`. The dependency-analyzer reads this flag to emit `cfn-managed-resource` edges; the migration-planner halts and asks the operator for a per-stack decision (redeploy CFN natively in target, or import each resource to Terraform).
+
 ### Phase 3 — Confirmation prompt (skip if orchestrator)
 
 Print the discovery snapshot in the structured form shown in the skill docs. Ask the user "Inventory all MVP services in <scope>? [Y / specify / abort]".
@@ -68,7 +70,7 @@ For each confirmed (region × MVP-service), run the appropriate `describe-*` cal
 | ec2 | describe-instances, describe-vpcs, describe-subnets, describe-route-tables, describe-internet-gateways, describe-nat-gateways, describe-vpc-endpoints, describe-security-groups, describe-network-acls, describe-key-pairs, describe-volumes, describe-snapshots (filter to owned), describe-addresses, describe-images (owner=self) |
 | lambda | list-functions, get-function (per function for env vars + code config), list-event-source-mappings, list-layers, get-policy (per function) |
 | s3 | list-buckets, get-bucket-location, get-bucket-policy, get-bucket-versioning, get-bucket-encryption, get-bucket-lifecycle-configuration, get-public-access-block, get-bucket-tagging |
-| rds | describe-db-instances, describe-db-clusters, describe-db-snapshots, describe-db-cluster-snapshots, describe-db-subnet-groups, describe-db-parameter-groups, describe-db-cluster-parameter-groups |
+| rds | describe-db-instances, describe-db-clusters, describe-db-snapshots, describe-db-cluster-snapshots, describe-db-subnet-groups, describe-db-parameter-groups, describe-db-cluster-parameter-groups, describe-db-proxies, describe-db-proxy-target-groups, describe-db-proxy-targets. Proxies reference Secrets Manager auth secrets (target ARNs needed) + subnets + a target group of DB instances/clusters — all parameterized at HCL time. |
 | dynamodb | list-tables, describe-table (per table), describe-continuous-backups, list-tags-of-resource |
 | iam | list-roles, get-role (per role for trust policy), list-attached-role-policies, list-role-policies, get-role-policy (per inline), list-users, list-groups, list-policies (scope=Local), get-policy-version, list-instance-profiles, list-saml-providers, list-open-id-connect-providers |
 | route53 | list-hosted-zones, list-resource-record-sets (per zone), list-health-checks |
@@ -93,6 +95,12 @@ For each confirmed (region × MVP-service), run the appropriate `describe-*` cal
 | elasticache | describe-cache-clusters, describe-replication-groups, describe-cache-subnet-groups |
 | opensearch | list-domain-names, describe-domain |
 | autoscaling | describe-auto-scaling-groups, describe-launch-configurations, describe-launch-templates |
+| cognito-idp | list-user-pools, describe-user-pool (per pool), list-user-pool-clients, describe-user-pool-client, list-groups, describe-identity-provider, list-identity-providers, get-ui-customization, get-user-pool-mfa-config. **Do NOT list-users or admin-get-user** — user records are migrated via the data-plane Lambda trigger / CSV-import strategy, not inventoried into JSON. Trigger Lambda ARNs are recorded as cross-resource references (parameterized at HCL generation time). |
+| memorydb | describe-clusters (with --show-shard-details), describe-parameter-groups, describe-subnet-groups, describe-users, describe-acls, describe-snapshots (filter to owned, metadata only — snapshots are NOT migrated; cache data is ephemeral). Distinct from elasticache. |
+| wafv2 | list-web-acls (--scope REGIONAL **and** --scope CLOUDFRONT), get-web-acl (per ACL), list-ip-sets, get-ip-set, list-regex-pattern-sets, get-regex-pattern-set, list-rule-groups, get-rule-group, list-resources-for-web-acl (collects associated ALB/API-GW ARNs — feeds dependency-analyzer remap list), list-logging-configurations. |
+| athena | list-work-groups, get-work-group, list-data-catalogs, get-data-catalog, list-named-queries, get-named-query, list-prepared-statements, get-prepared-statement. Workgroup `ResultConfiguration.OutputLocation` and Glue catalog references are recorded for the dependency-analyzer (must exist in target). |
+| apprunner | list-services, describe-service (per service), list-auto-scaling-configurations, describe-auto-scaling-configuration, list-vpc-connectors, describe-vpc-connector, list-observability-configurations. Source `ImageRepository.ImageIdentifier` (ECR/public-ecr URIs) and `CodeRepository.RepositoryUrl` are recorded for the dependency-analyzer; instance & access role ARNs become target-account ARN references. |
+| ce | get-anomaly-monitors, get-anomaly-subscriptions. **Low-value flag-only service** — Cost Explorer is account-global (us-east-1 endpoint only). Anomaly monitors don't transfer; they're recorded for completeness so the operator can recreate them in target out of band. Inventory + flag in unsupported-report.md; optional simple Terraform via `ce/anomaly-monitor.hcl.tmpl`. Not on the migration critical path. |
 
 ### Phase 5 — Filter service-linked roles
 
@@ -108,7 +116,7 @@ Map each resource to a generic type:
 
 | AWS resource | Generic type |
 |---|---|
-| ec2:Instance, rds:DBInstance | `compute_instance`, `database` |
+| ec2:Instance, rds:DBInstance, rds:DBProxy | `compute_instance`, `database`, `database_proxy` |
 | lambda:Function, stepfunctions:StateMachine | `function`, `workflow` |
 | s3:Bucket, efs:FileSystem | `object_store`, `file_system` |
 | ec2:Volume, ec2:Snapshot | `block_storage`, `block_storage_snapshot` |
@@ -117,6 +125,12 @@ Map each resource to a generic type:
 | iam:Role, iam:Policy | `iam_principal`, `iam_policy` |
 | dynamodb:Table | `key_value_store` |
 | sqs:Queue, sns:Topic, events:EventBus | `message_queue`, `topic`, `event_bus` |
+| cognito-idp:UserPool, cognito-idp:UserPoolClient, cognito-idp:Group, cognito-idp:IdentityProvider | `identity_directory`, `identity_client`, `identity_group`, `identity_provider` |
+| memorydb:Cluster, memorydb:ParameterGroup, memorydb:SubnetGroup, memorydb:User, memorydb:ACL | `cache_cluster`, `parameter_group`, `network_subnet_group`, `cache_user`, `cache_acl` |
+| wafv2:WebACL, wafv2:IPSet, wafv2:RuleGroup, wafv2:RegexPatternSet | `waf_web_acl`, `waf_ip_set`, `waf_rule_group`, `waf_regex_pattern_set` |
+| athena:WorkGroup, athena:DataCatalog, athena:NamedQuery, athena:PreparedStatement | `query_workgroup`, `data_catalog`, `saved_query`, `prepared_statement` |
+| apprunner:Service, apprunner:AutoScalingConfiguration, apprunner:VpcConnector, apprunner:ObservabilityConfiguration | `managed_container_service`, `autoscaling_config`, `vpc_connector`, `observability_config` |
+| ce:AnomalyMonitor, ce:AnomalySubscription | `cost_anomaly_monitor`, `cost_anomaly_subscription` |
 
 Store the raw AWS describe output under `provider_specific.aws` after stripping ephemeral fields (`InstanceId`, timestamps, etc. — these get reassigned at re-creation).
 
@@ -183,7 +197,7 @@ Total resources (excl. target-group sub-counts): 308
 ```
 
 Rules:
-- **Friendly names.** Use display names, e.g. `ALB/NLB (v2)` (elbv2 load_balancer), `ELB Classic` (elb), `EC2 instances`, `VPCs`, `Subnets`, `Security Groups`, `NAT Gateways`, `Elastic IPs`, `EBS Volumes`, `RDS instances`, `Lambda`, `DynamoDB`, `CloudWatch Logs`, `CloudWatch Alarms`, `Secrets Manager`, `ACM`, `KMS keys`, `EventBridge rules`, `API Gateway v2`, `ECR repos`, `SQS queues`, `SNS topics`, `ElastiCache`, `EKS clusters`, `CloudFormation`, `IAM roles`, `IAM users`, `IAM policies`, `S3 buckets`.
+- **Friendly names.** Use display names, e.g. `ALB/NLB (v2)` (elbv2 load_balancer), `ELB Classic` (elb), `EC2 instances`, `VPCs`, `Subnets`, `Security Groups`, `NAT Gateways`, `Elastic IPs`, `EBS Volumes`, `RDS instances`, `RDS proxies`, `Lambda`, `DynamoDB`, `CloudWatch Logs`, `CloudWatch Alarms`, `Secrets Manager`, `ACM`, `KMS keys`, `EventBridge rules`, `API Gateway v2`, `ECR repos`, `SQS queues`, `SNS topics`, `ElastiCache`, `MemoryDB`, `EKS clusters`, `Cognito user pools`, `WAFv2 WebACLs`, `Athena workgroups`, `App Runner services`, `CloudFormation`, `CE anomaly monitors`, `IAM roles`, `IAM users`, `IAM policies`, `S3 buckets`.
 - **Target groups** render as an indented sub-row (`  └ Target groups`) directly under `ALB/NLB (v2)`. Their count is **excluded** from the grand total.
 - **Where column.** `region (count)` pairs sorted by descending count, comma-separated. For account-global resources (IAM, S3, Route 53 hosted zones) use `global`. For IAM managed policies, use `global (customer-managed)` to make clear AWS-managed policies are excluded.
 - **Default-VPC artifacts.** AWS creates one default VPC (and one default security group per VPC) in every enabled region. Do not enumerate each one; summarize the defaults compactly as `+ 1 default each in N regions` (VPCs) or `+ 1 default each` (security groups), appended after the user-created counts. The grand total still counts them.
