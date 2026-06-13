@@ -11,6 +11,8 @@ This is the **plugin you point at a source AWS account when you need to move it 
 | Step | Skill | What you get |
 |------|-------|-------------|
 | 1 | `inventory` | `inventory.json` — every resource in the source account, scoped by region + service + tag |
+| + | `cost-summary` | `cost-summary.json` — last-full-month net billed cost (`NetUnblendedCost`) grouped by service + box-format cost table. Read-only, best-effort. Auxiliary to the pipeline. |
+| + | `cost-analysis` | `cost-analysis.json` — why spend is high (per-service usage-type drivers + RI/SP coverage gaps) and trailing month-over-month trend (incl. current in-progress accrued month). Read-only, best-effort. Auxiliary. |
 | 2 | `dependency-analyzer` | `dependency-graph.json`, IAM trust classification, hard-coded value detection, per-resource risk score, 4 Mermaid architecture diagrams |
 | 3 | `terraform-generator` | `terraform/{networking,compute,storage,databases,iam,dns}/` — re-deployable HCL with account IDs / regions / AZs parameterized |
 | 4 | `migration-planner` | `cost-baseline.json` → `readiness-score.json` → `migration-plan.json` + `.md` (6 phases with rollback) |
@@ -38,7 +40,7 @@ In Claude Code:
 ```
 
 You should now see:
-- 9 skills: `inventory`, `dependency-analyzer`, `terraform-generator`, `migration-planner`, `data-migration-planner`, `cutover-control-plane`, `cutover-data-plane`, `cutover-executor`, `post-migration-auditor`
+- 11 skills: `inventory`, `cost-summary`, `cost-analysis`, `dependency-analyzer`, `terraform-generator`, `migration-planner`, `data-migration-planner`, `cutover-control-plane`, `cutover-data-plane`, `cutover-executor`, `post-migration-auditor`
 - 9 sub-agents (used by skills and the orchestrator)
 - 4 slash commands: `/aws-migration-architect:migrate`, `:discover`, `:execute`, `:audit`
 - 3 MCP servers wired automatically: `awsknowledge`, `awsiac`, `awspricing`

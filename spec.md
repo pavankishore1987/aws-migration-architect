@@ -27,6 +27,8 @@ aws-migration-architect/                       ← new git repo, sibling to the 
 │       ├── .mcp.json                          ← AWS MCP server wiring
 │       ├── skills/
 │       │   ├── inventory/SKILL.md
+│       │   ├── cost-summary/SKILL.md            ← last-full-month net billed cost (Cost Explorer), box-format table
+│       │   ├── cost-analysis/SKILL.md           ← cost drivers (why high) + trailing trend
 │       │   ├── dependency-analyzer/SKILL.md
 │       │   ├── terraform-generator/
 │       │   │   ├── SKILL.md
@@ -59,9 +61,11 @@ aws-migration-architect/                       ← new git repo, sibling to the 
 │           ├── discover.md                    ← /aws-migration-architect:discover
 │           ├── execute.md                     ← /aws-migration-architect:execute
 │           └── audit.md                       ← /aws-migration-architect:audit
-├── schemas/                                   ← JSON schemas for inter-skill artifacts (14 total)
+├── schemas/                                   ← JSON schemas for inter-skill artifacts (16 total)
 │   ├── inventory.schema.json
 │   ├── resource-ownership.schema.json
+│   ├── cost-summary.schema.json               ← account-wide net billed cost snapshot (distinct from cost-baseline)
+│   ├── cost-analysis.schema.json              ← cost drivers + commitments + trailing trend
 │   ├── dependency-graph.schema.json
 │   ├── hardcoded-values.schema.json
 │   ├── risk-scores.schema.json
@@ -147,7 +151,7 @@ Nothing is installed *in* the AWS account itself — no Lambda, no agent, no rol
 
 To avoid users either over-granting (`AdministratorAccess` to debug a permission error) or under-granting (skills fail mid-run), the repo ships scoped policy JSON:
 
-- **`examples/iam/source-read-only.json`** — minimum actions for `inventory`, `dependency-analyzer`, `data-migration-planner`, `post-migration-auditor`, plus the cross-account share permissions the `cutover-executor` invokes on source side (`rds:ModifyDBSnapshotAttribute`, `ec2:ModifyImageAttribute`, `ec2:ModifySnapshotAttribute`, `kms:CreateGrant`):
+- **`examples/iam/source-read-only.json`** — minimum actions for `inventory`, `cost-summary`, `cost-analysis`, `dependency-analyzer`, `data-migration-planner`, `post-migration-auditor`, plus the cross-account share permissions the `cutover-executor` invokes on source side (`rds:ModifyDBSnapshotAttribute`, `ec2:ModifyImageAttribute`, `ec2:ModifySnapshotAttribute`, `kms:CreateGrant`):
   ```
   ec2:Describe*, vpc:Describe*, s3:List*, s3:GetBucket*, rds:Describe*,
   lambda:List*, lambda:Get*, iam:List*, iam:Get*, iam:SimulatePrincipalPolicy,
@@ -160,7 +164,9 @@ To avoid users either over-granting (`AdministratorAccess` to debug a permission
   eks:Describe*, eks:List*, ecr:Describe*, sns:List*, sns:Get*,
   sqs:List*, sqs:GetQueue*, events:List*, events:Describe*,
   states:List*, states:Describe*, resource-explorer-2:*, config:Describe*,
-  config:Get*, tag:Get*
+  config:Get*, tag:Get*, ce:GetCostAndUsage,
+  ce:GetReservationCoverage, ce:GetReservationUtilization,
+  ce:GetSavingsPlansCoverage, ce:GetSavingsPlansUtilization  (cost-summary + cost-analysis)
   ```
 - **`examples/iam/target-validate-only.json`** — same shape, for Phase 1 / Phase 2 `terraform plan` against target
 - **`examples/iam/target-cutover.json`** — legacy combined policy (`PowerUserAccess` + IAM management); kept for reference but new installs should use the split below
@@ -328,13 +334,15 @@ When `/aws-migration-architect:migrate` runs, the discover-then-confirm prompt i
 
 ---
 
-## The 9 skills + matching sub-agents
+## The 11 skills (9 with matching sub-agents)
 
-Each row is a **skill (human-facing playbook)** plus a **sub-agent (bounded executor)** that the Phase-2 Workflow will call. Skills explain the workflow and decision points; agents do the narrow operational work. This split mirrors how `aws-plan` (skill) invokes `aws-explorer` (agent) in the sample plugin.
+Each numbered row is a **skill (human-facing playbook)** plus a **sub-agent (bounded executor)** that the Phase-2 Workflow will call. Skills explain the workflow and decision points; agents do the narrow operational work. This split mirrors how `aws-plan` (skill) invokes `aws-explorer` (agent) in the sample plugin. The `+` rows (`cost-summary`, `cost-analysis`) are **auxiliary, inline skills** — read-only Cost Explorer calls with no dedicated sub-agent, and not part of the migration pipeline.
 
 | # | Skill | Sub-agent | Tools | MCP | Artifacts (output) |
 |---|---|---|---|---|---|
 | 1 | `inventory` | `inventory-explorer` | `Read, Grep, Glob, Bash(aws --profile * *)` | `awsknowledge` | `inventory.json`, `resource-ownership.json`, `unsupported-report.md` |
+| + | `cost-summary` | _(inline — none)_ | `Bash(aws ce get-cost-and-usage *), Bash(aws sts get-caller-identity *), Read, Write` | — | `cost-summary.json` |
+| + | `cost-analysis` | _(inline — none)_ | `Bash(aws ce *), Bash(aws sts get-caller-identity *), Read, Write` | — | `cost-analysis.json` |
 | 2 | `dependency-analyzer` | `dependency-mapper` | `Read, Bash(aws --profile * *), Grep` | `awsknowledge` | `dependency-graph.json` (incl. `iam_trusts[]`), `hardcoded-values.json`, `risk-scores.json`, `architecture/*.mmd` |
 | 3 | `terraform-generator` | `terraform-builder` | `Read, Write, Bash(aws * describe-*), Bash(terraform fmt), Bash(terraform validate)` | `awsiac` | `terraform/` modules |
 | 4 | `migration-planner` | `migration-planner` | `Read, Write` | `awsknowledge, awspricing` | `migration-plan.json` + `.md`, `readiness-score.json`, `cost-baseline.json` |
@@ -351,6 +359,14 @@ Each row is a **skill (human-facing playbook)** plus a **sub-agent (bounded exec
 Side artifacts:
 - **`resource-ownership.json`** — extracts `Owner`, `Team`, `CostCenter` (configurable via `MIGRATION_OWNERSHIP_TAGS=Owner,Team`) tags from each resource and emits a map of `team → resources[]`. Used by `cutover-control-plane` and `cutover-data-plane` to populate per-team approval gates in their respective checklists (each team approves their resources before cutover proceeds), and by `data-migration-planner` to set `owner_team` per datastore.
 - **`unsupported-report.md`** — consolidated triage doc for services seen in source but not in MVP (see "Unsupported-service report" above).
+
+The inventory report printed to stdout is a **per-service box table** (`Service | Count | Where (region: count)`): friendly service names, target groups as an indented sub-row excluded from the grand total, default VPCs/SGs collapsed to `+ 1 default each`, and account-global resources (IAM, S3, Route 53 zones) marked `global`. It carries **no cost data** — cost is the separate `cost-summary` skill.
+
+**`+`. `cost-summary`** (auxiliary, inline) — Read-only, best-effort account-wide cost snapshot. Computes the last full calendar month and runs a single `aws ce get-cost-and-usage --metrics NetUnblendedCost --group-by SERVICE` (Cost Explorer is global, so it runs once — not region-scoped). Emits `cost-summary.json` (validates against `cost-summary.schema.json`: `metadata` + `available` + `by_service[]` sorted descending + `total`) and prints a box-format cost table titled `Net billed cost — <Month Year> (NetUnblendedCost, last full month)`, rolling sub-$1.00 services into a `< 1.00 each` line and ending with a `TOTAL … / mo` row. Non-infrastructure line items (Tax, Support, marketplace/LLM) are reported as-is so the total matches the real invoice. If Cost Explorer is disabled or `ce:GetCostAndUsage` is denied, it writes `available: false` with a reason and never blocks discovery. Distinct from `cost-baseline.json` (the planner's source-vs-target delta estimate).
+
+**`+`. `cost-analysis`** (auxiliary, inline) — Read-only, best-effort deep cost analysis answering "why is the bill high, and how is it trending?". Two parts:
+1. **Drivers (why high).** `aws ce get-cost-and-usage --group-by SERVICE,USAGE_TYPE` for the last full month → for the top services, the underlying usage-type drivers (on-demand `BoxUsage`, `EC2 - Other` decomposed into NAT-Hours/EBS/inter-AZ transfer/idle-EIP, RDS license-included third-party fees, ELB LCU hours, egress, plus Tax/Support/marketplace labeled non-migratable) with plain-English `reasons[]` + `recommendations[]`. Plus `commitments` from `ce get-savings-plans-coverage|utilization` and `ce get-reservation-coverage|utilization` (low coverage on steady compute is the #1 high-spend cause; RI/SP don't transfer to target).
+2. **Trend.** `$MIGRATION_COST_TREND_MONTHS` (default 12) months of `MONTHLY` `NetUnblendedCost` with per-month `mom_change_pct`, `trailing_avg_monthly`, and `direction` (CE retains ~14 months). The current in-progress month is captured separately as `current_month_to_date_accrued` (still accruing/uninvoiced since AWS bills monthly in arrears) and kept out of the month-over-month deltas. Emits `cost-analysis.json` (validates against `cost-analysis.schema.json`); degrades to `available: false` on any CE failure. Reuses Cost Explorer permissions already in `source-read-only.json` (`ce:GetCostAndUsage` + RI/SP coverage/utilization).
 
 **2. `dependency-analyzer`** — Reads `inventory.json`. Resolves the hidden coupling that breaks migrations across four categories:
 
@@ -472,6 +488,8 @@ $AWS_MIGRATION_ROOT/runs/<source-profile>-to-<target-profile>-<run-id>/
   inventory.json                      # from `inventory`
   resource-ownership.json             # from `inventory`  (team → resources map)
   unsupported-report.md               # from `inventory`  (services NOT in MVP)
+  cost-summary.json                   # from `cost-summary` (auxiliary; net billed cost, best-effort)
+  cost-analysis.json                  # from `cost-analysis` (auxiliary; drivers + trailing trend, best-effort)
   dependency-graph.json               # from `dependency-analyzer` (incl. iam_trusts[])
   hardcoded-values.json               # from `dependency-analyzer`
   risk-scores.json                    # from `dependency-analyzer`
@@ -772,7 +790,7 @@ These are real concerns the plugin **does not** address. Listed explicitly so th
 ## Verification
 
 **Phase 1 (skills + sub-agents, human-driven):**
-1. **Install locally:** `/plugin marketplace add /Users/pventrapragada/Desktop/workspace/aws_migration/aws-migration-architect`. Confirm `/plugin` lists `aws-migration-architect` with 9 skills, 9 agents, 4 slash commands.
+1. **Install locally:** `/plugin marketplace add /Users/pventrapragada/Desktop/workspace/aws_migration/aws-migration-architect`. Confirm `/plugin` lists `aws-migration-architect` with 11 skills, 9 agents, 4 slash commands.
 2. **MCP wiring:** confirm `awsknowledge`, `awsiac`, `awspricing` register without errors.
 3. **Fixture run (no real AWS):** point the skills at `examples/example-run/` (pre-recorded `aws describe-*` JSON). Each skill produces its artifact; each artifact validates against the schema in `schemas/`. Round-trip the full chain manually.
 4. **Real-account smoke test:** configure two AWS profiles against a sandbox source + fresh target. Run `inventory` → `dependency-analyzer` → `terraform-generator` conversationally. Verify `terraform fmt && terraform validate` passes in the generated module directory.

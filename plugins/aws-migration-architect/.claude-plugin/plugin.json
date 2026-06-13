@@ -1,7 +1,7 @@
 {
   "name": "aws-migration-architect",
   "version": "0.1.0",
-  "description": "AWS account-to-account migration toolkit: 9 specialist skills + 9 sub-agents + 4 deterministic Workflow orchestrators. Produces schema-validated JSON artifacts at every stage. Terraform-portable HCL output with parameterized account IDs, regions, and AZs.",
+  "description": "AWS account-to-account migration toolkit: 11 specialist skills + 9 sub-agents + 4 deterministic Workflow orchestrators. Produces schema-validated JSON artifacts at every stage. Terraform-portable HCL output with parameterized account IDs, regions, and AZs.",
   "author": {
     "name": "pventrapragada"
   },

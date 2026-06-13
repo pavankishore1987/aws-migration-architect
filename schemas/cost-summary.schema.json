@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/cost-summary.schema.json",
+  "title": "Source Account Cost Summary",
+  "description": "Last-full-month net billed cost (NetUnblendedCost) for the source account, grouped by service, emitted by the inventory-explorer discover pass.",
+  "type": "object",
+  "required": ["metadata", "available"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "run_id", "currency"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "run_id":            { "type": "string" },
+        "currency":          { "type": "string", "default": "USD" },
+        "metric":            { "type": "string", "default": "NetUnblendedCost" },
+        "period_start":      { "type": "string", "format": "date", "description": "First day of the last full month (inclusive)" },
+        "period_end":        { "type": "string", "format": "date", "description": "First day of the current month (exclusive)" },
+        "period_label":      { "type": "string", "description": "Human label, e.g. 2026-05 or May 2026" }
+      }
+    },
+    "available": {
+      "type": "boolean",
+      "description": "False when Cost Explorer is disabled or ce:GetCostAndUsage is denied."
+    },
+    "unavailable_reason": {
+      "type": "string",
+      "description": "Populated when available is false."
+    },
+    "by_service": {
+      "type": "array",
+      "description": "Per-service net cost, sorted by descending amount.",
+      "items": {
+        "type": "object",
+        "required": ["service", "amount"],
+        "properties": {
+          "service": { "type": "string" },
+          "amount":  { "type": "number", "minimum": 0 },
+          "unit":    { "type": "string", "default": "USD" }
+        }
+      }
+    },
+    "total": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Sum of all by_service amounts for the period."
+    }
+  }
+}

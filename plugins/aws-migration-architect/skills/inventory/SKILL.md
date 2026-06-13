@@ -127,17 +127,23 @@ For each service in `coverage.services_skipped` with `resource_count_seen > 0`:
 
 ### Step 9 — Validate and emit
 
-Validate `inventory.json` against `schemas/inventory.schema.json`. Validate `resource-ownership.json` against its schema. Print summary:
+Validate `inventory.json` against `schemas/inventory.schema.json`. Validate `resource-ownership.json` against its schema. Print the **inventory report** — a per-service resource table (friendly service names; `Where (region: count)` with default-VPC/SG artifacts collapsed to `+ 1 default each`; target groups as an indented sub-row excluded from the total; IAM/S3 marked `global`). See the inventory-explorer agent's "Inventory report format" for the exact box-drawing layout. Example:
 
 ```
-✓ Inventory complete
-  Resources: 1247
-  Regions:   us-east-1, us-west-2
-  Services:  ec2, vpc, s3, rds, lambda, iam, route53, kms, secretsmanager, …
-  Skipped:   glue (3), sagemaker (2), appstream (1)  → see unsupported-report.md
-  Teams:     platform (412), data (208), api (327), unowned (300)
-  Output:    ~/.aws-migration/runs/source-to-target-<run-id>/
+┌───────────────────┬───────┬───────────────────────────────────────────────┐
+│ Service           │ Count │ Where (region: count)                         │
+├───────────────────┼───────┼───────────────────────────────────────────────┤
+│ ALB/NLB (v2)      │ 19    │ us-west-1 (19)                                │
+│   └ Target groups │ 215   │ us-west-1 (215)                               │
+│ EC2 instances     │ 12    │ us-west-1 (11), ap-south-1 (1)                │
+│ VPCs              │ 7     │ us-west-1 (2), ap-south-1 (2), + 1 default …  │
+│ IAM roles         │ 34    │ global                                        │
+│ S3 buckets        │ 5     │ global                                        │
+└───────────────────┴───────┴───────────────────────────────────────────────┘
+Total resources (excl. target-group sub-counts): 308
 ```
+
+For a net-billed-cost breakdown of the same account, run the `cost-summary` skill.
 
 ## Related skills
 

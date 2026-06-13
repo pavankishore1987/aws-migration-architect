@@ -136,7 +136,7 @@ If `incremental: true` in the task brief:
 
 Validate every emitted JSON against its schema. If validation fails, log the error and either fix the bug or report it as a blocker — never emit invalid JSON.
 
-Return a structured summary:
+Then print the **inventory report** to stdout in the format defined under "Inventory report format" below, and return a structured summary:
 
 ```json
 {
@@ -155,6 +155,41 @@ Return a structured summary:
   }
 }
 ```
+
+## Inventory report format
+
+After the deep pass completes, print a single human-facing report to stdout — a per-service resource table using box-drawing characters. This is the canonical discover summary — match this layout exactly. (Net billed cost is produced separately by the `cost-summary` skill, not here.)
+
+### Resource table
+
+One row per logical service (friendly name, not the raw AWS service id), sorted roughly by network/compute importance then by count. Columns: **Service**, **Count**, **Where (region: count)**.
+
+```
+┌───────────────────┬───────┬─────────────────────────────────────────────────────────────────────────────┐
+│ Service           │ Count │ Where (region: count)                                                       │
+├───────────────────┼───────┼─────────────────────────────────────────────────────────────────────────────┤
+│ ALB/NLB (v2)      │ 19    │ us-west-1 (19)                                                              │
+│   └ Target groups │ 215   │ us-west-1 (215)                                                             │
+│ ELB Classic       │ 1     │ us-west-1 (1)                                                               │
+│ EC2 instances     │ 12    │ us-west-1 (11), ap-south-1 (1)                                              │
+│ VPCs              │ 7     │ us-west-1 (2), ap-south-1 (2), + 1 default each in 3 regions                │
+│ Subnets           │ 27    │ ap-south-1 (8), us-east-1 (6), us-west-1 (6), us-west-2 (4), us-east-2 (3)  │
+│ Security Groups   │ 36    │ us-west-1 (24), ap-south-1 (9), + 1 default each                            │
+│ IAM roles         │ 34    │ global                                                                      │
+│ IAM policies      │ 11    │ global (customer-managed)                                                   │
+│ S3 buckets        │ 5     │ global                                                                      │
+└───────────────────┴───────┴─────────────────────────────────────────────────────────────────────────────┘
+Total resources (excl. target-group sub-counts): 308
+```
+
+Rules:
+- **Friendly names.** Use display names, e.g. `ALB/NLB (v2)` (elbv2 load_balancer), `ELB Classic` (elb), `EC2 instances`, `VPCs`, `Subnets`, `Security Groups`, `NAT Gateways`, `Elastic IPs`, `EBS Volumes`, `RDS instances`, `Lambda`, `DynamoDB`, `CloudWatch Logs`, `CloudWatch Alarms`, `Secrets Manager`, `ACM`, `KMS keys`, `EventBridge rules`, `API Gateway v2`, `ECR repos`, `SQS queues`, `SNS topics`, `ElastiCache`, `EKS clusters`, `CloudFormation`, `IAM roles`, `IAM users`, `IAM policies`, `S3 buckets`.
+- **Target groups** render as an indented sub-row (`  └ Target groups`) directly under `ALB/NLB (v2)`. Their count is **excluded** from the grand total.
+- **Where column.** `region (count)` pairs sorted by descending count, comma-separated. For account-global resources (IAM, S3, Route 53 hosted zones) use `global`. For IAM managed policies, use `global (customer-managed)` to make clear AWS-managed policies are excluded.
+- **Default-VPC artifacts.** AWS creates one default VPC (and one default security group per VPC) in every enabled region. Do not enumerate each one; summarize the defaults compactly as `+ 1 default each in N regions` (VPCs) or `+ 1 default each` (security groups), appended after the user-created counts. The grand total still counts them.
+- **Total line.** `Total resources (excl. target-group sub-counts): N`.
+
+For a net-billed-cost breakdown of the same account, run the `cost-summary` skill.
 
 ## Anti-patterns — DO NOT
 

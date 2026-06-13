@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://aws-migration-architect/schemas/cost-analysis.schema.json",
+  "title": "Source Account Cost Analysis",
+  "description": "Deep cost analysis for the source account: per-service cost drivers (why spend is high), Reserved Instance / Savings Plans commitment coverage, and a trailing month-over-month trend (including the current in-progress, uninvoiced month). Produced by the cost-analysis skill. Distinct from cost-summary.json (single-month snapshot) and cost-baseline.json (planner source-vs-target delta).",
+  "type": "object",
+  "required": ["metadata", "available"],
+  "properties": {
+    "metadata": {
+      "type": "object",
+      "required": ["captured_at", "source_account_id", "run_id", "currency"],
+      "properties": {
+        "captured_at":       { "type": "string", "format": "date-time" },
+        "source_account_id": { "type": "string", "pattern": "^[0-9]{12}$" },
+        "run_id":            { "type": "string" },
+        "currency":          { "type": "string", "default": "USD" },
+        "metric":            { "type": "string", "default": "NetUnblendedCost" },
+        "last_full_month":   { "type": "string", "description": "Period analyzed for drivers, e.g. 2026-05" }
+      }
+    },
+    "available": {
+      "type": "boolean",
+      "description": "False when Cost Explorer is disabled or ce:GetCostAndUsage is denied."
+    },
+    "unavailable_reason": { "type": "string" },
+    "cost_drivers": {
+      "type": "array",
+      "description": "Top services by net cost with the underlying usage-type drivers and a plain-English explanation of why the spend is high.",
+      "items": {
+        "type": "object",
+        "required": ["service", "monthly_amount", "reasons"],
+        "properties": {
+          "service":        { "type": "string" },
+          "monthly_amount": { "type": "number", "minimum": 0 },
+          "share_pct":      { "type": "number", "minimum": 0, "maximum": 100, "description": "Share of the month's total net cost." },
+          "top_usage_types": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["usage_type", "amount"],
+              "properties": {
+                "usage_type":  { "type": "string", "description": "Cost Explorer USAGE_TYPE, e.g. USW1-BoxUsage:m5.large, USW1-NatGateway-Hours, DataTransfer-Out-Bytes." },
+                "amount":      { "type": "number", "minimum": 0 },
+                "description": { "type": "string", "description": "Human gloss of the usage type." }
+              }
+            }
+          },
+          "on_demand_pct":             { "type": "number", "minimum": 0, "maximum": 100, "description": "Portion of this service's eligible compute on on-demand (no RI/SP)." },
+          "commitment_coverage_pct":   { "type": "number", "minimum": 0, "maximum": 100 },
+          "reasons":         { "type": "array", "items": { "type": "string" }, "description": "Why this line is high." },
+          "recommendations": { "type": "array", "items": { "type": "string" }, "description": "Levers to reduce it (RI/SP purchase, rightsizing, idle cleanup, data-transfer redesign)." }
+        }
+      }
+    },
+    "commitments": {
+      "type": "object",
+      "description": "Reserved Instance and Savings Plans coverage/utilization for the analyzed month. Low coverage on steady compute is the most common reason on-demand spend is high.",
+      "properties": {
+        "ri_coverage_pct":    { "type": "number", "minimum": 0, "maximum": 100 },
+        "ri_utilization_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "sp_coverage_pct":    { "type": "number", "minimum": 0, "maximum": 100 },
+        "sp_utilization_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+        "notes":              { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "trend": {
+      "type": "object",
+      "description": "Trailing month-over-month net cost history.",
+      "required": ["months_available", "history"],
+      "properties": {
+        "months_available": { "type": "integer", "minimum": 0 },
+        "granularity":      { "type": "string", "default": "MONTHLY" },
+        "metric":           { "type": "string", "default": "NetUnblendedCost" },
+        "trailing_avg_monthly": { "type": "number", "minimum": 0 },
+        "direction":        { "type": "string", "enum": ["rising", "flat", "falling"] },
+        "current_month_to_date_accrued": { "type": "number", "minimum": 0, "description": "Current in-progress month's accrued (uninvoiced) net cost; AWS bills monthly in arrears. Reported separately from history (partial month)." },
+        "history": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["period_label", "amount"],
+            "properties": {
+              "period_label":   { "type": "string", "description": "e.g. 2026-05 or May 2026" },
+              "period_start":   { "type": "string", "format": "date" },
+              "amount":         { "type": "number", "minimum": 0 },
+              "mom_change_pct": { "type": ["number", "null"], "description": "Month-over-month change vs the prior row; null for the first month." }
+            }
+          }
+        }
+      }
+    }
+  }
+}
