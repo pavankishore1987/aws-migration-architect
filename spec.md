@@ -57,10 +57,8 @@ aws-migration-architect/                       ← new git repo, sibling to the 
 │       │   ├── execute.js                     ← Phase 3: walks both signed checklists
 │       │   └── audit.js                       ← post-cutover audit only
 │       └── commands/                          ← slash commands that wrap the workflows
-│           ├── migrate.md                     ← /aws-migration-architect:migrate
-│           ├── discover.md                    ← /aws-migration-architect:discover
-│           ├── execute.md                     ← /aws-migration-architect:execute
-│           └── audit.md                       ← /aws-migration-architect:audit
+│           ├── migrate.md, discover.md, execute.md, audit.md   ← user-facing
+│           └── dev/                           ← dev-only per-skill testers (namespace :dev:)
 ├── schemas/                                   ← JSON schemas for inter-skill artifacts (16 total)
 │   ├── inventory.schema.json
 │   ├── resource-ownership.schema.json
@@ -743,12 +741,25 @@ Audit runs as a separate workflow (`workflows/audit.js`) — invoked by the oper
 
 ### Slash commands
 
+Each `commands/*.md` is a thin wrapper that captures arguments and calls the Workflow tool (user commands) or runs a single skill (dev commands). This mirrors the standard Claude Code plugin slash-command pattern.
+
+**User-facing (documented for operators):**
+
 - `/aws-migration-architect:migrate` → runs `workflows/migrate.js` through the four planning phases. Halts after producing both cutover checklists for human sign-off.
 - `/aws-migration-architect:discover` → runs only inventory + dependency-analyzer (`workflows/discover.js`) — useful for exploration before committing to migration
 - `/aws-migration-architect:execute` → runs `workflows/execute.js` (Phase 3). Refuses to start unless both checklist `APPROVED BY:` lines are present. Walks both checklists in order (control plane → handoff → data plane) with per-step approval. Supports `--resume` for halted runs.
 - `/aws-migration-architect:audit` → runs only `post-migration-auditor` (`workflows/audit.js`) — invoked after execute completes
 
-Each `commands/*.md` is a thin wrapper that captures arguments and calls the Workflow tool. This mirrors the standard Claude Code plugin slash-command pattern.
+**Dev-only (plugin authors — not in end-user docs):**
+
+Claude Code has no “hidden command” API. Per-skill testers live under `commands/dev/` and appear in `/help` as the `:dev:` namespace. Each command **refuses to run** unless `export AWS_MIGRATION_DEV=true`. Examples:
+
+- `/aws-migration-architect:dev:inventory`
+- `/aws-migration-architect:dev:cost-summary`
+- `/aws-migration-architect:dev:dependency-analyzer --run-dir <path>`
+- … one command per skill (11 total). See `commands/dev/README.md`.
+
+End users should use the four user commands above or chat (`Use the <skill> skill`). Devs set `AWS_MIGRATION_DEV=true` before invoking `:dev:*` to test one skill in isolation.
 
 ---
 

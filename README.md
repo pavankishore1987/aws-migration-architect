@@ -281,7 +281,7 @@ aws-migration-architect/
 │   ├── skills/                             # 9 SKILL.md (human-facing playbooks)
 │   ├── agents/                             # 9 sub-agents (bounded executors)
 │   ├── workflows/                          # migrate.js, discover.js, execute.js, audit.js
-│   └── commands/                           # migrate.md, discover.md, execute.md, audit.md
+│   └── commands/                           # migrate, discover, execute, audit + dev/ (per-skill testers)
 ├── schemas/                                # 14 JSON schemas (the determinism contracts)
 ├── examples/
 │   ├── iam/                                # scoped IAM policy JSON (source / target-validate-only /
@@ -290,6 +290,35 @@ aws-migration-architect/
 ├── README.md
 ├── PRIVACY.md
 └── LICENSE                                 # MIT-0
+```
+
+---
+
+## Plugin development (dev team only)
+
+Per-skill slash commands for testing one skill at a time. **Not documented for end users.**
+
+Claude Code cannot hide commands — they appear in `/help` under the `dev` namespace. Each command refuses unless:
+
+```bash
+export AWS_MIGRATION_DEV=true
+export MIGRATION_SOURCE_PROFILE=your-source-profile
+```
+
+Then in Claude Code:
+
+```
+/aws-migration-architect:dev:inventory
+/aws-migration-architect:dev:cost-summary
+/aws-migration-architect:dev:dependency-analyzer --run-dir ~/.aws-migration/runs/...
+```
+
+All 11 skills have a matching `:dev:<skill>` command. See `plugins/aws-migration-architect/commands/dev/README.md`.
+
+After changing commands locally, refresh the plugin:
+
+```
+/plugin install aws-migration-architect@aws-migration-architect
 ```
 
 ---
