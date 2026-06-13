@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://aws-migration-architect/schemas/data-migration-plan.schema.json",
   "title": "Data Migration Plan",
-  "description": "Per-datastore data-movement plan: sizing, strategy, encryption, transfer time, cost, RPO/RTO, freeze windows, validation, rollback retention. Consumed by cutover-manager to inject real timings and freeze windows into the cutover checklist.",
+  "description": "Per-datastore data-movement plan: sizing, strategy, encryption, transfer time, cost, RPO/RTO, freeze windows, validation, rollback retention. Consumed by cutover-data-plane to inject real timings and freeze windows into the cutover checklist.",
   "type": "object",
   "required": ["metadata", "summary", "datastores"],
   "properties": {

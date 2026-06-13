@@ -55,7 +55,7 @@ aws cloudwatch get-metric-statistics --namespace AWS/S3 --metric-name BucketSize
     --profile $MIGRATION_SOURCE_PROFILE
 ```
 
-Record `sizing_method` per datastore. Empty datastores: record `bytes: 0`, emit `info` warning, but include in the plan so cutover-manager knows the resource exists.
+Record `sizing_method` per datastore. Empty datastores: record `bytes: 0`, emit `info` warning, but include in the plan so cutover-data-plane knows the resource exists.
 
 ### Phase 4 — Choose strategy
 
@@ -125,7 +125,7 @@ Apply RPO/RTO defaults per tier (env overrides via `MIGRATION_RPO_DEFAULT_MINUTE
 
 For each datastore where freeze is required (per the rule in SKILL.md Step 8):
 - `duration_minutes` = cutover_phase_minutes + validation_minutes + 15 min safety
-- `begins_at_phase` = match by service to the cutover-manager phase (Storage=2, Databases=3, DNS=5)
+- `begins_at_phase` = match by service to the cutover-data-plane phase (Storage=2, Databases=3, DNS=5)
 - `notes` = the enforcement mechanism for that service
 
 ### Phase 10 — Validation methods

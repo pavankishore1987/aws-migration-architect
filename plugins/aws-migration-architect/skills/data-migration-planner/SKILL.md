@@ -1,6 +1,6 @@
 ---
 name: data-migration-planner
-description: Plan the data movement for every data-bearing resource in scope. Sizes each datastore via AWS APIs, picks the right transfer tool + mode (bulk vs bulk+delta vs continuous), estimates wall-clock transfer time and dollar cost (egress, cross-region, cross-account, tool runtime, double storage), captures encryption requirements (KMS grants, re-encryption), surfaces RPO/RTO targets per criticality tier, and produces freeze windows and validation criteria per datastore. Output is data-migration-plan.json + .md — consumed by cutover-manager to inject real timings into the cutover checklist.
+description: Plan the data movement for every data-bearing resource in scope. Sizes each datastore via AWS APIs, picks the right transfer tool + mode (bulk vs bulk+delta vs continuous), estimates wall-clock transfer time and dollar cost (egress, cross-region, cross-account, tool runtime, double storage), captures encryption requirements (KMS grants, re-encryption), surfaces RPO/RTO targets per criticality tier, and produces freeze windows and validation criteria per datastore. Output is data-migration-plan.json + .md — consumed by cutover-data-plane to inject real timings into the cutover checklist.
 ---
 
 # AWS Migration: Data Migration Planner
@@ -10,7 +10,7 @@ This skill answers the questions a cutover checklist alone doesn't: **how big is
 ## When to use this skill
 
 - After `migration-planner` (it reads `cost-baseline.json`)
-- Before `cutover-manager` (which uses the freeze windows + transfer estimates to time the runbook)
+- Before `cutover-data-plane` (which uses the freeze windows + transfer estimates to time the runbook)
 - Re-run when scope changes (new datastores enter scope, criticality tiers change)
 
 ## Prerequisites
@@ -34,7 +34,7 @@ This skill answers the questions a cutover checklist alone doesn't: **how big is
 
 ## Outputs
 
-- **`data-migration-plan.json`** — validates against `schemas/data-migration-plan.schema.json`. Machine-readable; consumed by `cutover-manager`.
+- **`data-migration-plan.json`** — validates against `schemas/data-migration-plan.schema.json`. Machine-readable; consumed by `cutover-data-plane`.
 - **`data-migration-plan.md`** — human-readable: per-datastore table (size, tool, hours, cost), critical-path Gantt-style ordering, total cutover-window recommendation, warnings.
 
 ## Workflow
@@ -168,7 +168,7 @@ A freeze window is required when:
 
 For each datastore where `freeze_window.required: true`:
 - `duration_minutes` = cutover_phase_minutes + validation_minutes + safety margin (default 15 min)
-- `begins_at_phase` = the cutover-manager phase that initiates the final switchover (usually Phase 3 for databases, Phase 5 for DNS)
+- `begins_at_phase` = the cutover-data-plane phase that initiates the final switchover (usually Phase 3 for databases, Phase 5 for DNS)
 - `notes` = the concrete enforcement mechanism (set RDS parameter to read-only, attach bucket policy denying writes, etc.)
 
 ### Step 9 — Validation methods per datastore
@@ -243,7 +243,7 @@ Write `data-migration-plan.json`, validate against `schemas/data-migration-plan.
   Track:  data-migration-plan.json
 ```
 
-If any `blocker` warnings exist, the cutover-manager should NOT proceed without resolution. Surface this clearly.
+If any `blocker` warnings exist, the cutover-data-plane should NOT proceed without resolution. Surface this clearly.
 
 ## Anti-patterns — DO NOT
 
@@ -256,7 +256,7 @@ If any `blocker` warnings exist, the cutover-manager should NOT proceed without 
 ## Related skills
 
 - `migration-planner` — produces `cost-baseline.json` (input)
-- `cutover-manager` — consumes `data-migration-plan.json` to inject real timings + freeze windows into the runbook
+- `cutover-data-plane` — consumes `data-migration-plan.json` to inject real timings + freeze windows into the runbook
 - `post-migration-auditor` — reads the validation methods from this plan to know what to check
 
 ## Sub-agent

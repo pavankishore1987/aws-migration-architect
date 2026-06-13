@@ -14,7 +14,7 @@ This skill turns the raw analysis into a **decision document the human can act o
 ## When to use this skill
 
 - After `dependency-analyzer` (it reads `dependency-graph.json` + `risk-scores.json`)
-- Before `cutover-manager` (the cutover checklist is derived from the plan)
+- Before `cutover-control-plane` / `cutover-data-plane` (the cutover checklists are derived from the plan)
 
 ## Prerequisites
 
@@ -132,7 +132,7 @@ If score < 50 and running under the orchestrator, **halt unless `--force`**.
 Use `dependency-graph.json` to topologically order resources by dependency. Assign resources to phases per AWS migration best practice:
 
 - **Phase 1 — Networking.** VPCs (with parameterized CIDRs to avoid conflicts), subnets, route tables, IGW, NAT gateways, VPC endpoints, security groups (without inter-SG rules yet), Transit Gateway / VPC peering placeholders.
-- **Phase 2 — Storage.** S3 buckets (empty), EBS volume templates, EFS, FSx, ECR repositories (empty). Bucket policies parameterize source-account references. Data migration is a *Phase 5* concern (see `cutover-manager`).
+- **Phase 2 — Storage.** S3 buckets (empty), EBS volume templates, EFS, FSx, ECR repositories (empty). Bucket policies parameterize source-account references. Data migration is a *Phase 5* concern (see `cutover-data-plane`).
 - **Phase 3 — Databases.** RDS / Aurora clusters (created empty or restored from cross-account snapshots), DynamoDB tables, ElastiCache, OpenSearch. Encryption with new target KMS keys.
 - **Phase 4 — Applications.** IAM roles (with cross-account trusts re-pointed), KMS keys, Secrets Manager containers (values placeholder — populated separately), Lambda functions, ECS/EKS services, EC2 (launched from cross-account-shared AMIs), Auto Scaling, ELB/ALB/NLB, API Gateway, CloudFront, Step Functions, SNS/SQS/EventBridge.
 - **Phase 5 — DNS Cutover.** Route53 zones populated. TTL reductions on records before cutover. DNS change to point at target ALB. Data plane copies (S3 sync, RDS snapshot restore, ECR image push) executed.
@@ -173,7 +173,7 @@ Validate all three artifacts against their schemas. Print final summary:
 ## Related skills
 
 - `inventory`, `dependency-analyzer` — must run first
-- `cutover-manager` — consumes `migration-plan.json`
+- `cutover-control-plane` / `cutover-data-plane` — consume `migration-plan.json`
 
 ## Sub-agent
 

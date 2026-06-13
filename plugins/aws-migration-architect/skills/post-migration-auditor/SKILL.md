@@ -121,7 +121,7 @@ Verification #5 in the plan tests exactly this case.
 ## Related skills
 
 - `inventory` — provides the source-side baseline
-- `cutover-manager` — Phase 6 of its checklist invokes this skill
+- `cutover-data-plane` — its Phase 5 (Data Validation) is the in-cutover check; this skill is the post-cutover parity audit
 
 ## Sub-agent
 

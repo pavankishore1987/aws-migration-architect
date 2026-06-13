@@ -193,7 +193,7 @@ When the walk reaches the last step (success), the operator aborts, or a rollbac
 
 ## Related skills
 
-- `cutover-manager` — produces the checklist this skill consumes
+- `cutover-control-plane` / `cutover-data-plane` — produce the two checklists this skill consumes
 - `migration-planner` — provides the rollback steps
 - `post-migration-auditor` — runs after a successful execution
 
