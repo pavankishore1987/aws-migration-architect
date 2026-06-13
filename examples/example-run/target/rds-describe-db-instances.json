@@ -1,0 +1,28 @@
+{
+  "DBInstances": [
+    {
+      "DBInstanceIdentifier": "prod-orders",
+      "DBInstanceArn": "arn:aws:rds:us-east-1:222222222222:db:prod-orders",
+      "Engine": "postgres",
+      "EngineVersion": "15.4",
+      "DBInstanceClass": "db.r6g.xlarge",
+      "AllocatedStorage": 100,
+      "MultiAZ": true,
+      "StorageEncrypted": true,
+      "KmsKeyId": "arn:aws:kms:us-east-1:222222222222:key/NEW-rds-key",
+      "Endpoint": {
+        "Address": "prod-orders.cluster-tgtxyz.us-east-1.rds.amazonaws.com",
+        "Port": 5432
+      },
+      "VpcSecurityGroups": [{ "VpcSecurityGroupId": "sg-0targetrds", "Status": "active" }],
+      "TagList": [
+        { "Key": "Name", "Value": "prod-orders" },
+        { "Key": "Project", "Value": "orders-api" },
+        { "Key": "Owner", "Value": "platform" },
+        { "Key": "Criticality", "Value": "tier-1" },
+        { "Key": "ManagedBy", "Value": "terraform" }
+      ],
+      "_note": "Only intentional drift vs source: the KMS key ARN (account-bound, recreated). post-migration-auditor classifies this as benign config_drift (info)."
+    }
+  ]
+}

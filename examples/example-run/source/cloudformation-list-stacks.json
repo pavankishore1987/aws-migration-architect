@@ -1,0 +1,19 @@
+{
+  "StackSummaries": [
+    {
+      "StackName": "orders-api-base",
+      "StackId": "arn:aws:cloudformation:us-east-1:111111111111:stack/orders-api-base/aaaa-1111",
+      "StackStatus": "CREATE_COMPLETE",
+      "Region": "us-east-1",
+      "ResourceCount": 47,
+      "_note": "CFN-managed resources are flagged in coverage.cloudformation_stacks[]. MVP does NOT auto-convert CFN to Terraform — the user decides per stack."
+    },
+    {
+      "StackName": "orders-monitoring",
+      "StackId": "arn:aws:cloudformation:us-east-1:111111111111:stack/orders-monitoring/bbbb-2222",
+      "StackStatus": "CREATE_COMPLETE",
+      "Region": "us-east-1",
+      "ResourceCount": 12
+    }
+  ]
+}

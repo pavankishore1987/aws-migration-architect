@@ -1,0 +1,39 @@
+{
+  "metadata": {
+    "captured_at": "2026-06-12T14:32:00Z",
+    "source_account_id": "111111111111",
+    "run_id": "example-run",
+    "plugin_version": "0.1.0"
+  },
+  "resources": [
+    { "arn": "arn:aws:ec2:us-east-1:111111111111:vpc/vpc-0a1b2c3d4e5f6789a", "risk": "low", "reasons": ["stateless-no-deps"], "dependency_count": 0 },
+    { "arn": "arn:aws:ec2:us-east-1:111111111111:subnet/subnet-public-1a", "risk": "low", "reasons": ["stateless-no-deps"], "dependency_count": 0 },
+    { "arn": "arn:aws:ec2:us-east-1:111111111111:subnet/subnet-private-1a", "risk": "low", "reasons": ["stateless-no-deps"], "dependency_count": 0 },
+    { "arn": "arn:aws:ec2:us-east-1:111111111111:subnet/subnet-private-1b", "risk": "low", "reasons": ["stateless-no-deps"], "dependency_count": 0 },
+    { "arn": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-alb-orders", "risk": "medium", "reasons": ["stateless-with-deps"], "dependency_count": 1 },
+    { "arn": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-ec2-app", "risk": "medium", "reasons": ["stateless-with-deps"], "dependency_count": 2 },
+    { "arn": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-lambda-orders", "risk": "medium", "reasons": ["stateless-with-deps"], "dependency_count": 1 },
+    { "arn": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-rds-orders", "risk": "medium", "reasons": ["stateless-with-deps"], "dependency_count": 2 },
+    { "arn": "arn:aws:ec2:us-east-1:111111111111:instance/i-0app1aaaaaaaaaaaa", "risk": "medium", "reasons": ["stateless-with-deps"], "dependency_count": 2 },
+    { "arn": "arn:aws:ec2:us-east-1:111111111111:instance/i-0app2bbbbbbbbbbbb", "risk": "medium", "reasons": ["stateless-with-deps"], "dependency_count": 2 },
+    { "arn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/orders-alb/abc123def456", "risk": "medium", "reasons": ["stateless-with-deps"], "dependency_count": 2 },
+    { "arn": "arn:aws:rds:us-east-1:111111111111:db:prod-orders", "risk": "high", "reasons": ["stateful-rds", "kms-encrypted"], "dependency_count": 2 },
+    { "arn": "arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler", "risk": "high", "reasons": ["non-fixable-hardcoded-value", "stateless-with-deps"], "dependency_count": 4 },
+    { "arn": "arn:aws:lambda:us-east-1:111111111111:function:orders-stream-processor", "risk": "medium", "reasons": ["stateless-with-deps"], "dependency_count": 1 },
+    { "arn": "arn:aws:s3:::acme-prod-orders-assets", "risk": "medium", "reasons": ["kms-encrypted"], "dependency_count": 1 },
+    { "arn": "arn:aws:s3:::acme-prod-orders-logs", "risk": "low", "reasons": ["stateless-no-deps"], "dependency_count": 0 },
+    { "arn": "arn:aws:iam::111111111111:role/orders-api-lambda-role", "risk": "low", "reasons": ["stateless-no-deps"], "dependency_count": 0 },
+    { "arn": "arn:aws:iam::111111111111:role/github-actions-deploy", "risk": "high", "reasons": ["oidc-trust"], "dependency_count": 0 },
+    { "arn": "arn:aws:iam::111111111111:role/analytics-cross-account", "risk": "high", "reasons": ["cross-account-trust", "external-account-dependency"], "dependency_count": 0 },
+    { "arn": "arn:aws:route53:::hostedzone/Z0EXAMPLE0ORDERS", "risk": "medium", "reasons": ["stateless-with-deps"], "dependency_count": 1 },
+    { "arn": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-1", "risk": "medium", "reasons": ["high-dependency-count"], "dependency_count": 1 },
+    { "arn": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2", "risk": "medium", "reasons": ["high-dependency-count"], "dependency_count": 2 },
+    { "arn": "arn:aws:secretsmanager:us-east-1:111111111111:secret:prod/orders/db-AbCdEf", "risk": "medium", "reasons": ["stateless-with-deps", "kms-encrypted"], "dependency_count": 1 }
+  ],
+  "summary": {
+    "total_resources": 23,
+    "low": 6,
+    "medium": 13,
+    "high": 4
+  }
+}

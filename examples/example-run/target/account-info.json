@@ -1,0 +1,10 @@
+{
+  "caller_identity": {
+    "Account": "222222222222",
+    "Arn": "arn:aws:sts::222222222222:assumed-role/MigrationOperator/migration-user",
+    "UserId": "AROATARGET:migration-user"
+  },
+  "enabled_regions": ["us-east-1", "us-west-2"],
+  "primary_region": "us-east-1",
+  "_note": "Simulated post-cutover target. Same shape as source/ with new account ID, new resource IDs/ARNs, and new (account-bound) KMS keys. Used to exercise post-migration-auditor and produce golden/audit-diff.json."
+}

@@ -1,0 +1,60 @@
+{
+  "metadata": {
+    "captured_at": "2026-06-12T14:32:00Z",
+    "source_account_id": "111111111111",
+    "run_id": "example-run",
+    "plugin_version": "0.1.0"
+  },
+  "auto_parameterized": [
+    {
+      "location": "lambda:orders-stream-processor:env:SOURCE_ACCOUNT",
+      "value": "111111111111",
+      "kind": "source-account-id",
+      "var": "var.source_account_id"
+    },
+    {
+      "location": "lambda:orders-api-handler:env:AWS_REGION_HINT",
+      "value": "us-east-1",
+      "kind": "region-name",
+      "var": "var.aws_region"
+    },
+    {
+      "location": "lambda:orders-api-handler:env:DB_SECRET_ARN",
+      "value": "arn:aws:secretsmanager:us-east-1:111111111111:secret:prod/orders/db-AbCdEf",
+      "kind": "resource-arn-internal",
+      "var": "aws_secretsmanager_secret.orders_db.arn"
+    },
+    {
+      "location": "s3:acme-prod-orders-assets:encryption:KMSMasterKeyID",
+      "value": "alias/orders-s3-cmk",
+      "kind": "kms-key-alias",
+      "var": "aws_kms_alias.orders_s3.target_key_arn"
+    }
+  ],
+  "manual_review_required": [
+    {
+      "location": "lambda:orders-api-handler:env:ALLOWED_INGRESS_IP",
+      "value": "54.231.45.67",
+      "kind": "elastic-ip-literal",
+      "reason": "EIP literal. EIPs do not transfer between accounts; the target allocates a new EIP. Any downstream consumer hard-coding this IP must be updated."
+    },
+    {
+      "location": "lambda:orders-api-handler:env:API_BASE_URL",
+      "value": "https://api.internal.acme-corp.example.com",
+      "kind": "external-domain",
+      "reason": "External domain. Verify whether the same domain should point at the target ALB or a new hostname is needed."
+    },
+    {
+      "location": "iam:github-actions-deploy:trust",
+      "value": "arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com",
+      "kind": "oidc-provider-url",
+      "reason": "OIDC provider is account-bound. A new GitHub OIDC provider must be created in target and the role trust re-pointed."
+    },
+    {
+      "location": "iam:analytics-cross-account:trust",
+      "value": "333333333333",
+      "kind": "external-account-id",
+      "reason": "Cross-account trust toward 333333333333. The consumer account must add the target role ARN to its policy; not auto-fixable from this side."
+    }
+  ]
+}

@@ -1,0 +1,192 @@
+{
+  "metadata": {
+    "captured_at": "2026-06-12T14:32:00Z",
+    "source_account_id": "111111111111",
+    "target_account_id": "222222222222",
+    "source_profile": "migration-source",
+    "target_profile": "migration-target",
+    "run_id": "example-run",
+    "plugin_version": "0.1.0",
+    "incremental_from": null
+  },
+  "coverage": {
+    "regions_scanned": ["us-east-1", "us-west-2"],
+    "regions_skipped": [],
+    "services_scanned": ["ec2", "elasticloadbalancing", "rds", "lambda", "s3", "iam", "route53", "kms", "secretsmanager"],
+    "services_skipped": [
+      { "service": "sagemaker", "reason": "not in MVP — 1 resource seen at discovery", "resource_count_seen": 1 }
+    ],
+    "discovery_source": "resource-explorer",
+    "tag_filter": null,
+    "force_include_arns": [],
+    "excluded_by_tag_filter": [],
+    "cloudformation_stacks": [
+      { "stack_name": "orders-api-base", "region": "us-east-1", "status": "CREATE_COMPLETE", "resource_count": 47 },
+      { "stack_name": "orders-monitoring", "region": "us-east-1", "status": "CREATE_COMPLETE", "resource_count": 12 }
+    ],
+    "skipped_service_linked_roles": ["AWSServiceRoleForRDS"]
+  },
+  "resources": [
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:vpc/vpc-0a1b2c3d4e5f6789a",
+      "type": "network", "service": "ec2", "region": "us-east-1", "name": "prod-main-vpc",
+      "tags": { "Environment": "production", "Project": "orders-api", "Team": "platform" },
+      "criticality": "P1", "stateful": false,
+      "provider_specific": { "aws": { "CidrBlock": "10.0.0.0/16", "InstanceTenancy": "default" } }
+    },
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:subnet/subnet-public-1a",
+      "type": "network_subnet", "service": "ec2", "region": "us-east-1", "name": "prod-public-1a",
+      "tags": { "Tier": "public", "Project": "orders-api", "Team": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "CidrBlock": "10.0.1.0/24", "AvailabilityZone": "us-east-1a", "MapPublicIpOnLaunch": true } }
+    },
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:subnet/subnet-private-1a",
+      "type": "network_subnet", "service": "ec2", "region": "us-east-1", "name": "prod-private-1a",
+      "tags": { "Tier": "private", "Project": "orders-api", "Team": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "CidrBlock": "10.0.10.0/24", "AvailabilityZone": "us-east-1a", "MapPublicIpOnLaunch": false } }
+    },
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:subnet/subnet-private-1b",
+      "type": "network_subnet", "service": "ec2", "region": "us-east-1", "name": "prod-private-1b",
+      "tags": { "Tier": "private", "Project": "orders-api", "Team": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "CidrBlock": "10.0.11.0/24", "AvailabilityZone": "us-east-1b", "MapPublicIpOnLaunch": false } }
+    },
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-alb-orders",
+      "type": "security_group", "service": "ec2", "region": "us-east-1", "name": "orders-alb-sg",
+      "tags": { "Project": "orders-api", "Team": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "ingress": "tcp/443 from 0.0.0.0/0" } }
+    },
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-ec2-app",
+      "type": "security_group", "service": "ec2", "region": "us-east-1", "name": "orders-app-sg",
+      "tags": { "Project": "orders-api", "Team": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "ingress": "tcp/8080 from sg-alb-orders" } }
+    },
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-lambda-orders",
+      "type": "security_group", "service": "ec2", "region": "us-east-1", "name": "orders-lambda-sg",
+      "tags": { "Project": "orders-api", "Team": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "ingress": "none", "egress": "all" } }
+    },
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-rds-orders",
+      "type": "security_group", "service": "ec2", "region": "us-east-1", "name": "orders-rds-sg",
+      "tags": { "Project": "orders-api", "Team": "platform" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "ingress": "tcp/5432 from sg-ec2-app, sg-lambda-orders" } }
+    },
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:instance/i-0app1aaaaaaaaaaaa",
+      "type": "compute_instance", "service": "ec2", "region": "us-east-1", "name": "orders-app-1",
+      "tags": { "Project": "orders-api", "Team": "platform", "Criticality": "tier-1" },
+      "criticality": "P1", "stateful": false,
+      "provider_specific": { "aws": { "InstanceType": "m6i.large", "ImageId": "ami-0source1111111111", "SubnetId": "subnet-private-1a" } }
+    },
+    {
+      "arn": "arn:aws:ec2:us-east-1:111111111111:instance/i-0app2bbbbbbbbbbbb",
+      "type": "compute_instance", "service": "ec2", "region": "us-east-1", "name": "orders-app-2",
+      "tags": { "Project": "orders-api", "Team": "platform", "Criticality": "tier-1" },
+      "criticality": "P1", "stateful": false,
+      "provider_specific": { "aws": { "InstanceType": "m6i.large", "ImageId": "ami-0source1111111111", "SubnetId": "subnet-private-1b" } }
+    },
+    {
+      "arn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/orders-alb/abc123def456",
+      "type": "load_balancer", "service": "elasticloadbalancing", "region": "us-east-1", "name": "orders-alb",
+      "tags": { "Project": "orders-api", "Team": "platform" },
+      "criticality": "P1", "stateful": false,
+      "provider_specific": { "aws": { "Type": "application", "Scheme": "internet-facing", "DNSName": "orders-alb-1234567890.us-east-1.elb.amazonaws.com" } }
+    },
+    {
+      "arn": "arn:aws:rds:us-east-1:111111111111:db:prod-orders",
+      "type": "database", "service": "rds", "region": "us-east-1", "name": "prod-orders",
+      "tags": { "Project": "orders-api", "Owner": "platform", "Criticality": "tier-1" },
+      "criticality": "P1", "stateful": true,
+      "provider_specific": { "aws": { "Engine": "postgres", "EngineVersion": "15.4", "AllocatedStorage": 100, "MultiAZ": true, "StorageEncrypted": true, "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2" } }
+    },
+    {
+      "arn": "arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler",
+      "type": "function", "service": "lambda", "region": "us-east-1", "name": "orders-api-handler",
+      "tags": { "Owner": "platform", "Project": "orders-api", "Environment": "production" },
+      "criticality": "P1", "stateful": false,
+      "provider_specific": { "aws": { "Runtime": "nodejs20.x", "Role": "arn:aws:iam::111111111111:role/orders-api-lambda-role", "VpcId": "vpc-0a1b2c3d4e5f6789a" } }
+    },
+    {
+      "arn": "arn:aws:lambda:us-east-1:111111111111:function:orders-stream-processor",
+      "type": "function", "service": "lambda", "region": "us-east-1", "name": "orders-stream-processor",
+      "tags": { "Owner": "data-platform", "Project": "orders-api" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "Runtime": "python3.12", "Role": "arn:aws:iam::111111111111:role/stream-processor-role" } }
+    },
+    {
+      "arn": "arn:aws:s3:::acme-prod-orders-assets",
+      "type": "object_store", "service": "s3", "region": "us-east-1", "name": "acme-prod-orders-assets",
+      "tags": { "Owner": "platform", "Project": "orders-api", "Environment": "production" },
+      "criticality": "P1", "stateful": true,
+      "provider_specific": { "aws": { "Versioning": "Enabled", "SSEAlgorithm": "aws:kms", "KMSMasterKeyID": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-1" } }
+    },
+    {
+      "arn": "arn:aws:s3:::acme-prod-orders-logs",
+      "type": "object_store", "service": "s3", "region": "us-east-1", "name": "acme-prod-orders-logs",
+      "tags": { "Owner": "data-platform", "Environment": "production" },
+      "criticality": "P2", "stateful": true,
+      "provider_specific": { "aws": { "Versioning": "Disabled", "SSEAlgorithm": "AES256" } }
+    },
+    {
+      "arn": "arn:aws:iam::111111111111:role/orders-api-lambda-role",
+      "type": "iam_principal", "service": "iam", "region": "global", "name": "orders-api-lambda-role",
+      "tags": { "Owner": "platform", "Project": "orders-api" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "trust": "lambda.amazonaws.com" } }
+    },
+    {
+      "arn": "arn:aws:iam::111111111111:role/github-actions-deploy",
+      "type": "iam_principal", "service": "iam", "region": "global", "name": "github-actions-deploy",
+      "tags": { "Owner": "platform", "CrossAccount": "github-oidc" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "trust": "oidc:token.actions.githubusercontent.com" } }
+    },
+    {
+      "arn": "arn:aws:iam::111111111111:role/analytics-cross-account",
+      "type": "iam_principal", "service": "iam", "region": "global", "name": "analytics-cross-account",
+      "tags": { "Owner": "data-platform", "CrossAccount": "true" },
+      "criticality": "P2", "stateful": false,
+      "provider_specific": { "aws": { "trust": "cross-account:333333333333" } }
+    },
+    {
+      "arn": "arn:aws:route53:::hostedzone/Z0EXAMPLE0ORDERS",
+      "type": "dns_zone", "service": "route53", "region": "global", "name": "acme-corp.example.com",
+      "tags": { "Project": "orders-api", "Team": "platform" },
+      "criticality": "P1", "stateful": false,
+      "provider_specific": { "aws": { "PrivateZone": false, "alias_records": ["api.acme-corp.example.com -> orders-alb"] } }
+    },
+    {
+      "arn": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-1",
+      "type": "encryption_key", "service": "kms", "region": "us-east-1", "name": "alias/orders-s3-cmk",
+      "tags": {},
+      "criticality": "P1", "stateful": false,
+      "provider_specific": { "aws": { "KeyManager": "CUSTOMER", "used_by": ["acme-prod-orders-assets"] } }
+    },
+    {
+      "arn": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2",
+      "type": "encryption_key", "service": "kms", "region": "us-east-1", "name": "alias/orders-rds-cmk",
+      "tags": {},
+      "criticality": "P1", "stateful": false,
+      "provider_specific": { "aws": { "KeyManager": "CUSTOMER", "used_by": ["prod-orders", "prod/orders/db"] } }
+    },
+    {
+      "arn": "arn:aws:secretsmanager:us-east-1:111111111111:secret:prod/orders/db-AbCdEf",
+      "type": "secret", "service": "secretsmanager", "region": "us-east-1", "name": "prod/orders/db",
+      "tags": { "Project": "orders-api", "Owner": "platform" },
+      "criticality": "P1", "stateful": true,
+      "provider_specific": { "aws": { "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2", "value_read": false } }
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "Functions": [
+    {
+      "FunctionName": "orders-api-handler",
+      "FunctionArn": "arn:aws:lambda:us-east-1:222222222222:function:orders-api-handler",
+      "Runtime": "nodejs20.x",
+      "Role": "arn:aws:iam::222222222222:role/orders-api-lambda-role",
+      "Handler": "index.handler",
+      "MemorySize": 512,
+      "Timeout": 30,
+      "Environment": {
+        "Variables": {
+          "DB_HOST": "prod-orders.cluster-tgtxyz.us-east-1.rds.amazonaws.com",
+          "DB_SECRET_ARN": "arn:aws:secretsmanager:us-east-1:222222222222:secret:prod/orders/db-XyZ123",
+          "API_BASE_URL": "https://api.internal.acme-corp.example.com",
+          "ALLOWED_INGRESS_IP": "3.214.99.10",
+          "AWS_REGION_HINT": "us-east-1",
+          "FEATURE_FLAGS_PARAM": "/orders-api/feature-flags"
+        }
+      },
+      "VpcConfig": { "SubnetIds": ["subnet-0tgtpriv1a", "subnet-0tgtpriv1b"], "SecurityGroupIds": ["sg-0tgtlambda"], "VpcId": "vpc-0t1a2r3g4e5t6789b" },
+      "Tags": { "Owner": "platform", "Project": "orders-api", "Environment": "production", "ManagedBy": "terraform" }
+    },
+    {
+      "FunctionName": "orders-stream-processor",
+      "FunctionArn": "arn:aws:lambda:us-east-1:222222222222:function:orders-stream-processor",
+      "Runtime": "python3.12",
+      "Role": "arn:aws:iam::222222222222:role/stream-processor-role",
+      "Handler": "main.lambda_handler",
+      "MemorySize": 1024,
+      "Timeout": 60,
+      "Environment": { "Variables": { "STREAM_ARN": "arn:aws:kinesis:us-east-1:222222222222:stream/orders-events", "SOURCE_ACCOUNT": "222222222222" } },
+      "Tags": { "Owner": "data-platform", "Project": "orders-api", "ManagedBy": "terraform" }
+    }
+  ]
+}

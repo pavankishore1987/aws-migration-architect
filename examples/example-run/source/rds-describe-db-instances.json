@@ -1,0 +1,34 @@
+{
+  "DBInstances": [
+    {
+      "DBInstanceIdentifier": "prod-orders",
+      "DBInstanceArn": "arn:aws:rds:us-east-1:111111111111:db:prod-orders",
+      "Engine": "postgres",
+      "EngineVersion": "15.4",
+      "DBInstanceClass": "db.r6g.xlarge",
+      "AllocatedStorage": 100,
+      "MultiAZ": true,
+      "StorageEncrypted": true,
+      "KmsKeyId": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2",
+      "Endpoint": {
+        "Address": "prod-orders.cluster-abcdef.us-east-1.rds.amazonaws.com",
+        "Port": 5432
+      },
+      "DBSubnetGroup": {
+        "DBSubnetGroupName": "orders-db-subnet-group",
+        "VpcId": "vpc-0a1b2c3d4e5f6789a",
+        "Subnets": [
+          { "SubnetIdentifier": "subnet-private-1a" },
+          { "SubnetIdentifier": "subnet-private-1b" }
+        ]
+      },
+      "VpcSecurityGroups": [{ "VpcSecurityGroupId": "sg-rds-orders", "Status": "active" }],
+      "TagList": [
+        { "Key": "Name", "Value": "prod-orders" },
+        { "Key": "Project", "Value": "orders-api" },
+        { "Key": "Owner", "Value": "platform" },
+        { "Key": "Criticality", "Value": "tier-1" }
+      ]
+    }
+  ]
+}

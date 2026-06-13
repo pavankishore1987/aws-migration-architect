@@ -1,0 +1,19 @@
+{
+  "Keys": [
+    {
+      "KeyId": "abc-def-key-1",
+      "Arn": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-1",
+      "Aliases": ["alias/orders-s3-cmk"],
+      "KeyManager": "CUSTOMER",
+      "Description": "CMK for orders S3 assets bucket",
+      "_note": "KMS keys are account-bound; the target gets a NEW key with an equivalent policy and the same alias. Every kms_key_id reference is parameterized."
+    },
+    {
+      "KeyId": "abc-def-key-2",
+      "Arn": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2",
+      "Aliases": ["alias/orders-rds-cmk"],
+      "KeyManager": "CUSTOMER",
+      "Description": "CMK for prod-orders RDS + db secret"
+    }
+  ]
+}

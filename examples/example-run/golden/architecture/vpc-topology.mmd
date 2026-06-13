@@ -1,0 +1,28 @@
+graph TD
+  VPC["VPC prod-main-vpc<br/>10.0.0.0/16 (us-east-1)"]
+  subgraph Public
+    SNPUB["subnet-public-1a<br/>10.0.1.0/24 · us-east-1a"]
+    ALB["orders-alb (ALB)<br/>internet-facing"]
+  end
+  subgraph Private
+    SNPRA["subnet-private-1a<br/>10.0.10.0/24 · us-east-1a"]
+    SNPRB["subnet-private-1b<br/>10.0.11.0/24 · us-east-1b"]
+    EC2A["orders-app-1 (m6i.large)"]
+    EC2B["orders-app-2 (m6i.large)"]
+    RDS["prod-orders (RDS postgres, MultiAZ)"]
+    LAMBDA["orders-api-handler (Lambda ENI)"]
+  end
+  VPC --> SNPUB
+  VPC --> SNPRA
+  VPC --> SNPRB
+  SNPUB --> ALB
+  SNPRA --> EC2A
+  SNPRB --> EC2B
+  SNPRA --> RDS
+  SNPRB --> RDS
+  SNPRA --> LAMBDA
+  SNPRB --> LAMBDA
+  ALB -->|tcp/8080| EC2A
+  ALB -->|tcp/8080| EC2B
+  EC2A -->|tcp/5432| RDS
+  LAMBDA -->|tcp/5432| RDS

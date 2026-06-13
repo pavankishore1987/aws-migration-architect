@@ -1,0 +1,81 @@
+{
+  "metadata": {
+    "captured_at": "2026-06-12T14:32:00Z",
+    "source_account_id": "111111111111",
+    "target_account_id": "222222222222",
+    "source_region": "us-east-1",
+    "target_region": "us-east-1",
+    "run_id": "example-run",
+    "plugin_version": "0.1.0",
+    "inventory_ref": "./inventory.json",
+    "dependency_graph_ref": "./dependency-graph.json",
+    "risk_scores_ref": "./risk-scores.json"
+  },
+  "phases": [
+    {
+      "number": 1,
+      "name": "Networking",
+      "prerequisites": ["Target account bootstrapped", "Terraform state backend created", "CIDR 10.0.0.0/16 confirmed non-overlapping in target"],
+      "steps": [
+        { "id": "net-1", "description": "Apply VPC + 3 subnets (AZ literals replaced with data.aws_availability_zones lookups)", "resources": ["arn:aws:ec2:us-east-1:111111111111:vpc/vpc-0a1b2c3d4e5f6789a"], "parallel_safe": false, "risk": "low", "owner_team": "platform", "estimated_minutes": 15 },
+        { "id": "net-2", "description": "Apply security groups (rules referencing peer SGs re-linked to new target SG IDs)", "resources": ["arn:aws:ec2:us-east-1:111111111111:security-group/sg-rds-orders"], "parallel_safe": false, "risk": "medium", "owner_team": "platform", "estimated_minutes": 10 }
+      ],
+      "estimated_duration_minutes": 25,
+      "rollback": { "description": "terraform destroy -target=module.networking", "steps": ["terraform destroy -target=module.networking -auto-approve=false"], "rollback_window_minutes": 30 }
+    },
+    {
+      "number": 2,
+      "name": "Storage",
+      "prerequisites": ["Networking phase complete", "Target KMS keys created (new ARNs)"],
+      "steps": [
+        { "id": "sto-1", "description": "Create empty S3 buckets with parameterized KMS key references. Data is a Phase 5 / data-plane concern.", "resources": ["arn:aws:s3:::acme-prod-orders-assets", "arn:aws:s3:::acme-prod-orders-logs"], "parallel_safe": true, "risk": "medium", "owner_team": "platform", "estimated_minutes": 10 }
+      ],
+      "estimated_duration_minutes": 10,
+      "rollback": { "description": "Remove empty buckets if no data copied yet", "steps": ["aws s3 rb s3://<target-bucket> --profile $MIGRATION_TARGET_PROFILE"], "rollback_window_minutes": 15 }
+    },
+    {
+      "number": 3,
+      "name": "Databases",
+      "prerequisites": ["Storage phase complete", "RDS subnet group + SG present in target"],
+      "steps": [
+        { "id": "db-1", "description": "Create prod-orders DB container (restored from cross-account snapshot in data plane). Encrypt with new target KMS key.", "resources": ["arn:aws:rds:us-east-1:111111111111:db:prod-orders"], "parallel_safe": false, "risk": "high", "owner_team": "platform", "estimated_minutes": 45 }
+      ],
+      "estimated_duration_minutes": 45,
+      "rollback": { "description": "Delete restored DB instance; source remains authoritative", "steps": ["aws rds delete-db-instance --db-instance-identifier prod-orders --skip-final-snapshot --profile $MIGRATION_TARGET_PROFILE"], "rollback_window_minutes": 60 },
+      "go_no_go_gate": { "criteria": ["DB restore validated", "Row counts match source"], "approvers": ["platform"] }
+    },
+    {
+      "number": 4,
+      "name": "Applications",
+      "prerequisites": ["Databases phase complete", "Secrets containers created (values populated in data plane)", "AMIs shared cross-account"],
+      "steps": [
+        { "id": "app-1", "description": "Create IAM roles. github-actions-deploy needs a new target OIDC provider; analytics-cross-account trust re-pointed.", "resources": ["arn:aws:iam::111111111111:role/github-actions-deploy", "arn:aws:iam::111111111111:role/analytics-cross-account"], "parallel_safe": false, "risk": "high", "owner_team": "platform", "estimated_minutes": 30 },
+        { "id": "app-2", "description": "Deploy Lambda functions + EC2 (from shared AMIs) + ALB. orders-api-handler EIP literal must be remapped.", "resources": ["arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler", "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/orders-alb/abc123def456"], "parallel_safe": false, "risk": "high", "owner_team": "platform", "estimated_minutes": 40 }
+      ],
+      "estimated_duration_minutes": 70,
+      "rollback": { "description": "Tear down app tier; DNS still points at source", "steps": ["terraform destroy -target=module.compute"], "rollback_window_minutes": 60 },
+      "go_no_go_gate": { "criteria": ["Smoke tests pass against target ALB", "OIDC role assumable from GitHub Actions"], "approvers": ["platform"] }
+    },
+    {
+      "number": 5,
+      "name": "DNS Cutover",
+      "prerequisites": ["Applications phase validated", "Data-plane bulk transfers complete", "TTL reduced on api.acme-corp.example.com"],
+      "steps": [
+        { "id": "dns-1", "description": "Freeze writes, final delta sync, then swap Route53 alias api.acme-corp.example.com to target ALB.", "resources": ["arn:aws:route53:::hostedzone/Z0EXAMPLE0ORDERS"], "parallel_safe": false, "risk": "high", "owner_team": "platform", "estimated_minutes": 20 }
+      ],
+      "estimated_duration_minutes": 20,
+      "rollback": { "description": "Revert Route53 alias to source ALB (subject to TTL propagation).", "steps": ["aws route53 change-resource-record-sets ... (point back to source ALB)"], "rollback_window_minutes": 30 },
+      "go_no_go_gate": { "criteria": ["All freeze-window validations pass", "Source and target row/object counts match"], "approvers": ["platform", "data-platform"] }
+    },
+    {
+      "number": 6,
+      "name": "Validation",
+      "prerequisites": ["DNS cutover complete"],
+      "steps": [
+        { "id": "val-1", "description": "Run post-migration-auditor: source vs target parity diff across all in-scope resources.", "resources": [], "parallel_safe": true, "risk": "low", "owner_team": "platform", "estimated_minutes": 30 }
+      ],
+      "estimated_duration_minutes": 30,
+      "rollback": { "description": "No rollback — validation is read-only.", "steps": [], "rollback_window_minutes": 0 }
+    }
+  ]
+}

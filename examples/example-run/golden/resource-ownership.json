@@ -1,0 +1,48 @@
+{
+  "metadata": {
+    "captured_at": "2026-06-12T14:32:00Z",
+    "source_account_id": "111111111111",
+    "run_id": "example-run",
+    "plugin_version": "0.1.0"
+  },
+  "ownership_tags": ["Owner", "Team"],
+  "teams": {
+    "platform": {
+      "resources": [
+        "arn:aws:ec2:us-east-1:111111111111:vpc/vpc-0a1b2c3d4e5f6789a",
+        "arn:aws:ec2:us-east-1:111111111111:subnet/subnet-public-1a",
+        "arn:aws:ec2:us-east-1:111111111111:subnet/subnet-private-1a",
+        "arn:aws:ec2:us-east-1:111111111111:subnet/subnet-private-1b",
+        "arn:aws:ec2:us-east-1:111111111111:security-group/sg-alb-orders",
+        "arn:aws:ec2:us-east-1:111111111111:security-group/sg-ec2-app",
+        "arn:aws:ec2:us-east-1:111111111111:security-group/sg-lambda-orders",
+        "arn:aws:ec2:us-east-1:111111111111:security-group/sg-rds-orders",
+        "arn:aws:ec2:us-east-1:111111111111:instance/i-0app1aaaaaaaaaaaa",
+        "arn:aws:ec2:us-east-1:111111111111:instance/i-0app2bbbbbbbbbbbb",
+        "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/orders-alb/abc123def456",
+        "arn:aws:rds:us-east-1:111111111111:db:prod-orders",
+        "arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler",
+        "arn:aws:s3:::acme-prod-orders-assets",
+        "arn:aws:iam::111111111111:role/orders-api-lambda-role",
+        "arn:aws:iam::111111111111:role/github-actions-deploy",
+        "arn:aws:route53:::hostedzone/Z0EXAMPLE0ORDERS",
+        "arn:aws:secretsmanager:us-east-1:111111111111:secret:prod/orders/db-AbCdEf"
+      ],
+      "contact": null,
+      "approval_required_for_cutover": true
+    },
+    "data-platform": {
+      "resources": [
+        "arn:aws:lambda:us-east-1:111111111111:function:orders-stream-processor",
+        "arn:aws:s3:::acme-prod-orders-logs",
+        "arn:aws:iam::111111111111:role/analytics-cross-account"
+      ],
+      "contact": null,
+      "approval_required_for_cutover": true
+    }
+  },
+  "unowned_resources": [
+    "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-1",
+    "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2"
+  ]
+}

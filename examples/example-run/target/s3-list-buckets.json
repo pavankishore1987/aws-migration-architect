@@ -1,0 +1,42 @@
+{
+  "Buckets": [
+    {
+      "Name": "acme-prod-orders-assets",
+      "CreationDate": "2026-06-12T16:10:00Z",
+      "Location": "us-east-1",
+      "Versioning": "Enabled",
+      "Encryption": {
+        "ServerSideEncryptionConfiguration": {
+          "Rules": [
+            {
+              "ApplyServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "aws:kms",
+                "KMSMasterKeyID": "arn:aws:kms:us-east-1:222222222222:key/NEW-s3-key"
+              },
+              "BucketKeyEnabled": true
+            }
+          ]
+        }
+      },
+      "PublicAccessBlockConfiguration": {
+        "BlockPublicAcls": true,
+        "IgnorePublicAcls": true,
+        "BlockPublicPolicy": true,
+        "RestrictPublicBuckets": true
+      },
+      "Tags": { "Owner": "platform", "Project": "orders-api", "Environment": "production", "ManagedBy": "terraform" }
+    },
+    {
+      "Name": "acme-prod-orders-logs",
+      "CreationDate": "2026-06-12T16:10:30Z",
+      "Location": "us-east-1",
+      "Versioning": "Disabled",
+      "Encryption": {
+        "ServerSideEncryptionConfiguration": {
+          "Rules": [ { "ApplyServerSideEncryptionByDefault": { "SSEAlgorithm": "AES256" } } ]
+        }
+      },
+      "Tags": { "Owner": "data-platform", "Environment": "production", "ManagedBy": "terraform" }
+    }
+  ]
+}

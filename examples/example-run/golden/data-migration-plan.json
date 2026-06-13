@@ -1,0 +1,122 @@
+{
+  "metadata": {
+    "captured_at": "2026-06-12T14:32:00Z",
+    "source_account_id": "111111111111",
+    "target_account_id": "222222222222",
+    "source_region": "us-east-1",
+    "target_region": "us-east-1",
+    "run_id": "example-run",
+    "plugin_version": "0.1.0",
+    "inventory_ref": "./inventory.json",
+    "dependency_graph_ref": "./dependency-graph.json",
+    "cost_baseline_ref": "./cost-baseline.json"
+  },
+  "summary": {
+    "total_data_bytes": 9600000000000,
+    "estimated_total_transfer_hours": 14.6,
+    "estimated_total_transfer_cost_usd": 215.4,
+    "estimated_double_storage_cost_usd": 58.0,
+    "cutover_window_recommendation_hours": 2.0,
+    "datastore_count_by_service": { "s3": 2, "rds": 1 },
+    "critical_path": [
+      "arn:aws:s3:::acme-prod-orders-assets",
+      "arn:aws:s3:::acme-prod-orders-logs",
+      "arn:aws:rds:us-east-1:111111111111:db:prod-orders"
+    ]
+  },
+  "datastores": [
+    {
+      "resource_arn": "arn:aws:s3:::acme-prod-orders-assets",
+      "resource_type": "AWS::S3::Bucket",
+      "name": "acme-prod-orders-assets",
+      "owner_team": "platform",
+      "criticality": "tier-1",
+      "sizing": { "bytes": 6500000000000, "object_count": 4200000, "sizing_method": "cloudwatch", "sized_at": "2026-06-12T14:30:00Z" },
+      "strategy": {
+        "tool": "s3-batch-replication",
+        "mode": "bulk-plus-delta",
+        "reason": "Bucket >= 1 TB and tier-1: batch replication handles bulk then continuous delta until freeze.",
+        "alternatives_considered": [{ "tool": "aws-s3-sync", "rejected_because": "single-process throughput too slow for 6.5 TB / 4.2M objects" }]
+      },
+      "encryption": {
+        "at_rest": true,
+        "source_kms_key_arn": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-1",
+        "source_kms_key_type": "customer-managed",
+        "target_kms_key_arn": "arn:aws:kms:us-east-1:222222222222:key/NEW-s3-key",
+        "requires_target_kms_grant": true,
+        "requires_re_encryption": true
+      },
+      "transfer_estimate": { "assumed_throughput_mbps": 1000, "bulk_phase_hours": 9.0, "delta_phase_hours": 0.5, "cutover_phase_minutes": 20, "total_wall_clock_hours": 9.8, "confidence": "low" },
+      "cost_estimate": { "data_transfer_usd": 0.0, "tool_runtime_usd": 1.05, "double_storage_during_overlap_usd": 40.0, "validation_usd": 0.5, "total_usd": 41.55, "pricing_source": "awspricing MCP" },
+      "rpo_target_minutes": 0,
+      "rto_target_minutes": 30,
+      "freeze_window": { "required": true, "duration_minutes": 35, "begins_at_phase": 5, "begins_at_step_id": "dp-phase4-010-freeze-assets", "notes": "Attach a deny-write bucket policy on source during final delta + swap." },
+      "validation": { "methods": ["object-count", "byte-count", "checksum-sample"], "acceptance_criteria": "object count matches exactly; 100/100 sampled object checksums match.", "estimated_validation_minutes": 20 },
+      "rollback": { "retain_source_for_hours": 168, "retention_cost_usd": 36.0, "destruction_step_owner_team": "platform" },
+      "bandwidth_constraints": { "throttle_business_hours": true, "business_hours_window": "Mon-Fri 09:00-18:00 America/New_York", "max_throughput_mbps_business": 200, "max_throughput_mbps_off_hours": 1000, "max_concurrent_jobs": 4 },
+      "depends_on": [],
+      "notes": "Largest single datastore — gates the cutover window."
+    },
+    {
+      "resource_arn": "arn:aws:s3:::acme-prod-orders-logs",
+      "resource_type": "AWS::S3::Bucket",
+      "name": "acme-prod-orders-logs",
+      "owner_team": "data-platform",
+      "criticality": "tier-3",
+      "sizing": { "bytes": 3000000000000, "object_count": 8900000, "sizing_method": "cloudwatch", "sized_at": "2026-06-12T14:30:00Z" },
+      "strategy": {
+        "tool": "s3-batch-replication",
+        "mode": "bulk",
+        "reason": "Bucket >= 1 TB; logs are append-only tier-3 so a single bulk pass with a short catch-up is sufficient.",
+        "alternatives_considered": [{ "tool": "aws-s3-sync", "rejected_because": "8.9M objects: per-object overhead dominates; batch replication scales better" }]
+      },
+      "encryption": { "at_rest": true, "source_kms_key_arn": null, "source_kms_key_type": "aws-managed", "target_kms_key_arn": null, "requires_target_kms_grant": false, "requires_re_encryption": false },
+      "transfer_estimate": { "assumed_throughput_mbps": 1000, "bulk_phase_hours": 4.2, "delta_phase_hours": 0.0, "cutover_phase_minutes": 10, "total_wall_clock_hours": 4.4, "confidence": "low" },
+      "cost_estimate": { "data_transfer_usd": 0.0, "tool_runtime_usd": 2.25, "double_storage_during_overlap_usd": 12.0, "validation_usd": 0.1, "total_usd": 14.35, "pricing_source": "awspricing MCP" },
+      "rpo_target_minutes": 1440,
+      "rto_target_minutes": 1440,
+      "freeze_window": { "required": false, "duration_minutes": 0, "begins_at_phase": null, "begins_at_step_id": null, "notes": "Append-only logs; tolerate eventual consistency, no freeze." },
+      "validation": { "methods": ["object-count"], "acceptance_criteria": "object count within 0.01% (allow in-flight log writes).", "estimated_validation_minutes": 10 },
+      "rollback": { "retain_source_for_hours": 24, "retention_cost_usd": 2.4, "destruction_step_owner_team": "data-platform" },
+      "bandwidth_constraints": { "throttle_business_hours": false, "business_hours_window": null, "max_throughput_mbps_business": null, "max_throughput_mbps_off_hours": 1000, "max_concurrent_jobs": 4 },
+      "depends_on": [],
+      "notes": null
+    },
+    {
+      "resource_arn": "arn:aws:rds:us-east-1:111111111111:db:prod-orders",
+      "resource_type": "AWS::RDS::DBInstance",
+      "name": "prod-orders",
+      "owner_team": "platform",
+      "criticality": "tier-1",
+      "sizing": { "bytes": 100000000000, "object_count": null, "sizing_method": "describe-api", "sized_at": "2026-06-12T14:30:00Z" },
+      "strategy": {
+        "tool": "aws-rds-snapshot-share",
+        "mode": "snapshot-restore",
+        "reason": "100 GB Postgres < 500 GB: cross-account encrypted snapshot share + restore is simplest; freeze keeps RPO bounded.",
+        "alternatives_considered": [{ "tool": "aws-dms", "rejected_because": "continuous replication overhead unnecessary for a short tolerable freeze" }]
+      },
+      "encryption": {
+        "at_rest": true,
+        "source_kms_key_arn": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2",
+        "source_kms_key_type": "customer-managed",
+        "target_kms_key_arn": "arn:aws:kms:us-east-1:222222222222:key/NEW-rds-key",
+        "requires_target_kms_grant": true,
+        "requires_re_encryption": true
+      },
+      "transfer_estimate": { "assumed_throughput_mbps": 0, "bulk_phase_hours": 0.4, "delta_phase_hours": 0.0, "cutover_phase_minutes": 25, "total_wall_clock_hours": 0.8, "confidence": "medium" },
+      "cost_estimate": { "data_transfer_usd": 0.0, "tool_runtime_usd": 0.0, "double_storage_during_overlap_usd": 6.0, "validation_usd": 0.0, "total_usd": 6.0, "pricing_source": "awspricing MCP" },
+      "rpo_target_minutes": 0,
+      "rto_target_minutes": 30,
+      "freeze_window": { "required": true, "duration_minutes": 45, "begins_at_phase": 3, "begins_at_step_id": "dp-phase4-020-freeze-rds", "notes": "Set RDS to read-only (rds.force_ssl param group + revoke app writes) during final snapshot + restore + cutover." },
+      "validation": { "methods": ["row-count", "smoke-query"], "acceptance_criteria": "row counts match per table to within 0 rows; smoke query on orders table returns expected latest order id.", "estimated_validation_minutes": 15 },
+      "rollback": { "retain_source_for_hours": 168, "retention_cost_usd": 12.0, "destruction_step_owner_team": "platform" },
+      "bandwidth_constraints": { "throttle_business_hours": false, "business_hours_window": null, "max_throughput_mbps_business": null, "max_throughput_mbps_off_hours": null, "max_concurrent_jobs": 1 },
+      "depends_on": [],
+      "notes": "Snapshot taken from the MultiAZ standby — no impact to the primary."
+    }
+  ],
+  "warnings": [
+    { "severity": "warning", "datastore_arn": "arn:aws:s3:::acme-prod-orders-assets", "message": "Transfer time estimate uses default 1 Gbps throughput, not a measured trial.", "remediation": "Run a measured 10 GB sample sync to calibrate before scheduling the cutover window." },
+    { "severity": "info", "datastore_arn": "arn:aws:s3:::acme-prod-orders-logs", "message": "Append-only logs migrate without a freeze window.", "remediation": null }
+  ]
+}

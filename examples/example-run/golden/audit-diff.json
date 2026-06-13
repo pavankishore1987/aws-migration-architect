@@ -1,0 +1,36 @@
+{
+  "metadata": {
+    "captured_at": "2026-06-12T18:05:00Z",
+    "source_account_id": "111111111111",
+    "target_account_id": "222222222222",
+    "source_profile": "migration-source",
+    "target_profile": "migration-target",
+    "run_id": "example-run",
+    "plugin_version": "0.1.0",
+    "inventory_ref": "./inventory.json"
+  },
+  "summary": {
+    "total_resources_in_source_scope": 23,
+    "matches": 22,
+    "drift_count_by_category": {
+      "missing_in_target": 0,
+      "extra_in_target": 0,
+      "config_drift": 1,
+      "security_drift": 0,
+      "cost_drift": 0,
+      "scope_drift": 0
+    },
+    "verdict": "minor-drift"
+  },
+  "findings": [
+    {
+      "category": "config_drift",
+      "resource": "arn:aws:rds:us-east-1:222222222222:db:prod-orders",
+      "description": "Target RDS uses a new customer-managed KMS key ARN (expected — keys are account-bound and recreated).",
+      "severity": "info",
+      "source_value": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2",
+      "target_value": "arn:aws:kms:us-east-1:222222222222:key/NEW-rds-key",
+      "rollback_hint": null
+    }
+  ]
+}

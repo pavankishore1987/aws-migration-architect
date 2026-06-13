@@ -1,0 +1,110 @@
+{
+  "metadata": {
+    "captured_at": "2026-06-12T14:32:00Z",
+    "source_account_id": "111111111111",
+    "target_account_id": "222222222222",
+    "run_id": "example-run",
+    "plugin_version": "0.1.0",
+    "migration_plan_ref": "./migration-plan.json",
+    "iam_policy_required": "target-cutover-control-plane"
+  },
+  "phases": [
+    {
+      "number": 0,
+      "name": "Globals",
+      "description": "Account-wide prerequisites: Terraform state backend, new target KMS keys, OIDC provider.",
+      "terraform_modules": ["root", "iam"],
+      "pre_cutover": [
+        { "id": "cp-phase0-001-verify-auth", "description": "Verify both profiles authenticate (aws sts get-caller-identity).", "owner_team": "platform", "time_box_minutes": 5, "verification_command": "aws sts get-caller-identity --profile $MIGRATION_TARGET_PROFILE" }
+      ],
+      "during_cutover": [
+        { "id": "cp-phase0-010-state-backend", "description": "Create Terraform state bucket + lock table in target.", "owner_team": "platform", "operation_type": "aws-cli", "terraform_module": null, "command": "aws s3api create-bucket --bucket <state> --profile $MIGRATION_TARGET_PROFILE", "time_box_minutes": 10, "verification_command": null },
+        { "id": "cp-phase0-020-kms-oidc", "description": "Apply IAM module: new KMS keys (orders-s3-cmk, orders-rds-cmk), GitHub OIDC provider, roles.", "owner_team": "platform", "operation_type": "terraform-apply", "terraform_module": "iam", "command": "terraform apply -target=module.iam", "time_box_minutes": 25, "verification_command": "aws kms list-aliases --profile $MIGRATION_TARGET_PROFILE" }
+      ],
+      "post_cutover": [
+        { "id": "cp-phase0-090-confirm-keys", "description": "Record new target KMS key ARNs into tfvars for downstream modules.", "owner_team": "platform", "verification_command": null }
+      ]
+    },
+    {
+      "number": 1,
+      "name": "Networking",
+      "description": "VPC, subnets, route tables, security groups in target.",
+      "terraform_modules": ["networking"],
+      "pre_cutover": [],
+      "during_cutover": [
+        { "id": "cp-phase1-010-apply-networking", "description": "Apply networking module (AZ literals -> data.aws_availability_zones lookups).", "owner_team": "platform", "operation_type": "terraform-apply", "terraform_module": "networking", "command": "terraform apply -target=module.networking", "time_box_minutes": 20, "verification_command": "aws ec2 describe-vpcs --profile $MIGRATION_TARGET_PROFILE" }
+      ],
+      "post_cutover": [
+        { "id": "cp-phase1-090-verify-sg-links", "description": "Confirm sg-rds ingress references resolved to new target SG IDs.", "owner_team": "platform", "verification_command": null }
+      ]
+    },
+    {
+      "number": 2,
+      "name": "Storage Containers",
+      "description": "Empty S3 buckets (no data) with parameterized KMS references.",
+      "terraform_modules": ["storage"],
+      "pre_cutover": [],
+      "during_cutover": [
+        { "id": "cp-phase2-010-apply-storage", "description": "Apply storage module: create empty acme-prod-orders-assets + acme-prod-orders-logs.", "owner_team": "platform", "operation_type": "terraform-apply", "terraform_module": "storage", "command": "terraform apply -target=module.storage", "time_box_minutes": 10, "verification_command": "aws s3 ls --profile $MIGRATION_TARGET_PROFILE" }
+      ],
+      "post_cutover": []
+    },
+    {
+      "number": 3,
+      "name": "Database Containers",
+      "description": "RDS subnet group + parameter group + SG. The instance itself appears via data-plane snapshot-restore.",
+      "terraform_modules": ["databases"],
+      "pre_cutover": [],
+      "during_cutover": [
+        { "id": "cp-phase3-010-apply-db-scaffold", "description": "Apply databases module: subnet group, parameter group, RDS SG. NO instance created here.", "owner_team": "platform", "operation_type": "terraform-apply", "terraform_module": "databases", "command": "terraform apply -target=module.databases", "time_box_minutes": 15, "verification_command": null }
+      ],
+      "post_cutover": []
+    },
+    {
+      "number": 4,
+      "name": "Compute Containers",
+      "description": "Lambda, EC2 launch templates, ALB, target groups. EC2 launches from cross-account-shared AMIs (shared in data plane).",
+      "terraform_modules": ["compute"],
+      "pre_cutover": [
+        { "id": "cp-phase4-001-confirm-ami-share", "description": "Confirm source AMI ami-0source1111111111 has been shared to target (data-plane pre-staging).", "owner_team": "platform", "time_box_minutes": 5, "verification_command": null }
+      ],
+      "during_cutover": [
+        { "id": "cp-phase4-010-apply-compute", "description": "Apply compute module: ALB, target groups, Lambda (EIP literal remapped), EC2 launch templates.", "owner_team": "platform", "operation_type": "terraform-apply", "terraform_module": "compute", "command": "terraform apply -target=module.compute", "time_box_minutes": 40, "verification_command": null }
+      ],
+      "post_cutover": [
+        { "id": "cp-phase4-090-smoke", "description": "Smoke test target ALB DNS directly (before DNS swap).", "owner_team": "platform", "verification_command": "curl -sf https://<target-alb-dns>/health" }
+      ]
+    },
+    {
+      "number": 5,
+      "name": "DNS Scaffolding",
+      "description": "Create the target hosted zone + records, but do NOT swap production traffic. No production cutover here.",
+      "terraform_modules": ["dns"],
+      "pre_cutover": [],
+      "during_cutover": [
+        { "id": "cp-phase5-010-apply-dns-scaffold", "description": "Apply dns module: create zone records pointing at target ALB under a staging record. Production swap is a data-plane step.", "owner_team": "platform", "operation_type": "terraform-apply", "terraform_module": "dns", "command": "terraform apply -target=module.dns", "time_box_minutes": 10, "verification_command": null }
+      ],
+      "post_cutover": []
+    },
+    {
+      "number": 6,
+      "name": "Control Plane Validation",
+      "description": "Verify the empty target shape is complete and correct before any data moves.",
+      "terraform_modules": [],
+      "pre_cutover": [],
+      "during_cutover": [
+        { "id": "cp-phase6-010-validate-shape", "description": "terraform plan shows no diff; all modules applied; counts match the migration plan.", "owner_team": "platform", "operation_type": "manual", "terraform_module": null, "command": "terraform plan", "time_box_minutes": 20, "verification_command": null }
+      ],
+      "post_cutover": [],
+      "go_no_go_gate": { "criteria": ["All 6 modules applied", "terraform plan clean", "Target ALB smoke test green"], "approvers": ["platform"] }
+    }
+  ],
+  "handoff_to_data_plane": {
+    "criteria": [
+      "All control-plane modules applied and terraform plan is clean.",
+      "Target KMS keys exist and grants for source account are ready to request.",
+      "Source AMI shared to target account.",
+      "Operator has attached target-cutover-data-plane.json IAM policy (in addition to control-plane policy)."
+    ]
+  }
+}

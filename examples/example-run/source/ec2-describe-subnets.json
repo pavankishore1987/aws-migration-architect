@@ -1,0 +1,46 @@
+{
+  "Subnets": [
+    {
+      "SubnetId": "subnet-public-1a",
+      "VpcId": "vpc-0a1b2c3d4e5f6789a",
+      "CidrBlock": "10.0.1.0/24",
+      "AvailabilityZone": "us-east-1a",
+      "MapPublicIpOnLaunch": true,
+      "State": "available",
+      "Tags": [
+        { "Key": "Name", "Value": "prod-public-1a" },
+        { "Key": "Tier", "Value": "public" },
+        { "Key": "Project", "Value": "orders-api" },
+        { "Key": "Team", "Value": "platform" }
+      ]
+    },
+    {
+      "SubnetId": "subnet-private-1a",
+      "VpcId": "vpc-0a1b2c3d4e5f6789a",
+      "CidrBlock": "10.0.10.0/24",
+      "AvailabilityZone": "us-east-1a",
+      "MapPublicIpOnLaunch": false,
+      "State": "available",
+      "Tags": [
+        { "Key": "Name", "Value": "prod-private-1a" },
+        { "Key": "Tier", "Value": "private" },
+        { "Key": "Project", "Value": "orders-api" },
+        { "Key": "Team", "Value": "platform" }
+      ]
+    },
+    {
+      "SubnetId": "subnet-private-1b",
+      "VpcId": "vpc-0a1b2c3d4e5f6789a",
+      "CidrBlock": "10.0.11.0/24",
+      "AvailabilityZone": "us-east-1b",
+      "MapPublicIpOnLaunch": false,
+      "State": "available",
+      "Tags": [
+        { "Key": "Name", "Value": "prod-private-1b" },
+        { "Key": "Tier", "Value": "private" },
+        { "Key": "Project", "Value": "orders-api" },
+        { "Key": "Team", "Value": "platform" }
+      ]
+    }
+  ]
+}

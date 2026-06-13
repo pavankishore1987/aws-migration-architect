@@ -1,0 +1,23 @@
+{
+  "LoadBalancers": [
+    {
+      "LoadBalancerArn": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/orders-alb/abc123def456",
+      "LoadBalancerName": "orders-alb",
+      "DNSName": "orders-alb-1234567890.us-east-1.elb.amazonaws.com",
+      "CanonicalHostedZoneId": "Z35SXDOTRQ7X7K",
+      "Scheme": "internet-facing",
+      "Type": "application",
+      "VpcId": "vpc-0a1b2c3d4e5f6789a",
+      "State": { "Code": "active" },
+      "AvailabilityZones": [
+        { "ZoneName": "us-east-1a", "SubnetId": "subnet-public-1a" }
+      ],
+      "SecurityGroups": ["sg-alb-orders"],
+      "Tags": [
+        { "Key": "Name", "Value": "orders-alb" },
+        { "Key": "Project", "Value": "orders-api" },
+        { "Key": "Team", "Value": "platform" }
+      ]
+    }
+  ]
+}

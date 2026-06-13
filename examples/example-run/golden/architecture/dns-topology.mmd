@@ -1,0 +1,6 @@
+graph LR
+  ZONE["Hosted zone<br/>acme-corp.example.com"]
+  REC["A api.acme-corp.example.com<br/>(alias)"]
+  ALB["orders-alb<br/>orders-alb-1234567890.us-east-1.elb.amazonaws.com"]
+  ZONE --> REC
+  REC -->|alias target| ALB

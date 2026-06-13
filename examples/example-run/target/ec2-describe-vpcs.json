@@ -1,0 +1,20 @@
+{
+  "Vpcs": [
+    {
+      "VpcId": "vpc-0t1a2r3g4e5t6789b",
+      "CidrBlock": "10.0.0.0/16",
+      "InstanceTenancy": "default",
+      "State": "available",
+      "OwnerId": "222222222222",
+      "DhcpOptionsId": "dopt-target",
+      "IsDefault": false,
+      "Tags": [
+        { "Key": "Name", "Value": "prod-main-vpc" },
+        { "Key": "Environment", "Value": "production" },
+        { "Key": "Project", "Value": "orders-api" },
+        { "Key": "Team", "Value": "platform" },
+        { "Key": "ManagedBy", "Value": "terraform" }
+      ]
+    }
+  ]
+}

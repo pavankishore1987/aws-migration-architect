@@ -1,0 +1,34 @@
+{
+  "HostedZones": [
+    {
+      "Id": "/hostedzone/Z0EXAMPLE0ORDERS",
+      "Name": "acme-corp.example.com.",
+      "Config": { "PrivateZone": false, "Comment": "public zone for orders API" },
+      "ResourceRecordSetCount": 6,
+      "ResourceRecordSets": [
+        {
+          "Name": "api.acme-corp.example.com.",
+          "Type": "A",
+          "AliasTarget": {
+            "HostedZoneId": "Z35SXDOTRQ7X7K",
+            "DNSName": "orders-alb-1234567890.us-east-1.elb.amazonaws.com.",
+            "EvaluateTargetHealth": true
+          }
+        },
+        {
+          "Name": "acme-corp.example.com.",
+          "Type": "NS",
+          "TTL": 172800,
+          "ResourceRecords": [
+            { "Value": "ns-1.awsdns-00.org." },
+            { "Value": "ns-2.awsdns-00.com." }
+          ]
+        }
+      ],
+      "Tags": [
+        { "Key": "Project", "Value": "orders-api" },
+        { "Key": "Team", "Value": "platform" }
+      ]
+    }
+  ]
+}

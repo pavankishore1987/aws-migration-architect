@@ -1,0 +1,80 @@
+{
+  "metadata": {
+    "captured_at": "2026-06-12T14:32:00Z",
+    "source_account_id": "111111111111",
+    "run_id": "example-run",
+    "plugin_version": "0.1.0",
+    "inventory_ref": "./inventory.json"
+  },
+  "edges": [
+    { "from": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-ec2-app", "to": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-alb-orders", "relation": "sg-ingress", "context": "tcp/8080" },
+    { "from": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-rds-orders", "to": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-ec2-app", "relation": "sg-ingress", "context": "tcp/5432" },
+    { "from": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-rds-orders", "to": "arn:aws:ec2:us-east-1:111111111111:security-group/sg-lambda-orders", "relation": "sg-ingress", "context": "tcp/5432" },
+    { "from": "arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler", "to": "arn:aws:secretsmanager:us-east-1:111111111111:secret:prod/orders/db-AbCdEf", "relation": "lambda-env-secret", "context": "DB_SECRET_ARN" },
+    { "from": "arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler", "to": "ssm:/orders-api/feature-flags", "relation": "lambda-env-ssm", "context": "FEATURE_FLAGS_PARAM" },
+    { "from": "arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler", "to": "https://api.internal.acme-corp.example.com", "relation": "lambda-env-other", "context": "API_BASE_URL (external domain)" },
+    { "from": "arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler", "to": "54.231.45.67", "relation": "lambda-env-other", "context": "ALLOWED_INGRESS_IP (EIP literal)" },
+    { "from": "arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler", "to": "arn:aws:iam::111111111111:role/orders-api-lambda-role", "relation": "iam-policy", "context": "execution role" },
+    { "from": "arn:aws:lambda:us-east-1:111111111111:function:orders-stream-processor", "to": "arn:aws:kinesis:us-east-1:111111111111:stream/orders-events", "relation": "lambda-env-other", "context": "STREAM_ARN (kinesis, out of MVP)" },
+    { "from": "arn:aws:route53:::hostedzone/Z0EXAMPLE0ORDERS", "to": "arn:aws:elasticloadbalancing:us-east-1:111111111111:loadbalancer/app/orders-alb/abc123def456", "relation": "r53-alias", "context": "api.acme-corp.example.com" },
+    { "from": "arn:aws:s3:::acme-prod-orders-assets", "to": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-1", "relation": "kms-key-use", "context": "bucket default SSE-KMS" },
+    { "from": "arn:aws:rds:us-east-1:111111111111:db:prod-orders", "to": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2", "relation": "kms-key-use", "context": "storage encryption" },
+    { "from": "arn:aws:secretsmanager:us-east-1:111111111111:secret:prod/orders/db-AbCdEf", "to": "arn:aws:kms:us-east-1:111111111111:key/abc-def-key-2", "relation": "kms-key-use", "context": "secret encryption" }
+  ],
+  "iam_trusts": [
+    {
+      "role_arn": "arn:aws:iam::111111111111:role/orders-api-lambda-role",
+      "trust_type": "aws-service-principal",
+      "trusted_principal": "lambda.amazonaws.com",
+      "trusted_account": null,
+      "needs_target_rework": false,
+      "rework_notes": "Service principals are global — no change needed in target."
+    },
+    {
+      "role_arn": "arn:aws:iam::111111111111:role/github-actions-deploy",
+      "trust_type": "oidc-github",
+      "trusted_principal": "token.actions.githubusercontent.com",
+      "trusted_account": null,
+      "needs_target_rework": true,
+      "rework_notes": "A new GitHub OIDC provider must be created in the target account; GitHub Actions workflows must be updated to assume the target role ARN."
+    },
+    {
+      "role_arn": "arn:aws:iam::111111111111:role/analytics-cross-account",
+      "trust_type": "cross-account-role",
+      "trusted_principal": "arn:aws:iam::333333333333:root",
+      "trusted_account": "333333333333",
+      "needs_target_rework": true,
+      "rework_notes": "Consumer account 333333333333 must add the target role ARN to its trust; ExternalId acme-analytics-2024 preserved."
+    }
+  ],
+  "external_account_dependencies": [
+    {
+      "account_id": "333333333333",
+      "resource_arns": ["arn:aws:iam::111111111111:role/analytics-cross-account"],
+      "type": "iam-trust"
+    }
+  ],
+  "external_identity_provider_trusts": [
+    {
+      "provider": "github",
+      "arn": "arn:aws:iam::111111111111:oidc-provider/token.actions.githubusercontent.com",
+      "used_by": ["arn:aws:iam::111111111111:role/github-actions-deploy"]
+    }
+  ],
+  "eip_remap_required": [
+    {
+      "eip": "54.231.45.67",
+      "referenced_at": ["lambda:orders-api-handler:env:ALLOWED_INGRESS_IP"]
+    }
+  ],
+  "fragile_couplings": [
+    {
+      "description": "orders-api-handler reaches RDS only through sg-lambda-orders -> sg-rds-orders; the SG rule references a security group ID that changes in target and must be re-linked.",
+      "resources": [
+        "arn:aws:lambda:us-east-1:111111111111:function:orders-api-handler",
+        "arn:aws:ec2:us-east-1:111111111111:security-group/sg-rds-orders"
+      ],
+      "severity": "medium"
+    }
+  ]
+}

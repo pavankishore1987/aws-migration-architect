@@ -1,0 +1,15 @@
+graph LR
+  classDef ok fill:#d5f5e3,stroke:#27ae60;
+  classDef rework fill:#fdebd0,stroke:#e67e22;
+
+  LAMBDAROLE["orders-api-lambda-role"]:::ok
+  GHROLE["github-actions-deploy"]:::rework
+  XAROLE["analytics-cross-account"]:::rework
+
+  LAMBDASVC["lambda.amazonaws.com<br/>(service principal — global, no change)"]
+  GHOIDC["token.actions.githubusercontent.com<br/>(GitHub OIDC — recreate provider in target)"]
+  ACCT333["account 333333333333<br/>(cross-account — consumer must re-trust target)"]
+
+  LAMBDAROLE --> LAMBDASVC
+  GHROLE --> GHOIDC
+  XAROLE --> ACCT333

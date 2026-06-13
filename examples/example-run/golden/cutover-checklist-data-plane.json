@@ -1,0 +1,93 @@
+{
+  "metadata": {
+    "captured_at": "2026-06-12T14:32:00Z",
+    "source_account_id": "111111111111",
+    "target_account_id": "222222222222",
+    "run_id": "example-run",
+    "plugin_version": "0.1.0",
+    "iam_policy_required": ["target-cutover-control-plane", "target-cutover-data-plane"]
+  },
+  "data_migration_plan_ref": "./data-migration-plan.json",
+  "summary": {
+    "total_data_bytes": 9600000000000,
+    "estimated_total_transfer_hours": 14.6,
+    "longest_freeze_window_minutes": 45,
+    "datastore_count": 3
+  },
+  "phases": [
+    {
+      "number": 1,
+      "name": "Pre-Staging",
+      "description": "Share encrypted snapshots/AMIs, grant KMS to target. No writes frozen yet.",
+      "estimated_duration_minutes": 30,
+      "pre_cutover": [
+        { "id": "dp-phase1-001-confirm-policy", "description": "Confirm target-cutover-data-plane.json IAM policy is attached.", "owner_team": "platform", "datastore_arn": null, "verification_command": null }
+      ],
+      "during_cutover": [
+        { "id": "dp-phase1-010-kms-grant-rds", "description": "Create KMS grant on source orders-rds-cmk for the target account role.", "owner_team": "platform", "datastore_arn": "arn:aws:rds:us-east-1:111111111111:db:prod-orders", "operation_type": "kms-grant", "tool": "aws-cli", "command": "aws kms create-grant --key-id abc-def-key-2 --grantee-principal <target-role> --operations Decrypt --profile $MIGRATION_SOURCE_PROFILE", "long_running": false, "poll_terminal_states": [], "time_box_minutes": 5, "verification_command": null, "irreversible": false },
+        { "id": "dp-phase1-020-snapshot-share-rds", "description": "Share latest prod-orders snapshot with target account.", "owner_team": "platform", "datastore_arn": "arn:aws:rds:us-east-1:111111111111:db:prod-orders", "operation_type": "snapshot-share", "tool": "aws-cli", "command": "aws rds modify-db-snapshot-attribute --db-snapshot-identifier <snap> --attribute-name restore --values-to-add 222222222222 --profile $MIGRATION_SOURCE_PROFILE", "long_running": false, "poll_terminal_states": [], "time_box_minutes": 5, "verification_command": null, "irreversible": false }
+      ],
+      "post_cutover": []
+    },
+    {
+      "number": 2,
+      "name": "Bulk Transfers",
+      "description": "Long-running bulk copies (S3 batch replication, RDS restore). Executor polls these.",
+      "estimated_duration_minutes": 600,
+      "pre_cutover": [],
+      "during_cutover": [
+        { "id": "dp-phase2-010-s3-assets-bulk", "description": "Start S3 batch replication for acme-prod-orders-assets (6.5 TB / 4.2M objects).", "owner_team": "platform", "datastore_arn": "arn:aws:s3:::acme-prod-orders-assets", "operation_type": "s3-batch-replication", "tool": "s3-batch", "command": "aws s3control create-job ... --profile $MIGRATION_TARGET_PROFILE", "long_running": true, "poll_cmd": "aws s3control describe-job --job-id <id>", "poll_terminal_states": ["Complete", "Failed"], "time_box_minutes": 540, "verification_command": null, "irreversible": false },
+        { "id": "dp-phase2-020-s3-logs-bulk", "description": "Start S3 batch replication for acme-prod-orders-logs (3 TB / 8.9M objects).", "owner_team": "data-platform", "datastore_arn": "arn:aws:s3:::acme-prod-orders-logs", "operation_type": "s3-batch-replication", "tool": "s3-batch", "command": "aws s3control create-job ... --profile $MIGRATION_TARGET_PROFILE", "long_running": true, "poll_cmd": "aws s3control describe-job --job-id <id>", "poll_terminal_states": ["Complete", "Failed"], "time_box_minutes": 300, "verification_command": null, "irreversible": false },
+        { "id": "dp-phase2-030-rds-restore", "description": "Restore prod-orders from the shared snapshot, re-encrypted with target KMS key.", "owner_team": "platform", "datastore_arn": "arn:aws:rds:us-east-1:111111111111:db:prod-orders", "operation_type": "snapshot-restore", "tool": "aws-cli", "command": "aws rds restore-db-instance-from-db-snapshot ... --kms-key-id <target-key> --profile $MIGRATION_TARGET_PROFILE", "long_running": true, "poll_cmd": "aws rds describe-db-instances --db-instance-identifier prod-orders", "poll_terminal_states": ["available", "failed"], "time_box_minutes": 60, "verification_command": null, "irreversible": false }
+      ],
+      "post_cutover": []
+    },
+    {
+      "number": 3,
+      "name": "Application Data",
+      "description": "Populate secret values from operator-supplied file path (never read from source Secrets Manager).",
+      "estimated_duration_minutes": 15,
+      "pre_cutover": [],
+      "during_cutover": [
+        { "id": "dp-phase3-010-secret-put", "description": "Put prod/orders/db value into the target secret from operator-supplied secure file.", "owner_team": "platform", "datastore_arn": null, "operation_type": "secret-put-value", "tool": "aws-cli", "command": "aws secretsmanager put-secret-value --secret-id prod/orders/db --secret-string file://<operator-supplied> --profile $MIGRATION_TARGET_PROFILE", "long_running": false, "poll_terminal_states": [], "time_box_minutes": 10, "verification_command": null, "irreversible": false }
+      ],
+      "post_cutover": []
+    },
+    {
+      "number": 4,
+      "name": "Cutover",
+      "description": "Freeze writes, final delta, then swap production DNS. Contains irreversible steps.",
+      "estimated_duration_minutes": 90,
+      "pre_cutover": [
+        { "id": "dp-phase4-001-ttl-reduce", "description": "Reduce TTL on api.acme-corp.example.com to 60s (done >TTL ahead of cutover).", "owner_team": "platform", "datastore_arn": null, "verification_command": null }
+      ],
+      "during_cutover": [
+        { "id": "dp-phase4-010-freeze-assets", "description": "Attach deny-write bucket policy on source acme-prod-orders-assets.", "owner_team": "platform", "datastore_arn": "arn:aws:s3:::acme-prod-orders-assets", "operation_type": "freeze-writes", "tool": "aws-cli", "command": "aws s3api put-bucket-policy ... (deny s3:PutObject) --profile $MIGRATION_SOURCE_PROFILE", "long_running": false, "poll_terminal_states": [], "time_box_minutes": 5, "verification_command": null, "irreversible": false },
+        { "id": "dp-phase4-020-freeze-rds", "description": "Set source prod-orders to read-only and revoke app write grants.", "owner_team": "platform", "datastore_arn": "arn:aws:rds:us-east-1:111111111111:db:prod-orders", "operation_type": "freeze-writes", "tool": "aws-cli", "command": "(set parameter group default_transaction_read_only=on; revoke writes)", "long_running": false, "poll_terminal_states": [], "time_box_minutes": 10, "verification_command": null, "irreversible": false },
+        { "id": "dp-phase4-040-route53-swap", "description": "Swap api.acme-corp.example.com alias to the TARGET ALB. IRREVERSIBLE beyond TTL propagation.", "owner_team": "platform", "datastore_arn": null, "operation_type": "route53-change", "tool": "aws-cli", "command": "aws route53 change-resource-record-sets ... (alias -> target ALB) --profile $MIGRATION_TARGET_PROFILE", "long_running": false, "poll_terminal_states": [], "time_box_minutes": 10, "verification_command": null, "irreversible": true }
+      ],
+      "post_cutover": [
+        { "id": "dp-phase4-090-release-freeze", "description": "After validation passes, release source freeze only if rollback window is being kept open; otherwise leave frozen.", "owner_team": "platform", "datastore_arn": null, "verification_command": null }
+      ],
+      "go_no_go_gate": { "criteria": ["Bulk transfers Complete", "RDS restore available", "Secret value populated"], "approvers": ["platform", "data-platform"] }
+    },
+    {
+      "number": 5,
+      "name": "Data Validation",
+      "description": "Counts, checksums, smoke queries against the target. Methods come from data-migration-plan.json.",
+      "estimated_duration_minutes": 45,
+      "pre_cutover": [],
+      "during_cutover": [
+        { "id": "dp-phase5-010-validate-assets", "description": "Assets bucket: object-count + byte-count + 100-object checksum sample.", "owner_team": "platform", "datastore_arn": "arn:aws:s3:::acme-prod-orders-assets", "operation_type": "manual-decision", "tool": "manual", "command": null, "long_running": false, "poll_terminal_states": [], "time_box_minutes": 20, "verification_command": null, "irreversible": false },
+        { "id": "dp-phase5-020-validate-rds", "description": "RDS: per-table row-count + smoke query for latest order id.", "owner_team": "platform", "datastore_arn": "arn:aws:rds:us-east-1:111111111111:db:prod-orders", "operation_type": "manual-decision", "tool": "manual", "command": null, "long_running": false, "poll_terminal_states": [], "time_box_minutes": 15, "verification_command": null, "irreversible": false }
+      ],
+      "post_cutover": [
+        { "id": "dp-phase5-090-run-auditor", "description": "Run post-migration-auditor for the full source/target parity diff.", "owner_team": "platform", "datastore_arn": null, "verification_command": null }
+      ]
+    }
+  ],
+  "freeze_windows": [
+    { "datastore_arn": "arn:aws:s3:::acme-prod-orders-assets", "duration_minutes": 35, "begins_at_step_id": "dp-phase4-010-freeze-assets", "enforcement_command": "aws s3api put-bucket-policy (deny writes)", "release_step_id": "dp-phase4-090-release-freeze" },
+    { "datastore_arn": "arn:aws:rds:us-east-1:111111111111:db:prod-orders", "duration_minutes": 45, "begins_at_step_id": "dp-phase4-020-freeze-rds", "enforcement_command": "set default_transaction_read_only=on", "release_step_id": "dp-phase4-090-release-freeze" }
+  ]
+}

@@ -1,0 +1,26 @@
+graph LR
+  LAMBDA["orders-api-handler"]
+  STREAM["orders-stream-processor"]
+  SECRET["secret prod/orders/db"]
+  SSM["ssm /orders-api/feature-flags"]
+  ROLE["orders-api-lambda-role"]
+  RDS["prod-orders (RDS)"]
+  KMS1["kms alias/orders-s3-cmk"]
+  KMS2["kms alias/orders-rds-cmk"]
+  S3A["s3 acme-prod-orders-assets"]
+  ALB["orders-alb"]
+  R53["route53 acme-corp.example.com"]
+  EIP["EIP literal 54.231.45.67 (remap!)"]
+  DOMAIN["api.internal.acme-corp.example.com (external)"]
+  KINESIS["kinesis orders-events (out of MVP)"]
+
+  LAMBDA -->|env-secret| SECRET
+  LAMBDA -->|env-ssm| SSM
+  LAMBDA -->|iam| ROLE
+  LAMBDA -.->|env-other| EIP
+  LAMBDA -.->|env-other| DOMAIN
+  STREAM -.->|env-other| KINESIS
+  S3A -->|kms| KMS1
+  RDS -->|kms| KMS2
+  SECRET -->|kms| KMS2
+  R53 -->|alias| ALB

@@ -1,0 +1,17 @@
+{
+  "NotebookInstances": [
+    {
+      "NotebookInstanceName": "ml-experiments-notebook",
+      "NotebookInstanceArn": "arn:aws:sagemaker:us-east-1:111111111111:notebook-instance/ml-experiments-notebook",
+      "NotebookInstanceStatus": "InService",
+      "InstanceType": "ml.t3.medium",
+      "Url": "ml-experiments-notebook.notebook.us-east-1.sagemaker.aws",
+      "Tags": [
+        { "Key": "Project", "Value": "ml-research" },
+        { "Key": "Environment", "Value": "dev" },
+        { "Key": "Owner", "Value": "data-science" }
+      ],
+      "_note": "Discovery surfaced this. SageMaker is NOT in the MVP coverage list — it is reported in unsupported-report.md and never enters terraform/ or the migration plan."
+    }
+  ]
+}
