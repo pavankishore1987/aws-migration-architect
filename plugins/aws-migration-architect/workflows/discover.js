@@ -48,15 +48,25 @@ const DEPENDENCY_SCHEMA = {
   },
 }
 
-const sourceProfile = args?.sourceProfile || process.env.MIGRATION_SOURCE_PROFILE
-const targetProfile = args?.targetProfile || process.env.MIGRATION_TARGET_PROFILE || 'discover-only'
-const runId         = args?.runId || `discover-${sourceProfile || 'src'}`
+const sourceProfile     = args?.sourceProfile
+const targetProfile     = args?.targetProfile || 'discover-only'
+const runId             = args?.runId || `discover-${sourceProfile || 'src'}`
+const awsMigrationRoot  = args?.awsMigrationRoot || '~/.aws-migration'
+const regions           = Array.isArray(args?.regions) ? args.regions : null
+const services          = Array.isArray(args?.services) ? args.services : null
+const tagFilter         = args?.tagFilter || null
 
 if (!sourceProfile) {
-  throw new Error('MIGRATION_SOURCE_PROFILE must be set, or sourceProfile passed via args.')
+  throw new Error('sourceProfile must be passed via args (process.env is not available in the workflow runtime).')
 }
 
-const root = `${process.env.AWS_MIGRATION_ROOT || '~/.aws-migration'}/runs/${sourceProfile}-to-${targetProfile}-${runId}`
+const root = `${awsMigrationRoot}/runs/${sourceProfile}-to-${targetProfile}-${runId}`
+
+const scopeLines = [
+  regions    ? `Regions to scan: ${regions.join(', ')} (orchestrator mode — do NOT prompt the user; treat all other regions as user-excluded with reason: orchestrator-scope).` : `Region scope: not specified — confirm with the user.`,
+  services   ? `Services to scan: ${services.join(', ')}.` : null,
+  tagFilter  ? `Tag filter: ${tagFilter}.` : null,
+].filter(Boolean).join('\n')
 
 log(`AWS Migration Architect — discover-only — runId=${runId}`)
 log(`Source profile: ${sourceProfile}`)
@@ -70,6 +80,8 @@ const inventory = await agent(
 Run ID: ${runId}
 Run directory: ${root}
 Orchestrator mode: true.
+
+${scopeLines}
 
 Emit inventory.json, resource-ownership.json, unsupported-report.md to ${root}.
 Validate against schemas/. Return the structured summary.`,

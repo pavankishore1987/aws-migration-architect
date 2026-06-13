@@ -1,3 +1,5 @@
 {
-  "enabledPlugins": {}
+  "enabledPlugins": {
+    "aws-migration-architect@aws-migration-architect": true
+  }
 }
