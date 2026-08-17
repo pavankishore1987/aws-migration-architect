@@ -1,0 +1,29 @@
+Yes — and this is a genuinely good idea that isn't in any of the documents. You'd be monitoring the generator, not just its output.
+
+Every spec.md and BPMN SpecKit produces is a data point. Across hundreds of them, patterns emerge that no single review would catch.
+
+What you could detect:
+
+Model regression. SpecKit's model version changes. Suddenly generated specs have 30% fewer invariants per requirement, or stop producing exception-path branches. No individual spec looks wrong — the shift only shows in aggregate.
+
+Coverage decay. The ratio of PRD requirements to generated invariants drifts downward over time. Specs are getting thinner relative to what they're derived from.
+
+Structural signature shift. Generated BPMNs used to average 8 nodes with 3 gateways. Now they average 5 with 1. Either PRDs got simpler, or generation is collapsing complexity.
+
+Human correction patterns. This is the strongest signal. If attesters consistently reject or edit the same kind of thing — always adding a timeout, always fixing a boundary condition — that's the generator failing systematically, and it's visible only across many approvals.
+
+Prompt or skill drift. Oracle changes a skill. Output characteristics shift. Nobody notices because each spec still passes review.
+
+Time-to-approval creeping up. Attesters taking longer, more iterations before sign-off. A quality signal in the process rather than the artifact.
+
+Why this matters more than it first appears:
+
+The problem statement says AI accelerates intent delivery, and conformance is what keeps quality from degrading. But conformance checks whether this spec matches this PRD. It never asks whether the generator is getting worse.
+
+That's a blind spot. If SpecKit quietly degrades, every individual spec still conforms — because the spec is the reference. You'd be measuring against a moving standard and never know.
+
+And there's a real recall use case. The day you discover a model version was producing weak invariants, the question is "which approved intents are affected?" You can only answer that if every attestation records the toolchain and model version that generated what was approved. That's the generation-lineage metadata worth capturing at C0 and C1.
+
+Where it sits: Phase 3, alongside the other ML work, and it needs the same thing — a corpus. But the metadata it depends on has to be captured from Phase 1, because you can't backfill which model generated a spec six months ago.
+
+That last point is worth adding to the document. It's a small Phase 1 requirement with a large Phase 3 payoff.
