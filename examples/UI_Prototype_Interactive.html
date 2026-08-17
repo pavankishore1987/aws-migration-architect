@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decisioning Platform — visualization prototype</title>
+<style>
+  :root{
+    --ink:#1c1c1f; --ink-2:#55555c; --ink-3:#8a8a93;
+    --line:#e5e5ea; --line-2:#d6d6dd;
+    --bg:#f7f7f9; --card:#fff;
+    --accent:#4a45c9; --accent-soft:#eeedfb;
+    --pass:#0f7a52; --pass-soft:#e4f4ec;
+    --fail:#b3261e; --fail-soft:#fdeceb;
+    --warn:#8a5a08; --warn-soft:#fdf1dc;
+    --r:8px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:400 14px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased}
+  a{color:var(--accent);text-decoration:none;cursor:pointer}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px}
+
+  .top{height:52px;background:var(--card);border-bottom:1px solid var(--line);
+    display:flex;align-items:center;gap:14px;padding:0 16px;position:sticky;top:0;z-index:10}
+  .brand{display:flex;align-items:center;gap:9px;font-weight:500;white-space:nowrap}
+  .mark{width:20px;height:20px;border-radius:5px;background:var(--accent);position:relative}
+  .mark::after{content:"";position:absolute;inset:6px 6px auto auto;width:6px;height:6px;background:#fff;border-radius:2px}
+  select,input[type=search]{font:inherit;font-size:13px;border:1px solid var(--line-2);
+    border-radius:var(--r);padding:6px 9px;background:#fff;color:var(--ink-2)}
+  input[type=search]{width:100%}
+  .top .grow{flex:1}
+  .who{display:flex;align-items:center;gap:9px;font-size:13px}
+  .avatar{width:26px;height:26px;border-radius:50%;background:var(--accent-soft);color:var(--accent);
+    display:grid;place-items:center;font-size:11px;font-weight:500}
+
+  .shell{display:flex;align-items:flex-start}
+  .side{width:180px;flex:none;padding:16px 10px;position:sticky;top:52px}
+  .side .grp{font-size:10px;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3);padding:14px 10px 6px}
+  .side a{display:block;padding:6px 10px;border-radius:6px;color:var(--ink-2);font-size:13px}
+  .side a.on{background:var(--accent-soft);color:var(--accent);font-weight:500}
+  .side a.off{color:var(--ink-3);cursor:default}
+  .side .tag{float:right;font-size:9px;letter-spacing:.04em;color:var(--ink-3);
+    border:1px solid var(--line-2);border-radius:3px;padding:0 4px;line-height:15px;margin-top:2px}
+  .main{flex:1;min-width:0;padding:18px 20px 60px}
+
+  .just{display:flex;gap:10px;align-items:baseline;background:var(--warn-soft);
+    border:1px solid #f0dcb4;border-radius:var(--r);padding:9px 12px;margin-bottom:16px;font-size:13px}
+  .just b{font-weight:500}.just span{color:var(--ink-2)}
+  .just a{margin-left:auto;white-space:nowrap;font-size:12px}
+
+  .crumb{font-size:12px;color:var(--ink-3);margin-bottom:8px}
+  .crumb a{color:var(--ink-3)}
+  .head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+  h1{font-size:21px;font-weight:500;margin:0;letter-spacing:-.01em}
+  .sub{color:var(--ink-3);font-size:13px;margin-bottom:18px}
+
+  .badge{font-size:11px;font-weight:500;padding:3px 9px;border-radius:20px;white-space:nowrap}
+  .b-pass{background:var(--pass-soft);color:var(--pass)}
+  .b-fail{background:var(--fail-soft);color:var(--fail)}
+  .b-warn{background:var(--warn-soft);color:var(--warn)}
+  .b-neutral{background:#eeeef1;color:var(--ink-2)}
+
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+  .stat .k{font-size:12px;color:var(--ink-3)}
+  .stat .v{font-size:22px;font-weight:500;letter-spacing:-.01em;margin-top:2px}
+  .stat .v.pass{color:var(--pass)}.stat .v.fail{color:var(--fail)}
+  .stat .d{font-size:11px;color:var(--ink-3);margin-top:2px}
+
+  .bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+  .chip{border:1px solid var(--line-2);background:#fff;border-radius:var(--r);
+    padding:6px 11px;font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer}
+  .chip.on{border-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+  .chip:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+  .bar .grow{flex:1}
+  .bar .sbox{width:220px}
+
+  .wrap{background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  table.list{width:100%;border-collapse:collapse;font-size:13px}
+  table.list th{text-align:left;font-weight:500;font-size:11px;letter-spacing:.05em;text-transform:uppercase;
+    color:var(--ink-3);padding:10px 14px;border-bottom:1px solid var(--line)}
+  table.list td{padding:11px 14px;border-bottom:1px solid var(--line);vertical-align:middle}
+  table.list tr:last-child td{border-bottom:0}
+  table.list tbody tr.clickable{cursor:pointer}
+  table.list tbody tr.clickable:hover{background:#fbfbfd}
+  table.list td.name{font-weight:500}
+  table.list td small{display:block;color:var(--ink-3);font-weight:400;font-size:12px;margin-top:1px}
+  .note{font-size:12px;color:var(--ink-3);padding:10px 14px;border-top:1px solid var(--line);background:#fbfbfd}
+  .dim{color:var(--ink-3)}
+  .empty{padding:34px 14px;text-align:center;color:var(--ink-3);font-size:13px}
+
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);margin-bottom:18px}
+  .tabs button{border:0;background:none;font:inherit;font-size:13px;color:var(--ink-2);
+    padding:9px 13px;border-bottom:2px solid transparent;cursor:pointer}
+  .tabs button.on{color:var(--accent);border-bottom-color:var(--accent);font-weight:500}
+
+  .cols{display:grid;grid-template-columns:minmax(0,1fr) 296px;gap:18px;align-items:start}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px}
+  .card + .card{margin-top:14px}
+  .card h2{font-size:13px;font-weight:500;margin:0;padding:13px 16px;border-bottom:1px solid var(--line)}
+  .pad{padding:16px}
+
+  .toggle{display:inline-flex;border:1px solid var(--line-2);border-radius:var(--r);overflow:hidden;background:#fff;margin-bottom:14px}
+  .toggle button{border:0;background:#fff;padding:7px 15px;font:inherit;font-size:13px;color:var(--ink-2);cursor:pointer}
+  .toggle button[aria-pressed="true"]{background:var(--accent);color:#fff}
+
+  .narrative p{margin:0 0 12px;font-size:15px;line-height:1.65;max-width:64ch}
+  .prov{font-size:12px;color:var(--ink-3);border-top:1px dashed var(--line-2);padding-top:10px;margin-top:14px}
+  ol.steps{list-style:none;counter-reset:s;margin:16px 0 0;padding:0;max-width:64ch}
+  ol.steps li{counter-increment:s;position:relative;padding:0 0 15px 30px;border-left:1px solid var(--line);margin-left:9px}
+  ol.steps li:last-child{border-left-color:transparent;padding-bottom:0}
+  ol.steps li::before{content:counter(s);position:absolute;left:-9px;top:0;width:18px;height:18px;border-radius:50%;
+    background:var(--card);border:1px solid var(--line-2);color:var(--ink-3);font-size:10px;display:grid;place-items:center}
+  ol.steps b{font-weight:500;display:block}
+  ol.steps span{color:var(--ink-2)}
+
+  .graph{background:#fbfbfd;border-bottom:1px solid var(--line);padding:10px}
+  .node rect{fill:#fff;stroke:var(--line-2)}
+  .node{cursor:pointer}
+  .node.sel rect{stroke:var(--accent);stroke-width:1.5}
+  .node.bad rect{stroke:var(--fail);stroke-width:1.5}
+  .node text.t{font-size:11px;font-weight:500;fill:var(--ink)}
+  .node text.s{font-size:10px;fill:var(--ink-3)}
+  .edge{stroke:var(--line-2);fill:none}
+
+  table.kv{width:100%;border-collapse:collapse;font-size:13px}
+  table.kv td{padding:7px 0;border-bottom:1px solid var(--line);vertical-align:top}
+  table.kv td:first-child{color:var(--ink-3);width:130px;padding-right:12px}
+  table.kv tr:last-child td{border-bottom:0}
+  table.kv.bind td{font-size:12px;padding:5px 0}
+  table.kv.bind td:first-child{width:102px}
+  pre{background:#fbfbfd;border:1px solid var(--line);border-radius:6px;padding:11px;margin:0;overflow:auto;
+    font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;color:var(--ink-2)}
+  .redacted{background:#eeeef1;color:var(--ink-3);border-radius:3px;padding:0 5px;font-size:11px}
+  .locked{padding:16px;font-size:13px;color:var(--ink-3)}
+
+  .verdict .big{font-size:19px;font-weight:500;letter-spacing:-.01em}
+  .verdict .big.pass{color:var(--pass)}
+  .verdict .big.fail{color:var(--fail)}
+  .verdict .big.inc{color:var(--warn)}
+  .check{display:flex;gap:8px;align-items:baseline;font-size:13px;padding:5px 0}
+  .btn{display:block;width:100%;text-align:center;border:1px solid var(--line-2);border-radius:var(--r);
+    padding:8px;background:#fff;font:inherit;font-size:13px;color:var(--ink);cursor:pointer}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+  .btn + .btn{margin-top:8px}
+  .btn:disabled{color:var(--ink-3);cursor:not-allowed}
+
+  .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:24px;background:var(--ink);color:#fff;
+    padding:10px 16px;border-radius:var(--r);font-size:13px;z-index:50;max-width:520px}
+  .foot{font-size:12px;color:var(--ink-3);margin-top:22px}
+  [hidden]{display:none !important}
+  @media (max-width:940px){.cols{grid-template-columns:1fr}.side{display:none}.stats{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+
+<div class="top">
+  <div class="brand"><span class="mark"></span> Decisioning Platform</div>
+  <select id="tenant" onchange="setTenant()">
+    <option value="acq">Acme Financial — Acquisitions</option>
+    <option value="col">Acme Financial — Collections</option>
+  </select>
+  <div class="grow"></div>
+  <label style="font-size:12px;color:#8a8a93">Viewing as</label>
+  <select id="persona" onchange="setPersona()">
+    <option value="compliance">Compliance reviewer</option>
+    <option value="risk">Risk analyst</option>
+    <option value="engineer">Engineer</option>
+    <option value="owner">Intent owner</option>
+  </select>
+  <div class="who"><div class="avatar" id="initials">RO</div></div>
+</div>
+
+<div class="shell">
+  <nav class="side" id="side"></nav>
+  <main class="main" id="main"></main>
+</div>
+
+<script>
+/* ---------- data ---------- */
+const WORKFLOWS = [
+  {id:'credit', name:'Credit Decision — Real Time', owner:'J. Okafor', tenant:'acq', status:'deployed',
+   intent:'v14', attested:'J. Okafor, 14 Jun 2026', dag:'v37', sfn:'v12', rules:'v28', deployed:'14 Jun 2026'},
+  {id:'onboard', name:'Account Onboarding Flow', owner:'A. Rahman', tenant:'acq', status:'deployed',
+   intent:'v9', attested:'A. Rahman, 2 May 2026', dag:'v18', sfn:'v7', rules:'v22', deployed:'2 May 2026'},
+  {id:'payplan', name:'Payment Plan Offer', owner:'P. Kaur', tenant:'acq', status:'deployed',
+   intent:'v6', attested:'P. Kaur, 21 Apr 2026', dag:'v11', sfn:'v5', rules:'v19', deployed:'21 Apr 2026'},
+  {id:'collect', name:'Collections Strategy', owner:'S. Hale', tenant:'col', status:'deployed',
+   intent:'v11', attested:'S. Hale, 9 Jun 2026', dag:'v24', sfn:'v9', rules:'v26', deployed:'9 Jun 2026'},
+  {id:'fraud', name:'Fraud Review — Manual', owner:'S. Hale', tenant:'acq', status:'draft'},
+  {id:'limit', name:'Limit Increase — Automated', owner:'L. Moreau', tenant:'acq', status:'draft'}
+];
+
+const STEPS = {
+  credit:['Read application','Retrieve credit file','Assess against policy','Make decision','Record and publish'],
+  onboard:['Read application','Verify identity','Check sanctions','Open account','Publish event'],
+  payplan:['Read balance','Assess affordability','Build offer','Publish offer'],
+  collect:['Read account','Score risk','Select strategy','Queue action']
+};
+
+const NARRATIVE = {
+  credit:{
+    intro:"The application was received and checked for the details the workflow requires. A credit file was retrieved once from the bureau, and the applicant's score was assessed against the approved lending policy.",
+    steps:["The application arrived with the fields the workflow requires.",
+           "The bureau was asked once for a hard inquiry.",
+           "The score was compared to the approved threshold for this product.",
+           "The decision was reached and its reason recorded.",
+           "The decision was written and published."]},
+  onboard:{intro:"The application was read, the applicant's identity was verified against the approved sources, and sanctions screening was completed before the account was opened.",
+    steps:["The application arrived with the required fields.","Identity was verified against the approved sources.",
+           "Sanctions screening returned no match.","The account was opened.","The event was published."]},
+  payplan:{intro:"The account balance was read, affordability was assessed against the approved criteria, and an offer was built within the limits the business set.",
+    steps:["The current balance was read.","Affordability was assessed against approved criteria.",
+           "An offer was built within approved limits.","The offer was published."]}
+};
+
+/* deterministic pseudo-random so the mock is stable */
+let seed = 7;
+function rnd(){ seed = (seed*1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
+
+function buildApps(wf, count){
+  const outcomes = {
+    credit:[['Decline','Score below threshold'],['Approve','Limit £6,000'],['Conditional','Limit £2,500'],['Approve','Limit £4,000']],
+    onboard:[['Opened','Standard'],['Referred','Manual identity check'],['Opened','Standard']],
+    payplan:[['Offer made','12 months'],['No offer','Affordability not met'],['Offer made','6 months']],
+    collect:[['Queued','Soft contact'],['Queued','Hold']]
+  }[wf] || [['Completed','']];
+  const apps = [];
+  let t = new Date(Date.UTC(2026,5,14,9,41,7));
+  for(let i=0;i<count;i++){
+    const r = rnd();
+    let verdict='passed', detail='';
+    if(i===2){ verdict='failed-hard'; detail='INV-003 · bureau called twice'; }
+    else if(i===5){ verdict='failed-soft'; detail='Optional telemetry step skipped'; }
+    else if(i===4){ verdict='incomplete'; detail='Trace missing 1 step'; }
+    else if(r>0.965){ verdict='failed-soft'; detail='Minor payload mismatch'; }
+    const o = outcomes[Math.floor(r*outcomes.length)];
+    apps.push({
+      id:'APP-'+(19282-i),
+      wf, started:new Date(t.getTime() - i*41000),
+      duration:(0.8 + r*1.7).toFixed(2)+'s',
+      decision: verdict==='incomplete' ? null : o[0],
+      reason: verdict==='incomplete' ? null : o[1],
+      verdict, detail,
+      intent: i===6 ? 'v13' : (WORKFLOWS.find(w=>w.id===wf).intent),
+      score: 590 + Math.floor(r*80)
+    });
+  }
+  return apps;
+}
+const APPS = {};
+['credit','onboard','payplan','collect'].forEach(w => APPS[w] = buildApps(w, w==='credit'?24:12));
+
+const PERSONAS = {
+  compliance:{label:'Compliance reviewer', initials:'RO', name:'R. Okonkwo',
+    hides:'Applicant identifiers and payload values are hidden for this role.',
+    tech:false, payload:false, rules:true, code:false, export:true},
+  risk:{label:'Risk analyst', initials:'DM', name:'D. Mensah',
+    hides:'Applicant identifiers are hidden. Rule detail is available.',
+    tech:true, payload:true, rules:true, code:false, export:false},
+  engineer:{label:'Engineer', initials:'TK', name:'T. Kowalski',
+    hides:'Applicant name and government identifiers are hidden for every role.',
+    tech:true, payload:true, rules:true, code:true, export:false},
+  owner:{label:'Intent owner', initials:'JO', name:'J. Okafor',
+    hides:'Technical detail is hidden for this role. Outcomes and reasons are shown.',
+    tech:false, payload:false, rules:false, code:false, export:false}
+};
+
+/* ---------- state ---------- */
+const S = {view:'workflows', wf:null, app:null, persona:'compliance', tenant:'acq',
+           filter:'all', q:'', mode:'plain', step:3, tab:'apps'};
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = d => d.toISOString().slice(11,19);
+const P = () => PERSONAS[S.persona];
+
+function go(view, opts={}){ Object.assign(S, {view}, opts); window.scrollTo(0,0); render(); }
+function setPersona(){ S.persona = $('persona').value; render(); }
+function setTenant(){ S.tenant = $('tenant').value; S.wf=null; S.app=null; go('workflows'); }
+function toast(msg){
+  const t=document.createElement('div'); t.className='toast'; t.textContent=msg;
+  document.body.appendChild(t); setTimeout(()=>t.remove(), 3200);
+}
+
+const VERDICT = {
+  'passed':{badge:'b-pass', text:'Passed', big:'pass'},
+  'failed-hard':{badge:'b-fail', text:'Failed — hard', big:'fail'},
+  'failed-soft':{badge:'b-fail', text:'Failed — soft', big:'fail'},
+  'incomplete':{badge:'b-warn', text:'Incomplete', big:'inc'}
+};
+
+/* ---------- chrome ---------- */
+function sidebar(){
+  const item = (label, view, tag) =>
+    `<a class="${S.view===view?'on':(view?'':'off')}" ${view?`onclick="go('${view}')"`:''}>${label}${tag?`<span class="tag">${tag}</span>`:''}</a>`;
+  return `<div class="grp">Build</div>
+    ${item('Workflows','workflows')}${item('Decisions')}${item('Rules')}${item('Data')}
+    <div class="grp">Operate</div>
+    ${item('Executions','workflows')}${item('Monitoring')}${item('Alerts')}
+    <div class="grp">Govern</div>
+    ${item('Conformance','','ours')}${item('Audit trail')}${item('Access')}`;
+}
+
+function justBanner(){
+  return `<div class="just"><b>Viewing as ${esc(P().label)}.</b>
+    <span>${esc(P().hides)} Every application you open is recorded in the audit trail.</span>
+    <a onclick="toast('Justification recorded: FCA thematic review 2026-Q3')">Justification: FCA thematic review 2026-Q3</a></div>`;
+}
+
+/* ---------- screen: workflows ---------- */
+function screenWorkflows(){
+  const mine = WORKFLOWS.filter(w => w.tenant === S.tenant);
+  const others = WORKFLOWS.filter(w => w.tenant !== S.tenant);
+  const deployed = mine.filter(w => w.status==='deployed');
+  const total = deployed.reduce((n,w)=> n + APPS[w.id].length, 0);
+  const bad = deployed.reduce((n,w)=> n + APPS[w.id].filter(a=>a.verdict!=='passed').length, 0);
+
+  const row = w => {
+    if(w.tenant !== S.tenant) return `<tr><td class="name">${esc(w.name)}<small>Another tenant</small></td>
+      <td><span class="badge b-neutral">Not visible</span></td><td class="dim">—</td>
+      <td class="dim">—</td><td class="dim">—</td><td class="dim">—</td></tr>`;
+    if(w.status==='draft') return `<tr><td class="name">${esc(w.name)}<small>Owner: ${esc(w.owner)}</small></td>
+      <td><span class="badge b-neutral">Draft</span></td><td class="dim">Not attested</td>
+      <td class="dim">Not deployed</td><td class="dim">—</td><td class="dim">—</td></tr>`;
+    const list = APPS[w.id], fails = list.filter(a=>a.verdict!=='passed').length;
+    const pct = (100*(list.length-fails)/list.length).toFixed(1);
+    return `<tr class="clickable" onclick="go('apps',{wf:'${w.id}',filter:'all',q:'',tab:'apps'})">
+      <td class="name">${esc(w.name)}<small>Owner: ${esc(w.owner)}</small></td>
+      <td><span class="badge b-pass">Deployed</span></td>
+      <td>${w.intent}<small>attested ${esc(w.attested.split(', ')[1])}</small></td>
+      <td>${list.length.toLocaleString()}</td>
+      <td><span class="badge ${fails? 'b-fail':'b-pass'}">${pct}% passed</span>
+        <small>${fails? fails+' need attention':'no violations'}</small></td>
+      <td>${esc(w.deployed)}</td></tr>`;
+  };
+
+  return `<div class="crumb">Workflows</div>
+    <div class="head"><h1>Workflows</h1></div>
+    <div class="sub">Only deployed workflows have applications to inspect.</div>
+    <div class="stats">
+      <div class="stat"><div class="k">Deployed</div><div class="v">${deployed.length}</div><div class="d">of ${mine.length} in this tenant</div></div>
+      <div class="stat"><div class="k">Applications</div><div class="v">${total.toLocaleString()}</div><div class="d">last 7 days</div></div>
+      <div class="stat"><div class="k">Conformance passed</div><div class="v pass">${(100*(total-bad)/total).toFixed(1)}%</div><div class="d">7-day</div></div>
+      <div class="stat"><div class="k">Need attention</div><div class="v fail">${bad}</div><div class="d">failed or incomplete</div></div>
+    </div>
+    <div class="wrap"><table class="list">
+      <thead><tr><th>Workflow</th><th>Status</th><th>Intent version</th><th>Applications</th><th>Conformance</th><th>Last deployed</th></tr></thead>
+      <tbody>${mine.map(row).join('')}${others.map(row).join('')}</tbody></table>
+      <div class="note">Workflows belonging to another tenant are listed but not retrievable from this account. Switch tenant at the top to see the other side of the isolation rule.</div>
+    </div>
+    <div class="foot">Prototype — Workflow Arbiters. Select a deployed workflow.</div>`;
+}
+
+/* ---------- screen: applications ---------- */
+function screenApps(){
+  const w = WORKFLOWS.find(x=>x.id===S.wf);
+  if(w.tenant !== S.tenant){
+    return `<div class="crumb"><a onclick="go('workflows')">Workflows</a> › ${esc(w.name)}</div>
+      <div class="head"><h1>${esc(w.name)}</h1></div>
+      <div class="wrap"><div class="empty">This workflow belongs to another tenant.<br>
+      Its applications are not retrievable from this account.</div></div>`;
+  }
+  const all = APPS[S.wf];
+  const counts = {
+    passed: all.filter(a=>a.verdict==='passed').length,
+    failed: all.filter(a=>a.verdict.startsWith('failed')).length,
+    inc: all.filter(a=>a.verdict==='incomplete').length
+  };
+  let list = all.filter(a=>{
+    if(S.filter==='failed' && !a.verdict.startsWith('failed')) return false;
+    if(S.filter==='incomplete' && a.verdict!=='incomplete') return false;
+    if(S.filter==='declined' && a.decision!=='Decline') return false;
+    if(S.q && !a.id.toLowerCase().includes(S.q.toLowerCase())) return false;
+    return true;
+  });
+
+  const chip = (k,label)=>`<button class="chip ${S.filter===k?'on':''}" onclick="S.filter='${k}';render()">${label}</button>`;
+
+  const rows = list.map(a=>{
+    const v = VERDICT[a.verdict];
+    return `<tr class="clickable" onclick="go('exec',{app:'${a.id}',mode:'plain',step:3})">
+      <td class="name"><a>${a.id}</a></td>
+      <td>14 Jun, ${fmt(a.started)}<small>UTC</small></td>
+      <td>${a.duration}</td>
+      <td>${a.decision? esc(a.decision)+`<small>${esc(a.reason)}</small>` : '<span class="dim">Not recorded</span>'}</td>
+      <td><span class="badge ${v.badge}">${v.text}</span>${a.detail?`<small>${esc(a.detail)}</small>`:''}</td>
+      <td>${a.intent}</td></tr>`;
+  }).join('');
+
+  return `${justBanner()}
+    <div class="crumb"><a onclick="go('workflows')">Workflows</a> › ${esc(w.name)}</div>
+    <div class="head"><h1>${esc(w.name)}</h1><span class="badge b-pass">Deployed</span></div>
+    <div class="sub">Intent ${w.intent} · attested by ${esc(w.attested)} · step function ${w.sfn} · rules ${w.rules}</div>
+    <div class="tabs">
+      <button onclick="toast('Intent screen is not part of this prototype')">Intent</button>
+      <button onclick="toast('Workflow canvas is not part of this prototype')">Workflow</button>
+      <button onclick="toast('Rules catalogue is not part of this prototype')">Rules</button>
+      <button class="on">Applications</button>
+      <button onclick="toast('Conformance summary is not part of this prototype')">Conformance</button>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">Applications</div><div class="v">${all.length}</div><div class="d">last 7 days</div></div>
+      <div class="stat"><div class="k">Passed</div><div class="v pass">${counts.passed}</div><div class="d">${(100*counts.passed/all.length).toFixed(1)}%</div></div>
+      <div class="stat"><div class="k">Failed</div><div class="v fail">${counts.failed}</div><div class="d">hard and soft</div></div>
+      <div class="stat"><div class="k">Incomplete</div><div class="v">${counts.inc}</div><div class="d">could not be checked</div></div>
+    </div>
+    <div class="bar">
+      ${chip('all','All')}${chip('failed','Failed')}${chip('incomplete','Incomplete')}${chip('declined','Declined')}
+      <div class="grow"></div>
+      <div class="sbox"><input type="search" id="q" placeholder="Search application ID…" value="${esc(S.q)}"
+        oninput="S.q=this.value;render();setTimeout(()=>{const e=document.getElementById('q');e.focus();e.setSelectionRange(e.value.length,e.value.length)},0)"></div>
+    </div>
+    <div class="wrap">
+      ${list.length? `<table class="list"><thead><tr><th>Application</th><th>Started</th><th>Duration</th>
+        <th>Decision</th><th>Conformance</th><th>Intent version</th></tr></thead><tbody>${rows}</tbody></table>`
+        : `<div class="empty">No applications match this filter.</div>`}
+      <div class="note">Showing ${list.length} of ${all.length}. Each application is checked against the intent version that governed it, not the current one.</div>
+    </div>
+    <div class="foot">Prototype — Workflow Arbiters. Select an application.</div>`;
+}
+
+/* ---------- screen: execution ---------- */
+function screenExec(){
+  const w = WORKFLOWS.find(x=>x.id===S.wf);
+  const a = APPS[S.wf].find(x=>x.id===S.app);
+  const v = VERDICT[a.verdict];
+  const steps = STEPS[S.wf];
+  const nar = NARRATIVE[S.wf] || NARRATIVE.credit;
+  const p = P();
+  const incomplete = a.verdict==='incomplete';
+  const badStep = a.verdict==='failed-hard' ? 1 : -1;
+
+  /* graph */
+  const W=118, H=44, GX=150, cols=3;
+  const nodes = steps.map((s,i)=>{
+    const x = 14 + (i%cols)*GX, y = 24 + Math.floor(i/cols)*88;
+    const missing = incomplete && i===steps.length-2;
+    const cls = i===S.step? 'sel' : (i===badStep? 'bad':'');
+    return {s,i,x,y,missing,cls};
+  });
+  const edges = nodes.slice(0,-1).map((n,i)=>{
+    const m = nodes[i+1];
+    return (n.y===m.y) ? `<path class="edge" d="M${n.x+W} ${n.y+H/2} H${m.x}"/>`
+      : `<path class="edge" d="M${n.x+W/2} ${n.y+H} V${n.y+H+22} H${m.x+W/2} V${m.y}"/>`;
+  }).join('');
+  const gh = 24 + Math.ceil(steps.length/cols)*88;
+  const svg = `<svg viewBox="0 0 470 ${gh}" width="100%" role="img" aria-label="Execution path">${edges}
+    ${nodes.map(n=>`<g class="node ${n.cls}" onclick="S.step=${n.i};render()">
+      <rect x="${n.x}" y="${n.y}" width="${W}" height="${H}" rx="7" ${n.missing?'stroke-dasharray="3 3"':''}/>
+      <circle cx="${n.x+13}" cy="${n.y+16}" r="3" fill="${n.missing?'#8a8a93':(n.i===badStep?'#b3261e':'#0f7a52')}"/>
+      <text class="t" x="${n.x+22}" y="${n.y+20}">${esc(n.s.length>15? n.s.slice(0,14)+'…' : n.s)}</text>
+      <text class="s" x="${n.x+13}" y="${n.y+35}">${n.missing?'no record':(120+n.i*61)+' ms'}</text></g>`).join('')}</svg>`;
+
+  /* plain english */
+  const plain = `<div class="card"><h2>What happened</h2><div class="pad narrative">
+    ${incomplete
+      ? `<p>We cannot say what happened to this application. One step did not record what it did, so the
+         check could not be completed. This is not a finding that the workflow behaved incorrectly —
+         it is a gap in the record, and it is being investigated.</p>`
+      : `<p>${esc(nar.intro)}</p>
+         <p>${a.verdict==='passed'
+            ? 'Every step ran in the order the approved design requires, and every rule the business set held true against the real data.'
+            : (a.verdict==='failed-hard'
+              ? 'One rule the business set did not hold: the credit bureau was contacted twice for this application, where the approved design allows exactly one inquiry. The decision itself followed the approved path.'
+              : 'The steps ran in the approved order and the decision followed policy. One optional step that records telemetry did not run, which does not affect the decision.')}</p>`}
+    <ol class="steps">${steps.map((s,i)=>`<li><b>${esc(s)}</b><span>${esc((nar.steps[i]||'This step ran as the approved design requires.'))}</span></li>`).join('')}</ol>
+    <div class="prov">Written from the approved intent for ${w.intent}, attested by ${esc(w.attested)}.
+      The same wording is shown for every application under this version. Nothing here is generated at the time of viewing.</div>
+  </div></div>`;
+
+  /* technical */
+  const sel = steps[S.step];
+  const tech = !p.tech
+    ? `<div class="card"><h2>Technical detail</h2><div class="locked">
+        Not available for your role. Technical depth — payloads, timings and source links — is shown to engineers and risk analysts.
+       </div></div>`
+    : `<div class="card"><h2>Execution path</h2><div class="graph">${svg}</div>
+        <div class="pad"><table class="kv">
+          <tr><td>Step</td><td>${esc(sel)}</td></tr>
+          <tr><td>Class</td><td class="mono">com.acme.graphite.${S.wf}.node.${sel.replace(/[^a-z]/gi,'')}</td></tr>
+          ${p.code? `<tr><td>Source</td><td><a onclick="toast('Opens source at commit 4c1f7ab')">View code at 4c1f7ab</a></td></tr>`:''}
+          <tr><td>Status</td><td>${incomplete && S.step===steps.length-2 ? 'No record written' : 'Succeeded · '+(120+S.step*61)+' ms'}</td></tr>
+          <tr><td>Predecessor</td><td>${S.step===0? 'Entry point' : esc(steps[S.step-1])+' — valid edge in BPMN '+w.intent}</td></tr>
+        </table></div></div>
+      ${p.payload? `<div class="card"><h2>Inputs and outputs</h2><div class="pad"><pre>{
+  "applicantId": ${S.persona==='engineer'? '"a-4471-88c2"' : '<span class="redacted">hidden for your role</span>'},
+  "applicantName": <span class="redacted">hidden for every role</span>,
+  "score": ${a.score},
+  "policyThreshold": 620,
+  "product": "PERSONAL_LOAN_STD"
+}
+
+&rarr; ${a.decision? `{ "decision": "${esc(a.decision).toUpperCase()}" }` : '<span class="dim">no output recorded</span>'}</pre></div></div>`:''}
+      ${p.rules? `<div class="card"><h2>Rules that fired</h2><div class="pad"><table class="kv">
+          <tr><td>R-118</td><td>Score below product threshold &rarr; decline · rules ${w.rules}</td></tr>
+          <tr><td>R-042</td><td>Single bureau inquiry per application · rules ${w.rules}
+            ${a.verdict==='failed-hard'? ' <span class="badge b-fail">violated</span>':''}</td></tr>
+        </table></div></div>`:''}`;
+
+  /* verdict rail */
+  const checks = incomplete
+    ? [['—','Path','not evaluated — trace incomplete'],['—','Invariants','not evaluated'],['✕','Trace','1 of '+steps.length+' step records missing']]
+    : a.verdict==='failed-hard'
+      ? [['✓','Path','every step had a valid predecessor'],['✕','Invariants','5 of 6 held — INV-003 failed'],['✓','Trace','complete']]
+      : a.verdict==='failed-soft'
+        ? [['✓','Path','every step had a valid predecessor'],['✕','Invariants','5 of 6 held — soft'],['✓','Trace','complete']]
+        : [['✓','Path','every step had a valid predecessor'],['✓','Invariants','6 of 6 held'],['✓','Trace','complete']];
+
+  const rail = `<div class="card"><h2>Conformance</h2><div class="pad verdict">
+      <div class="big ${v.big}">${v.text}</div>
+      <div style="color:var(--ink-3);font-size:12px;margin-bottom:10px">Evaluated 14 Jun 2026, ${fmt(new Date(a.started.getTime()+2000))} UTC</div>
+      ${checks.map(c=>`<div class="check"><span style="color:${c[0]==='✓'?'var(--pass)':(c[0]==='✕'?'var(--fail)':'var(--ink-3)')}">${c[0]}</span>
+        <span><b style="font-weight:500">${c[1]}</b> — ${c[2]}</span></div>`).join('')}
+      ${incomplete? `<div class="prov" style="margin-top:12px">A verdict of Incomplete means the record was not good enough to check.
+        It is not a statement about the decision. The criteria for this state are not yet defined.</div>`:''}
+    </div></div>
+    <div class="card"><h2>What was in force</h2><div class="pad"><table class="kv bind">
+      <tr><td>Intent</td><td>${a.intent} · spec + BPMN</td></tr>
+      <tr><td>Attested by</td><td>${esc(w.attested)}</td></tr>
+      <tr><td>Decision DAG</td><td>${w.dag}</td></tr>
+      <tr><td>Code</td><td class="mono">4c1f7ab</td></tr>
+      <tr><td>Step function</td><td>${w.sfn}</td></tr>
+      <tr><td>Rules</td><td>${w.rules}</td></tr>
+      <tr><td>Flag state</td><td class="mono">ff1a09c</td></tr>
+      <tr><td>Evaluator</td><td>v3</td></tr>
+    </table></div></div>
+    <div class="card"><div class="pad">
+      <button class="btn pri" ${p.export?'':'disabled'} onclick="toast('Exhibit assembled — verifies against the hash chain on its own')">Export audit exhibit</button>
+      <button class="btn" onclick="toast('Seal verified. Re-running the evaluator on the sealed inputs returns the same verdict.')">Verify seal</button>
+      ${p.export? '' : '<div class="foot" style="margin-top:10px">Export is available to compliance and risk manager roles.</div>'}
+    </div></div>`;
+
+  return `${justBanner()}
+    <div class="crumb"><a onclick="go('workflows')">Workflows</a> ›
+      <a onclick="go('apps',{app:null})">${esc(w.name)}</a> › ${a.id}</div>
+    <div class="head"><h1>${a.id}</h1>
+      <span class="badge ${v.badge}">Conformance ${v.text.toLowerCase()}</span>
+      ${a.decision? `<span class="badge b-neutral">Decision: ${esc(a.decision)}</span>`:''}</div>
+    <div class="sub">14 June 2026, ${fmt(a.started)} UTC · ${a.duration} · ${esc(w.name)} · intent ${a.intent}</div>
+    <div class="cols"><div>
+      <div class="toggle" role="group" aria-label="View mode">
+        <button aria-pressed="${S.mode==='plain'}" onclick="S.mode='plain';render()">Plain English</button>
+        <button aria-pressed="${S.mode==='tech'}" onclick="S.mode='tech';render()">Technical</button>
+      </div>
+      ${S.mode==='plain'? plain : tech}
+    </div><aside>${rail}</aside></div>
+    <div class="foot">Prototype — Workflow Arbiters. Switch role at the top to see what each persona is shown.</div>`;
+}
+
+/* ---------- render ---------- */
+function render(){
+  $('side').innerHTML = sidebar();
+  $('initials').textContent = P().initials;
+  $('main').innerHTML = S.view==='workflows' ? screenWorkflows()
+                      : S.view==='apps' ? screenApps()
+                      : screenExec();
+}
+render();
+</script>
+</body>
+</html>
