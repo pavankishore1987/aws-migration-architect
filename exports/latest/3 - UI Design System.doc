@@ -1,0 +1,399 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>UI Design System — Workflow Orchestrator</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+@page{size:A4;margin:1.8cm}
+body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:10.5pt;color:#1d1f23;line-height:1.45}
+h1{font-size:23pt;margin:0 0 3pt;color:#1d1f23}
+h2{font-size:15pt;color:#3a479c;border-bottom:1pt solid #bfc6f0;padding-bottom:3pt;margin:20pt 0 7pt}
+h3{font-size:11.5pt;margin:13pt 0 4pt;color:#1d1f23}
+h4{font-size:10pt;margin:10pt 0 3pt;color:#3a479c}
+p{margin:0 0 7pt}
+.meta{color:#5d6068;font-size:9.5pt;margin-bottom:12pt}
+.lead{font-size:11.5pt;color:#3a3a3d}
+table{border-collapse:collapse;width:100%;margin:5pt 0 10pt;font-size:9pt}
+th{background:#eef0fb;color:#3a479c;text-align:left;padding:4pt 6pt;border:1pt solid #bfc6f0;font-size:8pt;text-transform:uppercase;letter-spacing:.4pt}
+td{padding:4pt 6pt;border:1pt solid #d2d4db;vertical-align:top}
+code,.mono{font-family:Consolas,"Courier New",monospace;font-size:8.5pt}
+li{margin-bottom:3pt}
+ul,ol{margin:3pt 0 8pt;padding-left:16pt}
+.note{border-left:3pt solid #4a5ac9;background:#f5f6fb;padding:6pt 9pt;margin:6pt 0}
+.rule{border-left:3pt solid #4f8f63;background:#f0f7f2;padding:6pt 9pt;margin:6pt 0}
+.sw{height:26pt;text-align:center;font-family:Consolas,monospace;font-size:7.5pt;border:1pt solid #d2d4db}
+.tok{font-family:Consolas,monospace;font-size:8.5pt;white-space:nowrap}
+.do{color:#2b6b45;font-weight:bold}
+.dont{color:#8f3733;font-weight:bold}
+</style></head><body>
+
+<h1>UI Design System</h1>
+<p class="meta">Workflow Orchestrator · Document 3 of 6 · 31 August 2026 · For product review</p>
+<p class="lead">The reusable visual rules, components, states and interaction standards that keep the application consistent. This is a system, not a set of screens &mdash; every screen in the product is assembled from what is defined here. Finished screens live in the Interactive Wireframes (document 2).</p>
+
+<h2>Contents</h2>
+<table>
+<tr><td width="50%">1. Design principles<br>2. Foundations<br>3. Design tokens<br>4. Core components<br>5. Domain components<br>6. Component states<br>7. Application states</td>
+<td>8. Layout and page patterns<br>9. Navigation patterns<br>10. Interaction standards<br>11. Responsive design<br>12. Accessibility<br>13. Content standards<br>14. Component usage guidelines</td></tr>
+</table>
+
+<h2>1. Design principles</h2>
+<p>Six principles settle disagreements. When two designs both look reasonable, the one that follows more of these wins.</p>
+<table>
+<tr><th width="20%">Principle</th><th width="42%">What it means in practice</th><th>What it rules out</th></tr>
+<tr><td><b>Consistency</b></td><td>The same problem is solved the same way everywhere. One button hierarchy, one table, one status vocabulary.</td><td>A second card style because one screen felt different</td></tr>
+<tr><td><b>Simplicity</b></td><td>Everything on screen helps someone do something. Operators work in this tool all day.</td><td>Decoration, unused data, figures nobody acts on</td></tr>
+<tr><td><b>Clear hierarchy</b></td><td>What the thing is, what state it is in, and the main action are always the three most prominent items.</td><td>Five equally-weighted buttons; a page with no obvious next step</td></tr>
+<tr><td><b>Accessibility</b></td><td>Keyboard-complete, contrast-checked, never colour alone.</td><td>Icon-only controls with no label; red/green dots</td></tr>
+<tr><td><b>Responsiveness</b></td><td>Desktop first, with defined behaviour at tablet and mobile widths.</td><td>Undefined breakpoints solved differently on each screen</td></tr>
+<tr><td><b>Reuse over one-off design</b></td><td>A new screen picks an existing pattern. If none fits, the pattern library gains one deliberately.</td><td>Bespoke layouts that only one screen understands</td></tr>
+</table>
+
+<h2>2. Foundations</h2>
+
+<h3>2.1 Colour</h3>
+<p>A neutral ground, one interactive accent, and four fixed status colours. Every role carries a nine-step ramp so there is always a lighter or darker version without inventing a colour.</p>
+<h4>Accent — anything interactive</h4>
+<table>
+<tr>
+<td class="sw" bgcolor="#eef0fb">100<br>eef0fb</td><td class="sw" bgcolor="#dbdff7">200<br>dbdff7</td><td class="sw" bgcolor="#bfc6f0">300<br>bfc6f0</td>
+<td class="sw" bgcolor="#99a3e4">400<br>99a3e4</td><td class="sw" bgcolor="#7480d8"><font color="#ffffff">500<br>7480d8</font></td>
+<td class="sw" bgcolor="#4a5ac9"><font color="#ffffff">BASE<br>4a5ac9</font></td><td class="sw" bgcolor="#4f5ec2"><font color="#ffffff">600<br>4f5ec2</font></td>
+<td class="sw" bgcolor="#3a479c"><font color="#ffffff">700<br>3a479c</font></td><td class="sw" bgcolor="#293373"><font color="#ffffff">800<br>293373</font></td>
+</tr>
+</table>
+<p>Used for: primary buttons, links, the selected navigation item, focus rings, selection outlines, and the accent bar on an active tab. <b>600</b> is hover, <b>700</b> is pressed, <b>100</b> is the tinted background behind a selected item with <b>base</b> as its text.</p>
+<h4>Neutrals — surfaces, borders and text</h4>
+<table>
+<tr>
+<td class="sw" bgcolor="#f4f4f6">Page<br>f4f4f6</td><td class="sw" bgcolor="#ffffff">Surface<br>ffffff</td><td class="sw" bgcolor="#fafafb">Raised<br>fafafb</td>
+<td class="sw" bgcolor="#e4e5ea">Line<br>e4e5ea</td><td class="sw" bgcolor="#d2d4db">Line-2<br>d2d4db</td>
+<td class="sw" bgcolor="#8a8d96"><font color="#ffffff">Muted<br>8a8d96</font></td><td class="sw" bgcolor="#5d6068"><font color="#ffffff">Secondary<br>5d6068</font></td>
+<td class="sw" bgcolor="#1d1f23"><font color="#ffffff">Text<br>1d1f23</font></td>
+</tr>
+</table>
+<h4>Status — fixed, and never changed by theme</h4>
+<table>
+<tr><th width="16%">Role</th><th width="12%">Base</th><th width="14%">Tint</th><th width="14%">Used for</th><th>Wording and glyph</th></tr>
+<tr><td><b>Success</b></td><td bgcolor="#4f8f63"><font color="#ffffff" class="mono">4f8f63</font></td><td bgcolor="#e9f3ec" class="mono">e9f3ec</td><td>Passed, published, completed</td><td>&#10003; Success</td></tr>
+<tr><td><b>Warning</b></td><td bgcolor="#b8892f"><font color="#ffffff" class="mono">b8892f</font></td><td bgcolor="#f9f0dd" class="mono">f9f0dd</td><td>Running, needs attention</td><td>&#9680; Running &nbsp;/&nbsp; &#9888; Needs attention</td></tr>
+<tr><td><b>Danger</b></td><td bgcolor="#b04a44"><font color="#ffffff" class="mono">b04a44</font></td><td bgcolor="#f9e9e8" class="mono">f9e9e8</td><td>Failed, error, overdue</td><td>&#10005; Failed</td></tr>
+<tr><td><b>Inactive</b></td><td bgcolor="#98989b"><font color="#ffffff" class="mono">98989b</font></td><td bgcolor="#f0f0f2" class="mono">f0f0f2</td><td>Draft, halted, not executed</td><td>&#183; Draft &nbsp;/&nbsp; &#9723; Halted &nbsp;/&nbsp; &#9675; Not executed</td></tr>
+</table>
+<div class="rule"><b>Rule.</b> A user may switch the interface to dark, but a run that failed must still be red. These four carry meaning rather than style, so they never follow a preference and never change with the theme. In dark mode the ground and text swap and the neutrals re-derive; these four stay.</div>
+
+<h4>Dark theme</h4>
+<p>Theme is a user choice (System / Light / Dark) in the profile menu. It remaps the token values on the root element; no component has a dark variant of its own.</p>
+<table>
+<tr><th width="24%">Token</th><th width="20%">Light</th><th width="20%">Dark</th><th>Note</th></tr>
+<tr><td class="tok">color-bg</td><td bgcolor="#f4f4f6" class="mono">f4f4f6</td><td bgcolor="#191b21"><font color="#ffffff" class="mono">191b21</font></td><td>Page behind the app frame</td></tr>
+<tr><td class="tok">color-surface</td><td bgcolor="#ffffff" class="mono">ffffff</td><td bgcolor="#20232b"><font color="#ffffff" class="mono">20232b</font></td><td>Cards, panels, tables</td></tr>
+<tr><td class="tok">color-raised</td><td bgcolor="#fafafb" class="mono">fafafb</td><td bgcolor="#262a33"><font color="#ffffff" class="mono">262a33</font></td><td>Inputs, table headers, hover</td></tr>
+<tr><td class="tok">color-text</td><td bgcolor="#1d1f23"><font color="#ffffff" class="mono">1d1f23</font></td><td bgcolor="#eceef2" class="mono">eceef2</td><td>Primary text</td></tr>
+<tr><td class="tok">color-text-muted</td><td class="mono">8a8d96</td><td class="mono">787e8c</td><td>Captions, secondary values</td></tr>
+<tr><td class="tok">color-line</td><td class="mono">e4e5ea</td><td class="mono">2e323c</td><td>Dividers and borders</td></tr>
+</table>
+
+<h3>2.2 Typography</h3>
+<p>Six sizes and nothing between them. Typefaces are <b>OS-installed only</b> &mdash; the application downloads no fonts, because it runs on an internal network with no outbound internet access.</p>
+<table>
+<tr><th width="18%">Role</th><th width="14%">Size / line</th><th width="16%">Weight</th><th>Used for</th></tr>
+<tr><td>Display</td><td>29 / 1.15</td><td>600, tight tracking</td><td>Page title on a primary screen</td></tr>
+<tr><td>Page title</td><td>22 / 1.2</td><td>600</td><td>Section headings, dialog titles</td></tr>
+<tr><td>Section</td><td>16.5 / 1.3</td><td>600</td><td>Panel headings, card titles</td></tr>
+<tr><td>Body</td><td>14.5 / 1.6</td><td>400</td><td>Paragraphs, documentation, descriptions</td></tr>
+<tr><td>Interface</td><td>13 / 1.4</td><td>400&ndash;500</td><td>Table cells, navigation, buttons, labels</td></tr>
+<tr><td>Caption</td><td>11 / 1.35</td><td>600, +0.1em, uppercase</td><td>Card kickers, table headers, metadata</td></tr>
+</table>
+<p><b>Monospace</b> is used for anything an operator may need to copy or compare character by character: execution references, workflow IDs, node references, durations, counts, JSON payloads. Numeric columns use tabular figures so digits align down the column.</p>
+
+<h3>2.3 Spacing</h3>
+<p>One scale, applied everywhere. Half-steps are not permitted.</p>
+<table>
+<tr><th width="18%">Token</th><th width="12%">Value</th><th>Used for</th></tr>
+<tr><td class="tok">spacing-xs</td><td>4 px</td><td>Icon-to-label, chip padding, tight vertical gaps</td></tr>
+<tr><td class="tok">spacing-sm</td><td>8 px</td><td>Between related controls, button icon gap</td></tr>
+<tr><td class="tok">spacing-md</td><td>12 px</td><td>Inside cards and table cells, between filters</td></tr>
+<tr><td class="tok">spacing-lg</td><td>16 px</td><td>Between cards, between bands of a page</td></tr>
+<tr><td class="tok">spacing-xl</td><td>24 px</td><td>Content region padding, between major sections</td></tr>
+<tr><td class="tok">spacing-2xl</td><td>32 px</td><td>Around empty states and full-page messages</td></tr>
+</table>
+
+<h3>2.4 Grid and layout</h3>
+<table>
+<tr><th width="30%">Measure</th><th width="18%">Value</th><th>Note</th></tr>
+<tr><td>Application frame max width</td><td>1340 px</td><td>Centred, with the page colour either side</td></tr>
+<tr><td>Side navigation</td><td>214 px / 64 px collapsed</td><td>Collapses to icons below 1000 px</td></tr>
+<tr><td>Top bar height</td><td>60 px</td><td>Fixed; never grows with content</td></tr>
+<tr><td>Node properties panel</td><td>278 px (300 px full screen)</td><td>Docked beside the canvas, never over it</td></tr>
+<tr><td>Metric card grid</td><td>4 columns &rarr; 2 &rarr; 1</td><td>Equal cells, 16 px gap</td></tr>
+<tr><td>Table row height</td><td>44 px comfortable / 36 px compact</td><td>A user preference, remembered</td></tr>
+<tr><td>Control height</td><td>36 px default / 40 px touch</td><td>Buttons, inputs and selects match each other</td></tr>
+<tr><td>Prose measure</td><td>66 characters</td><td>Documentation only; never tables or canvases</td></tr>
+</table>
+
+<h3>2.5 Borders, corners and elevation</h3>
+<table>
+<tr><th width="22%">Element</th><th>Rule</th></tr>
+<tr><td>Corners</td><td>Softly rounded: 6 px small controls, 8 px buttons and inputs, 12 px cards and panels, fully rounded for status pills and gateway shapes. Nothing is sharp-cornered.</td></tr>
+<tr><td>Borders</td><td>1 px, from <span class="tok">color-line</span>. A 2 px border is reserved for the node a run is currently on and for a failed node.</td></tr>
+<tr><td>Fills</td><td>Cards use the surface colour, one step from the page. <b>The primary button is the only strongly filled element</b> on a screen &mdash; that is what makes it findable.</td></tr>
+<tr><td>Elevation</td><td>Three levels only, for float rather than decoration: <span class="tok">shadow-sm</span> cards, <span class="tok">shadow-md</span> the application frame, <span class="tok">shadow-lg</span> menus, dialogs and the full-screen canvas.</td></tr>
+</table>
+
+<h3>2.6 Iconography</h3>
+<p>One thin-line icon set, 1.6 px stroke, no fills. 15 px inside buttons, 17 px in navigation, 20 px in toolbars, 24 px in empty states. An icon never appears without a label except in the collapsed navigation rail, where the label is a tooltip and an accessible name.</p>
+
+<h3>2.7 Logo and branding</h3>
+<p>The product mark is a rounded accent tile with the two-letter monogram, at 27 px in the side navigation and 46 px on the sign-in card. It appears once per screen. It is never recoloured, never placed on a status colour, and never stretched. The product name is always written <b>Workflow Orchestrator</b> in full on first use.</p>
+
+<h2>3. Design tokens</h2>
+<p>Tokens are the named values behind every rule above. They are defined once in the stylesheet and referenced everywhere; no screen contains a raw colour or size that a token already carries.</p>
+<table>
+<tr><th width="26%">Token</th><th width="20%">Value</th><th>Purpose</th></tr>
+<tr><td class="tok">color-primary</td><td class="mono">#4a5ac9</td><td>Interactive accent</td></tr>
+<tr><td class="tok">color-primary-hover</td><td class="mono">#4f5ec2</td><td>Hover on a primary control</td></tr>
+<tr><td class="tok">color-primary-active</td><td class="mono">#3a479c</td><td>Pressed state, selected label</td></tr>
+<tr><td class="tok">color-primary-tint</td><td class="mono">#eef0fb</td><td>Selected background, notes</td></tr>
+<tr><td class="tok">color-success</td><td class="mono">#4f8f63</td><td>Passed, published</td></tr>
+<tr><td class="tok">color-warning</td><td class="mono">#b8892f</td><td>Running, needs attention</td></tr>
+<tr><td class="tok">color-error</td><td class="mono">#b04a44</td><td>Failed, invalid</td></tr>
+<tr><td class="tok">color-inactive</td><td class="mono">#98989b</td><td>Draft, halted, not executed</td></tr>
+<tr><td class="tok">color-bg / -surface / -raised</td><td>see &sect;2.1</td><td>Page, cards, inputs</td></tr>
+<tr><td class="tok">color-text / -text-muted</td><td>see &sect;2.1</td><td>Primary and secondary text</td></tr>
+<tr><td class="tok">color-line / -line-strong</td><td class="mono">#e4e5ea / #d2d4db</td><td>Dividers, control borders</td></tr>
+<tr><td class="tok">font-size-caption &hellip; -display</td><td>11 / 13 / 14.5 / 16.5 / 22 / 29</td><td>The six-step type ramp</td></tr>
+<tr><td class="tok">spacing-xs &hellip; -2xl</td><td>4 / 8 / 12 / 16 / 24 / 32</td><td>The spacing scale</td></tr>
+<tr><td class="tok">radius-sm / -md / -lg / -pill</td><td>6 / 8 / 12 / 999</td><td>Corner radii</td></tr>
+<tr><td class="tok">elevation-1 / -2 / -3</td><td>see &sect;2.5</td><td>Card, frame, overlay</td></tr>
+<tr><td class="tok">breakpoint-md / -lg</td><td>768 / 1000 px</td><td>Tablet and desktop thresholds</td></tr>
+<tr><td class="tok">duration-fast / -base / -slow</td><td>90 / 160 / 240 ms</td><td>Hover, menus and panels, overlays</td></tr>
+</table>
+<div class="note"><b>Theming works by token remap.</b> Choosing Dark changes the value behind <span class="tok">color-surface</span> and its neighbours. No component stylesheet is aware of the theme, which is why a new component is dark-ready by construction.</div>
+
+<h2>4. Core components</h2>
+<table>
+<tr><th width="20%">Component</th><th width="34%">Variants</th><th>Notes</th></tr>
+<tr><td>Button</td><td>Primary, secondary, quiet, icon-only, full-width</td><td>One primary per screen region. Destructive actions use secondary with error-coloured text and name the verb</td></tr>
+<tr><td>Text input</td><td>Default, with leading icon, search</td><td>Always a visible label above; placeholder is an example, never the label</td></tr>
+<tr><td>Text area</td><td>Default, with character guidance</td><td>Resizable vertically only</td></tr>
+<tr><td>Dropdown / select</td><td>Single, with label prefix</td><td>Native control, styled; used for sorting and set choices</td></tr>
+<tr><td>Checkbox / radio / toggle</td><td>Default, indeterminate (checkbox)</td><td>Toggle only for a setting that applies immediately</td></tr>
+<tr><td>Search</td><td>Inline (page), panel-scoped</td><td>Placeholder states what is searchable, e.g. workflow ID or execution ID</td></tr>
+<tr><td>Date range</td><td>Preset segmented control, custom range</td><td>Presets: Today, Last 7 days, Last 30 days</td></tr>
+<tr><td>Segmented control</td><td>2&ndash;4 short options</td><td>For mutually exclusive views, not for actions</td></tr>
+<tr><td>Tabs</td><td>Underlined, accent indicator</td><td>For views of the same object; never for navigation between objects</td></tr>
+<tr><td>Card</td><td>Metric card, panel, content card</td><td>Metric card: caption kicker, large tabular value, trend footer</td></tr>
+<tr><td>Table</td><td>Standard, scroll-bounded, virtualised</td><td>Sticky header, right-aligned numerics, row click navigates</td></tr>
+<tr><td>Badge / pill</td><td>Status pill, version tag, count</td><td>Status pills use tint background and status colour</td></tr>
+<tr><td>Tooltip</td><td>On focus and hover, 90 ms delay</td><td>Never the only place information appears</td></tr>
+<tr><td>Alert / note</td><td>Informational, warning, error, neutral</td><td>Inline, in context; left accent bar plus tint</td></tr>
+<tr><td>Modal dialog</td><td>Confirm, destructive confirm, form</td><td>Focus trapped, Esc closes, focus returns to the opener</td></tr>
+<tr><td>Toast</td><td>Confirmation, transient error</td><td>Bottom centre, auto-dismiss ~2.5 s, never carries the only copy of a message</td></tr>
+<tr><td>Pagination</td><td><b>Not used.</b> Cursor loading with a &ldquo;jump to top&rdquo; affordance</td><td>Lists load as the reader scrolls; new rows arrive at the top without moving the view</td></tr>
+<tr><td>Breadcrumbs</td><td>Two to three levels, middle collapsible</td><td>Every level except the last is a link</td></tr>
+<tr><td>Side navigation</td><td>Grouped, icon + label, collapsible rail</td><td>Groups render only if they have visible children</td></tr>
+<tr><td>Top bar</td><td>Tenant control, global search, profile menu</td><td>Tenant control is a switcher only for those with cross-tenant access</td></tr>
+</table>
+
+<h2>5. Domain components</h2>
+<p>Components specific to a workflow orchestration and monitoring product. These carry most of the product&rsquo;s identity and most of its complexity.</p>
+<table>
+<tr><th width="20%">Component</th><th width="30%">Anatomy</th><th>Behaviour</th></tr>
+<tr><td><b>Workflow canvas</b></td><td>Stage on a dotted grid, toolbar, docked properties panel</td><td>Zoom &minus;/+, Fit (computed from the container, not a fixed value), 100%, full screen with Esc to exit. Selecting a node fills the panel; clicking the background clears it</td></tr>
+<tr><td><b>Workflow node</b></td><td>Type caption, name, status chip</td><td>Types: start, end, API call, graph invocation, rule, human task, database operation, Java orchestrator. Status tints the border and chip, never the whole fill</td></tr>
+<tr><td><b>Gateway</b></td><td>Diamond with a glyph and label</td><td><b>&times;</b> exclusive (conditional, labelled outcomes) and <b>+</b> parallel split / join. Both carry run status like any other node</td></tr>
+<tr><td><b>Graph drill-in</b></td><td>Node properties action &rarr; replaces the canvas</td><td>A graph-invocation node opens the graph it calls; breadcrumb gains a level and a back action returns. Graph-scoped chrome replaces workflow-scoped chrome</td></tr>
+<tr><td><b>Node properties / node execution</b></td><td>Type, name, status, property rows, input, output, actions</td><td>Titled <i>Node view</i> on a definition and <i>Node execution</i> on a run. Input and output load only when expanded. Actions come last</td></tr>
+<tr><td><b>Execution trace</b></td><td>Step strip + canvas with the route marked</td><td>Executed path is success-coloured, the current node is warning, a failure is error, unreached nodes are faded and non-interactive</td></tr>
+<tr><td><b>Workflow stepper / step strip</b></td><td>Ordered chips with glyph and label</td><td>Scoped to whichever model is on screen. Steps after a failure read &ldquo;not executed&rdquo;, never &ldquo;waiting&rdquo;</td></tr>
+<tr><td><b>Run summary</b></td><td>Title, reference, status pill, timing, actions</td><td>Stop only while running; Export always</td></tr>
+<tr><td><b>Status indicator</b></td><td>Glyph + word, optionally tinted pill</td><td>Six states: success, running, halted, failed, draft, not executed</td></tr>
+<tr><td><b>Evidence / approval card</b></td><td>Item name, state, action row</td><td>One row per artefact with an explicit state. Decision buttons sit after the evidence</td></tr>
+<tr><td><b>Timeline / audit history</b></td><td>Time, actor, action, target</td><td>Newest first. Every entry names a person or a system &mdash; never &ldquo;updated&rdquo; with no actor</td></tr>
+<tr><td><b>Expandable details</b></td><td>Disclosure row, body</td><td>Used for payloads and long values. Collapsed by default; loads on expand</td></tr>
+<tr><td><b>Version row</b></td><td>Name, version tag, status, figures</td><td>A draft and a still-deployed earlier version are separate rows. A draft is not deployed, so it has no execution figures</td></tr>
+</table>
+
+<h2>6. Component states</h2>
+<p>A component is not specified until every state is specified.</p>
+<table>
+<tr><th width="16%">State</th><th width="40%">Treatment</th><th>Applies to</th></tr>
+<tr><td>Default</td><td>Token base values</td><td>All</td></tr>
+<tr><td>Hover</td><td>Raised surface, or accent-600 on a primary</td><td>Buttons, rows, nav items, tabs, nodes</td></tr>
+<tr><td>Focus</td><td>2 px accent ring, 2 px offset, on keyboard focus only</td><td>Every interactive element, without exception</td></tr>
+<tr><td>Selected</td><td>Accent text on accent tint, plus an accent indicator bar</td><td>Nav items, tabs, table rows, canvas nodes</td></tr>
+<tr><td>Pressed</td><td>Accent-700</td><td>Buttons, segmented options</td></tr>
+<tr><td>Disabled</td><td>45% opacity, not focusable, tooltip explains why</td><td>All &mdash; but see the rule below</td></tr>
+<tr><td>Loading</td><td>In-place indicator, label retained, control inert</td><td>Buttons, panels, canvases</td></tr>
+<tr><td>Error</td><td>Error border plus a message below naming the problem</td><td>Inputs, panels, canvases</td></tr>
+<tr><td>Success</td><td>Transient success tint or toast; never a permanent green control</td><td>Forms, save actions</td></tr>
+</table>
+<div class="rule"><b>Absent, not disabled.</b> Functionality a tenant did not buy, or a role cannot use, is not rendered at all. A greyed-out control advertises something the user cannot have and generates support calls. Disabled is reserved for a control that will become available once a precondition in view is met.</div>
+
+<h2>7. Application states</h2>
+<p>Every screen defines all eight. A screen is not ready to build until all eight exist.</p>
+<table>
+<tr><th width="20%">State</th><th width="40%">Treatment</th><th>Wording example</th></tr>
+<tr><td>Loading</td><td>Skeleton in the shape the content will take</td><td>&mdash; (no text)</td></tr>
+<tr><td>Empty</td><td>Explains what would appear and offers the action that creates it</td><td>&ldquo;No workflows yet. Create your first workflow.&rdquo;</td></tr>
+<tr><td>No results</td><td>Distinct from empty: names the query and offers a way back</td><td>&ldquo;Nothing matches &lsquo;wkf_XYZ&rsquo;. Search accepts a workflow ID, a name, or an execution ID.&rdquo;</td></tr>
+<tr><td>Populated</td><td>The designed state</td><td>&mdash;</td></tr>
+<tr><td>Partial data</td><td>Shows what arrived and names the gap; one missing source never blanks the screen</td><td>&ldquo;Live figures unavailable. Showing the last recorded values.&rdquo;</td></tr>
+<tr><td>Error</td><td>Names what failed and offers Try again; never a stack trace or bare code</td><td>&ldquo;Could not load executions. Try again.&rdquo;</td></tr>
+<tr><td>Permission denied</td><td>Says who to ask; distinct from &ldquo;not found&rdquo;</td><td>&ldquo;You do not have access to this tenant. Ask your administrator.&rdquo;</td></tr>
+<tr><td>Offline / unavailable</td><td>Persistent banner; read-only content stays visible</td><td>&ldquo;Connection lost. Figures paused; reconnecting.&rdquo;</td></tr>
+</table>
+
+<h2>8. Layout and page patterns</h2>
+<p>Five patterns cover every screen. A new screen picks one rather than inventing a sixth.</p>
+<table>
+<tr><th width="16%">Pattern</th><th width="46%">Structure, top to bottom</th><th>Used by</th></tr>
+<tr><td><b>Overview</b></td><td>Title &rarr; metric cards &rarr; two side-by-side panels with &ldquo;View all&rdquo;</td><td>Home</td></tr>
+<tr><td><b>List</b></td><td>Title + primary action &rarr; metric cards &rarr; search + date range &rarr; status filters + Clear &rarr; table with cursor loading</td><td>Workflows, Executions, Tasks, Rules</td></tr>
+<tr><td><b>Detail</b></td><td>Breadcrumb &rarr; title + version + actions &rarr; metric cards &rarr; optional version switcher &rarr; tabs &rarr; content</td><td>Workflow detail, task detail</td></tr>
+<tr><td><b>Canvas</b></td><td>Breadcrumb &rarr; title + actions &rarr; cards &rarr; toolbar + stage + docked properties panel</td><td>Workflow canvas, graph canvas, execution trace</td></tr>
+<tr><td><b>Approval</b></td><td>Request &rarr; evidence &rarr; notes &rarr; decision actions last</td><td>Task decision</td></tr>
+</table>
+<p>Within any pattern the bands are ordered <b>identity &rarr; state &rarr; summary &rarr; detail &rarr; history</b>, and the primary action sits with the title.</p>
+
+<h2>9. Navigation patterns</h2>
+<table>
+<tr><th width="24%">Pattern</th><th>Rule</th></tr>
+<tr><td>Global navigation</td><td>Persistent left rail, grouped by capability (Build, Monitor, Work, Reference). Groups with no visible children are not rendered. Group headers are dropped when only one group is visible</td></tr>
+<tr><td>Top bar</td><td>Tenant context, global search, profile menu. The tenant control is a switcher only for roles with cross-tenant access; otherwise it is a static label</td></tr>
+<tr><td>Breadcrumbs</td><td>Show the containment path. Drilling from a workflow into a graph adds a level; every level except the last is a link</td></tr>
+<tr><td>Tabs</td><td>Views of the same object only. Switching a tab never changes which object is on screen</td></tr>
+<tr><td>Back navigation</td><td>Breadcrumb link plus an explicit in-context action where the view was replaced, e.g. &ldquo;Back to workflow view&rdquo;. Browser back always matches</td></tr>
+<tr><td>Deep linking</td><td>Every state a user might share is addressable: object, tab, selected node, filters, tenant. Opening a link lands on that exact state</td></tr>
+<tr><td>Landing route</td><td>Computed from what the deployment includes and what the role can see &mdash; never hard-coded to a screen the user may not have</td></tr>
+</table>
+
+<h2>10. Interaction standards</h2>
+<table>
+<tr><th width="22%">Interaction</th><th>Standard</th></tr>
+<tr><td>Click on a row</td><td>Navigates to that object. Interactive controls inside a row stop propagation</td></tr>
+<tr><td>Click on a canvas node</td><td>Selects it and fills the properties panel. Clicking the background clears the selection</td></tr>
+<tr><td>Hover</td><td>Surface change only. Hover never reveals information that exists nowhere else</td></tr>
+<tr><td>Expand / collapse</td><td>Collapsed by default for large payloads; content loads on first expand and the state persists while the panel is open</td></tr>
+<tr><td>Zoom and pan</td><td>Presentation only, no server call. Fit is computed from the container so the whole diagram is visible</td></tr>
+<tr><td>Sorting</td><td>One active sort at a time, indicated in the header or an explicit Sort control. Sort is part of the URL</td></tr>
+<tr><td>Filtering</td><td>Filters combine with AND. A Clear action appears once any filter is active. Changing a filter resets the list and aborts the in-flight request</td></tr>
+<tr><td>Live updates</td><td>Monitoring screens update on their own. New rows arrive at the top without moving the reader&rsquo;s view; an unobtrusive &ldquo;N new &mdash; jump to top&rdquo; affordance appears while scrolled away</td></tr>
+<tr><td>Form submission</td><td>Submit disabled only while in flight. Validation on blur and on submit, never on every keystroke. Errors summarised at the top and marked per field</td></tr>
+<tr><td>Confirmation dialogs</td><td>Required for anything irreversible or affecting others. The dialog states the consequence, and the confirm button names the verb and object</td></tr>
+<tr><td>Delete and stop</td><td>Never a primary button. Confirmation states what happens to work in progress</td></tr>
+<tr><td>Drag and drop</td><td>Authoring canvas only, with a keyboard equivalent for every move. Not used for reordering lists</td></tr>
+<tr><td>Loading feedback</td><td>Under 300 ms: nothing. Over 300 ms: skeleton or in-place indicator. Over 5 s: a message explaining the wait</td></tr>
+</table>
+
+<h2>11. Responsive design</h2>
+<table>
+<tr><th width="18%">Breakpoint</th><th width="24%">Layout</th><th>Behaviour</th></tr>
+<tr><td>Desktop, 1000 px +</td><td>Rail + content + docked panel</td><td>The designed experience</td></tr>
+<tr><td>Tablet, 768&ndash;999 px</td><td>Icon rail + content</td><td>Navigation collapses to icons; metric cards go to two columns; the properties panel moves below the canvas</td></tr>
+<tr><td>Mobile, under 768 px</td><td>Menu + single column</td><td>Navigation behind a menu; cards single column; tables scroll horizontally with the first column pinned</td></tr>
+</table>
+<table>
+<tr><th width="26%">Question</th><th>Answer</th></tr>
+<tr><td>What collapses?</td><td>The navigation rail, then into a menu. Filter rows stack</td></tr>
+<tr><td>What wraps?</td><td>Metric grids, filter groups, action clusters. Table rows never wrap</td></tr>
+<tr><td>What becomes scrollable?</td><td>Tables horizontally with the first column pinned; the canvas already pans</td></tr>
+<tr><td>What moves into a menu?</td><td>Secondary page actions. The primary action always stays visible</td></tr>
+<tr><td>What gets hidden?</td><td>Lower-priority table columns in a declared order &mdash; never the status column</td></tr>
+<tr><td>Minimum / maximum</td><td>Minimum supported width 360 px; frame maximum 1340 px; prose maximum 66 characters</td></tr>
+</table>
+<p><b>Declared scope:</b> canvas-heavy screens are a desktop and tablet experience. On a phone they open read-only with a note pointing to a larger screen, rather than pretending a large diagram is usable at 360 px. That is a decision, not a gap.</p>
+
+<h2>12. Accessibility</h2>
+<table>
+<tr><th width="26%">Requirement</th><th>Standard</th></tr>
+<tr><td>Colour contrast</td><td>WCAG 2.1 AA: 4.5:1 body text, 3:1 large text and control boundaries. Verified in both themes</td></tr>
+<tr><td>Never colour alone</td><td>Every status is colour <b>and</b> glyph <b>and</b> word. Verified by reading the screen in greyscale</td></tr>
+<tr><td>Keyboard navigation</td><td>Every action reachable and operable by keyboard in a logical order. Skip-to-content is the first focusable element</td></tr>
+<tr><td>Focus indicators</td><td>A visible 2 px accent ring, never removed. Focus is trapped in dialogs and the full-screen canvas, and returns to the opener on close</td></tr>
+<tr><td>Accessible labels</td><td>Every icon-only control has an accessible name. Every field has a visible label. Canvas nodes announce type, name and status</td></tr>
+<tr><td>Screen readers</td><td>Landmarks for navigation, main and complementary regions. Live regions announce arriving executions politely, not assertively</td></tr>
+<tr><td>Minimum text size</td><td>13 px for interface text, 14.5 px for body. Nothing below 11 px carries information that appears nowhere else</td></tr>
+<tr><td>Target size</td><td>32 &times; 32 px pointer minimum, 44 &times; 44 px touch, even where the glyph is 15 px</td></tr>
+<tr><td>Error messaging</td><td>States what went wrong, where, and what was expected. Associated with the field programmatically</td></tr>
+<tr><td>Motion</td><td>All transitions collapse to 0 ms under reduced-motion, including canvas zoom, which then snaps</td></tr>
+</table>
+
+<h2>13. Content standards</h2>
+<table>
+<tr><th width="24%">Area</th><th>Standard</th></tr>
+<tr><td>Button wording</td><td>Verb + object, in sentence case: &ldquo;Publish version 4&rdquo;, &ldquo;Stop this run&rdquo;, &ldquo;Check for problems&rdquo;. Never &ldquo;OK&rdquo;, &ldquo;Submit&rdquo; or &ldquo;Yes&rdquo;</td></tr>
+<tr><td>Labels</td><td>Sentence case, no colons, no instructions inside the label</td></tr>
+<tr><td>Status terminology</td><td>Fixed vocabulary, used identically everywhere: <b>Success, Running, Halted, Failed, Draft, Published, Not executed</b>. Never &ldquo;OK&rdquo;, &ldquo;Error&rdquo;, &ldquo;Cancelled&rdquo; or &ldquo;Pending&rdquo; as synonyms</td></tr>
+<tr><td>Error messages</td><td>Plain language, no codes, no blame. What happened, why if known, what to do next. A technical reference may follow in monospace for support</td></tr>
+<tr><td>Empty-state wording</td><td>Says what would appear here and offers the action that creates it. Never &ldquo;No data&rdquo;</td></tr>
+<tr><td>Date and time</td><td>Relative for recent events (&ldquo;4 min ago&rdquo;), absolute with seconds for audit and step timings (&ldquo;23:05:47&rdquo;), absolute with date beyond 24 hours (&ldquo;12 Aug, 14:22&rdquo;). Tenant time zone, stated once per screen</td></tr>
+<tr><td>Duration</td><td>Monospace, one decimal under a minute (&ldquo;1.8s&rdquo;), minutes and seconds beyond (&ldquo;4m 12s&rdquo;)</td></tr>
+<tr><td>Identifiers</td><td>Monospace, never truncated in a detail view, middle-truncated in a narrow column with the full value on hover</td></tr>
+<tr><td>Capitalisation</td><td>Sentence case for everything except the product name and fixed status words. No Title Case headings</td></tr>
+<tr><td>Numbers</td><td>Thousands abbreviated in cards (&ldquo;42.7K&rdquo;), exact in tables. Percentages to one decimal. Tabular figures throughout</td></tr>
+<tr><td>Tenant and role words</td><td>&ldquo;Tenant&rdquo;, never &ldquo;organisation&rdquo;, &ldquo;client&rdquo; or &ldquo;customer&rdquo;, in the interface</td></tr>
+</table>
+
+<h2>14. Component usage guidelines</h2>
+
+<h3>Status indicator</h3>
+<table>
+<tr><td width="18%"><b>Purpose</b></td><td>Shows the current state of a run, a step, a workflow version or an evidence item.</td></tr>
+<tr><td><b>Variants</b></td><td>Inline (glyph + word) for tables and strips; pill (tinted) for headers and canvas nodes.</td></tr>
+<tr><td><b>States</b></td><td>&#10003; Success &nbsp;&#9680; Running &nbsp;&#9723; Halted &nbsp;&#10005; Failed &nbsp;&#183; Draft &nbsp;&#9675; Not executed</td></tr>
+<tr><td><b>When to use</b></td><td>Wherever a reader needs to know the state of something at a glance.</td></tr>
+<tr><td><b>When not to use</b></td><td>As a button. It is not interactive; put the action beside it.</td></tr>
+<tr><td><b>Accessibility</b></td><td>The word is part of the component, not decoration &mdash; it must never be removed to save space.</td></tr>
+<tr><td><b class="do">Do</b></td><td>&#10003; Success &nbsp;&nbsp; &#9888; Needs attention &nbsp;&nbsp; &#10005; Failed</td></tr>
+<tr><td><b class="dont">Don't</b></td><td>A coloured dot alone; two states sharing one colour; inventing a new state word.</td></tr>
+</table>
+
+<h3>Button</h3>
+<table>
+<tr><td width="18%"><b>Purpose</b></td><td>Performs an action. The primary button is the one action the screen is for.</td></tr>
+<tr><td><b>Variants</b></td><td>Primary (filled accent), secondary (outlined), quiet (text), icon-only, full-width in panels.</td></tr>
+<tr><td><b>When to use</b></td><td>Primary: one per screen region. Secondary: supporting actions. Quiet: navigation-like actions such as &ldquo;View all&rdquo;.</td></tr>
+<tr><td><b>When not to use</b></td><td>For navigation between pages &mdash; use a link or a row. For a destructive action as primary.</td></tr>
+<tr><td><b class="do">Do</b></td><td>&ldquo;Publish version 4&rdquo; as primary; &ldquo;Check for problems&rdquo; as secondary beside it.</td></tr>
+<tr><td><b class="dont">Don't</b></td><td>Two primary buttons in one region; &ldquo;OK&rdquo; on a destructive confirmation.</td></tr>
+</table>
+
+<h3>Metric card</h3>
+<table>
+<tr><td width="18%"><b>Purpose</b></td><td>One figure a reader acts on, with its direction of travel.</td></tr>
+<tr><td><b>Anatomy</b></td><td>Caption kicker with its period (&ldquo;EXECUTIONS &middot; 7D&rdquo;), large tabular value, trend footer with arrow, amount and comparison.</td></tr>
+<tr><td><b>Rule</b></td><td>Arrow shows direction; colour shows business effect. Falling duration is green, rising failures are red.</td></tr>
+<tr><td><b>When not to use</b></td><td>For a figure nobody acts on, or for a value with no meaningful comparison &mdash; use a property row instead.</td></tr>
+<tr><td><b class="dont">Don't</b></td><td>Label a live figure &ldquo;updating live&rdquo;. Show the trend instead; movement is self-evident.</td></tr>
+</table>
+
+<h3>Workflow canvas and node</h3>
+<table>
+<tr><td width="18%"><b>Purpose</b></td><td>Shows how a decision is made, and what a specific run actually did.</td></tr>
+<tr><td><b>Two modes</b></td><td><i>Definition</i>: every node readable and inspectable, no statuses. <i>Run</i>: the executed route highlighted, the current node marked, unreached nodes faded and non-interactive.</td></tr>
+<tr><td><b>Rule</b></td><td>A run is only ever drawn against the model it walked. Drawing one model against another&rsquo;s path produces false statuses.</td></tr>
+<tr><td><b>Gateways</b></td><td>&times; exclusive with labelled outcomes; + parallel split and join. A parallel split that executed implies all its branches were dispatched.</td></tr>
+<tr><td><b>Accessibility</b></td><td>Each node announces type, name and status. Fit is computed so the whole diagram is reachable without scrolling.</td></tr>
+<tr><td><b class="dont">Don't</b></td><td>Scale nodes to fit; cover the canvas with the properties panel; show an output for a step that did not complete.</td></tr>
+</table>
+
+<h3>Table and list</h3>
+<table>
+<tr><td width="18%"><b>Purpose</b></td><td>Scanning many items to find one.</td></tr>
+<tr><td><b>Rules</b></td><td>Sticky header; numerics and timestamps right-aligned in monospace; row click navigates; one active sort; cursor loading rather than page numbers.</td></tr>
+<tr><td><b>Live lists</b></td><td>New rows arrive at the top with a brief highlight. The reader&rsquo;s scroll position is anchored to content so their view does not move.</td></tr>
+<tr><td><b>When not to use</b></td><td>For fewer than four items with rich content &mdash; use cards or a property list.</td></tr>
+<tr><td><b class="dont">Don't</b></td><td>Hide the status column responsively; put an unlabelled icon-only action in a row.</td></tr>
+</table>
+
+<h2>How to use this document</h2>
+<table>
+<tr><th width="26%">Audience</th><th>Read</th></tr>
+<tr><td>Product</td><td>Sections 1, 6, 7, 8, 13 &mdash; principles, states, patterns and wording are where product decisions live</td></tr>
+<tr><td>Design</td><td>All of it; sections 2&ndash;5 are the working reference</td></tr>
+<tr><td>Engineering</td><td>Sections 3&ndash;7 and 10&ndash;12; tokens and states are the build contract</td></tr>
+<tr><td>Accessibility review</td><td>Sections 6, 7, 12 and the usage guidelines in 14</td></tr>
+</table>
+<p style="margin-top:14pt;padding-top:8pt;border-top:1pt solid #d2d4db;font-size:9pt;color:#5d6068">Values in this document are the ones implemented in the interactive wireframes (document 2) and defined once in the stylesheet. Changing a rule means changing the token, not the screens. Open items: a formal contrast audit of the dark theme, and confirmation of the tenant time-zone rule with product.</p>
+
+</body></html>

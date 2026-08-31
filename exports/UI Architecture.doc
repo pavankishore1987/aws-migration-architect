@@ -1,0 +1,436 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Decisioning Platform — UI Architecture</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:11pt;color:#1d1f20;line-height:1.5}
+h1{font-size:22pt;color:#1d1f20;margin:0 0 4pt}
+h2{font-size:15pt;color:#293373;border-bottom:1pt solid #bfc6f0;padding-bottom:3pt;margin:22pt 0 8pt}
+h3{font-size:12pt;color:#1d1f20;margin:14pt 0 4pt}
+p{margin:0 0 8pt}
+.meta{color:#5d5d60;font-size:10pt;margin-bottom:16pt}
+table{border-collapse:collapse;width:100%;margin:6pt 0 12pt;font-size:10pt}
+th{background:#eef0fb;color:#293373;text-align:left;padding:5pt 7pt;border:1pt solid #bfc6f0;font-size:9pt;text-transform:uppercase;letter-spacing:.5pt}
+td{padding:5pt 7pt;border:1pt solid #d4d4d7;vertical-align:top}
+code,.mono{font-family:Consolas,"Courier New",monospace;font-size:9.5pt}
+li{margin-bottom:4pt}
+.callout{border-left:3pt solid #4a5ac9;background:#f5f5f8;padding:8pt 10pt;margin:8pt 0}
+.seq{font-family:Consolas,"Courier New",monospace;font-size:8.5pt;line-height:1.45;background:#f5f5f8;border:1pt solid #bfc6f0;padding:9pt 11pt;margin:6pt 0 10pt;white-space:pre}
+pre.tree{font-family:Consolas,"Courier New",monospace;font-size:9pt;line-height:1.45;background:#fbfbfd;border:1pt solid #d4d4d7;padding:8pt 10pt;margin:4pt 0 12pt;white-space:pre-wrap}
+.cap{font-size:9pt;color:#5d5d60;margin:-4pt 0 14pt}
+</style></head><body>
+
+<h1>Decisioning Platform — UI Architecture</h1>
+<p class="meta">Updated August 30, 2026 · React + TypeScript UI · Industry design system (indigo #4a5ac9, local-only fonts) · §13 capability module structure · §14 browser memory and component interaction</p>
+
+<h2>1. Purpose and scope</h2>
+<p>This document describes the UI architecture of the Decisioning Platform and how to consume the Industry design system in a React codebase. It covers the approved scope only: SSO login, the authenticated shell, Home, Workflows (inventory + BPMN detail), Graph view, Rules (inventory + detail), Executions (inventory + trace), and visible-but-deferred Monitoring, Documentation and Examples. Workflow authoring, Intent, Decisions, Data, Connectors, Scripts, Tasks and Alerts are hidden, not disabled (FR-SHELL-010). Backend APIs, transport and persistence are out of scope; the UI runs on dummy-data adapters that do not constrain future contracts (FR-MOCK-003).</p>
+
+<h2>2. How to use the design system in your React code</h2>
+<h3>Step 1 — Adopt the token stylesheet</h3>
+<p>Copy <code>styles.css</code> into your app as the global stylesheet. It is the single source of truth: color roles with 100–900 tonal ramps, fixed semantic status colors, spacing, radius, elevation, shell layout dimensions, and font stacks. <b>Fonts are local-only</b> — every named family ships with the operating system; nothing downloads (ADR-019). Never hard-code a hex or px value the tokens carry; theme and accent changes happen by remapping tokens, never per-page overrides (NFR-REACT-005).</p>
+<h3>Step 2 — Port the component primitives</h3>
+<p>Each component under <code>components/platform-*/</code> is a pair: <code>&lt;Name&gt;.jsx</code> (reference implementation) and <code>&lt;Name&gt;.d.ts</code> (typed prop contract, annotated with the requirement/ADR it satisfies). Port them 1:1 into your component library; convert to TypeScript by merging the <code>.d.ts</code> props into the function signature. Components style themselves from <code>var(--*)</code> tokens and the system classes (<code>.btn</code>, <code>.table</code>, <code>.input</code>, <code>.seg</code>, <code>.blueprint</code>), so they re-theme automatically.</p>
+<h3>Step 3 — Or start from the ready-made TypeScript project</h3>
+<p><code>templates/react-ts-handoff/</code> is a standalone Vite + React + TypeScript project with all of this already done: the 14 primitives as typed <code>.tsx</code> (each merges its <code>.d.ts</code> interface with the implementation; cross-references are real imports, no globals), every approved page, fixtures, and the token sheet. <code>npm install &amp;&amp; npm run dev</code>. It ships <code>strict: false</code> to stay 1:1 with the reference implementation — enable strict and annotate incrementally.</p>
+<h3>Step 4 — Compose pages from the primitives</h3>
+<p><code>templates/platform-app/</code> is the working interactive application: <code>app.jsx</code> (shell wiring + navigation), <code>pages-build.jsx</code> and <code>pages-monitor.jsx</code> (page components for every approved screen), <code>fixtures.js</code> (dummy data). To productionize:</p>
+<ul>
+<li>Replace the internal state router in <code>app.jsx</code> with React Router routes (table in §4) and lazy-load the page modules (<code>React.lazy</code>) per NFR-REACT-006.</li>
+<li>Replace <code>fixtures.js</code> with data adapters behind hooks (e.g. <code>useWorkflows(tenant)</code>); keep pages unaware of transport.</li>
+<li>Wire <code>onNavigate</code>/<code>onRowClick</code>/<code>go()</code> callbacks to router navigation, and the tenant selector to your context provider (tenant change rescopes all queries and search, FR-SHELL-005).</li>
+</ul>
+<div class="callout"><b>Rule of thumb:</b> pages compose primitives and tokens; they never define colors, fonts or status treatments of their own (NFR-REACT-004).</div>
+
+<h2>3. Layered architecture</h2>
+<p>Each layer depends only on the layers below it:</p>
+<table style="width:100%;margin:6pt 0 10pt">
+<tr><td style="background:#eef0fb;border:1.5pt solid #4a5ac9;text-align:center;padding:7pt"><b>1 · Identity boundary</b><br><span class="mono">LoginPage · UserContextProvider (roles, permissions, tenants)</span></td></tr>
+<tr><td style="border:none;text-align:center;padding:1pt;color:#4a5ac9">▼</td></tr>
+<tr><td style="background:#eef0fb;border:1.5pt solid #4a5ac9;text-align:center;padding:7pt"><b>2 · Persistent shell</b><br><span class="mono">AppShell = Sidebar + TopBar (Tenant · Search · Profile) + Breadcrumbs</span></td></tr>
+<tr><td style="border:none;text-align:center;padding:1pt;color:#4a5ac9">▼</td></tr>
+<tr><td style="background:#f5f5f8;border:1pt solid #9aa2d6;text-align:center;padding:7pt"><b>3 · Route modules (lazy)</b><br><span class="mono">Home · Workflows · WorkflowDetail · Graph · Rules · RuleDetail · Executions · Trace</span></td></tr>
+<tr><td style="border:none;text-align:center;padding:1pt;color:#4a5ac9">▼</td></tr>
+<tr><td style="background:#f5f5f8;border:1pt solid #9aa2d6;text-align:center;padding:7pt"><b>4 · Shared primitives</b><br><span class="mono">MetricCard · DataTable · StatusIndicator · Canvas · WorkflowNode · Edge · NodeInspector …</span></td></tr>
+<tr><td style="border:none;text-align:center;padding:1pt;color:#4a5ac9">▼</td></tr>
+<tr><td style="background:#fff;border:1pt solid #d4d4d7;text-align:center;padding:7pt"><b>5 · Tokens &amp; theming</b><br><span class="mono">styles.css custom properties — remapped on :root, never overridden per page</span></td></tr>
+<tr><td style="border:none;text-align:center;padding:1pt;color:#4a5ac9">▼</td></tr>
+<tr><td style="background:#fff;border:1pt solid #d4d4d7;text-align:center;padding:7pt"><b>6 · Data boundary</b><br><span class="mono">Dummy-data adapters · tenant-scoped queries · no secrets in the UI</span></td></tr>
+</table>
+<table>
+<tr><th>Layer</th><th>Contents</th><th>Key decisions</th></tr>
+<tr><td><b>1 · Identity boundary</b></td><td>LoginPage, UserContextProvider (identity, roles, permissions, tenants, environments)</td><td>SSO only; no persona/tenant picker at login; UI shows only permitted resources (ADR-001/002)</td></tr>
+<tr><td><b>2 · Persistent shell</b></td><td>AppShell, Sidebar, TopBar (TenantToggle · GlobalSearch · ProfileMenu), Breadcrumbs</td><td>Same shell for all authenticated views; profile menu is appearance-only: theme System/Light/Dark + accent Indigo/Blue/Teal/Purple (ADR-003/005/006)</td></tr>
+<tr><td><b>3 · Route modules (lazy)</b></td><td>Home, Workflows, WorkflowDetail, Graph, Rules, RuleDetail, Executions, Trace</td><td>List/detail on separate routes; inventory never shows the BPMN beside the list (ADR-007/014/015)</td></tr>
+<tr><td><b>4 · Shared primitives</b></td><td>Component inventory (§5)</td><td>Typed props for variant, status, size, state (NFR-REACT-002)</td></tr>
+<tr><td><b>5 · Tokens &amp; theming</b></td><td>CSS custom properties + typed tokens</td><td>Accent is user-selectable; semantic status colors are fixed across all themes (ADR-006/018)</td></tr>
+<tr><td><b>6 · Data boundary</b></td><td>Dummy-data adapters, tenant-scoped queries</td><td>Mock shapes do not define API contracts (FR-MOCK-003); secrets never reach the UI (NFR-SEC-003)</td></tr>
+</table>
+
+<h2>4. Routes</h2>
+<table>
+<tr><th>Route</th><th>Page</th><th>Notes</th></tr>
+<tr><td class="mono">/login</td><td>SSO login</td><td>Work email + Continue with SSO only</td></tr>
+<tr><td class="mono">/home</td><td>Home dashboard</td><td>Welcome, 4 metrics, My Workflows, Recent Executions, Announcements, Usage chart</td></tr>
+<tr><td class="mono">/workflows</td><td>Workflows inventory</td><td>Tenant metrics, + Workflow (permission-gated), search/filter, infinite scroll</td></tr>
+<tr><td class="mono">/workflows/{workflowId}</td><td>BPMN view</td><td>Status/Version/Executions/Avg-duration metrics, vertical BPMN canvas + node inspector</td></tr>
+<tr><td class="mono">/workflows/{workflowId}/graphs/{graphId}</td><td>Graph (DAG) view</td><td>No workflow metric cards; zoom/fit/center/validate; breadcrumbs preserve workflow context</td></tr>
+<tr><td class="mono">/rules · /rules/{ruleId}</td><td>Rules inventory / detail</td><td>Detail: definition (monospace) main pane, properties right pane</td></tr>
+<tr><td class="mono">/executions</td><td>Executions inventory</td><td>Default: last 7 days, start-date descending; filters reset scroll position</td></tr>
+</table>
+
+<h3>Shell anatomy</h3>
+<table style="width:100%;border:1.5pt solid #4a5ac9">
+<tr><td colspan="3" style="background:#eef0fb;text-align:center;padding:5pt;border:1pt solid #9aa2d6"><b>TopBar</b> — tenant · global search · profile (appearance menu) <span class="mono">(56px)</span></td></tr>
+<tr>
+<td rowspan="2" style="background:#eef0fb;width:16%;text-align:center;vertical-align:top;padding:8pt;border:1pt solid #9aa2d6"><b>Sidebar</b><br><span class="mono">232px / 64px collapsed</span><br><br>Home<br><b>Build</b><br>Workflows<br>Rules<br><b>Monitor</b><br>Executions<br>Monitoring<br><b>Learn</b><br>Docs · Examples</td>
+<td colspan="2" style="background:#fff;padding:4pt 8pt;border:1pt solid #9aa2d6;font-size:9pt;color:#5d5d60">Breadcrumbs (hierarchical pages)</td>
+</tr>
+<tr>
+<td style="background:#fff;text-align:center;padding:26pt 8pt;border:1pt solid #d4d4d7"><b>Route content</b> (scrolls)<br><span class="mono">metrics · tables · canvas</span></td>
+<td style="background:#f5f5f8;width:20%;text-align:center;vertical-align:top;padding:8pt;border:1pt solid #9aa2d6"><b>NodeInspector</b><br><span class="mono">300px</span><br>canvas pages only</td>
+</tr>
+</table>
+
+<h3>Navigation flow</h3>
+<table style="width:100%;font-size:9.5pt">
+<tr>
+<td style="background:#eef0fb;border:1.5pt solid #4a5ac9;text-align:center;padding:6pt"><b>Login</b><br>SSO</td>
+<td style="border:none;text-align:center;color:#4a5ac9">▶</td>
+<td style="background:#eef0fb;border:1.5pt solid #4a5ac9;text-align:center;padding:6pt"><b>Home</b><br>dashboard</td>
+<td style="border:none;text-align:center;color:#4a5ac9">▶</td>
+<td style="background:#fff;border:1pt solid #9aa2d6;text-align:center;padding:6pt"><b>Workflows</b><br>inventory</td>
+<td style="border:none;text-align:center;color:#4a5ac9">▶</td>
+<td style="background:#fff;border:1pt solid #9aa2d6;text-align:center;padding:6pt"><b>BPMN view</b><br>vertical canvas</td>
+<td style="border:none;text-align:center;color:#4a5ac9">▶</td>
+<td style="background:#fff;border:1pt solid #9aa2d6;text-align:center;padding:6pt"><b>Graph</b><br>DAG + validate</td>
+</tr>
+<tr><td colspan="9" style="border:none;padding:2pt"></td></tr>
+<tr>
+<td style="border:none"></td><td style="border:none"></td>
+<td style="border:none;text-align:center;color:#4a5ac9">▼</td>
+<td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td><td style="border:none"></td>
+</tr>
+<tr>
+<td style="background:#fff;border:1pt solid #9aa2d6;text-align:center;padding:6pt"><b>Rules</b><br>inventory</td>
+<td style="border:none;text-align:center;color:#4a5ac9">▶</td>
+<td style="background:#fff;border:1pt solid #9aa2d6;text-align:center;padding:6pt"><b>Rule detail</b><br>definition + props</td>
+<td style="border:none"></td>
+<td style="background:#fff;border:1pt solid #9aa2d6;text-align:center;padding:6pt"><b>Executions</b><br>filters · infinite scroll</td>
+<td style="border:none;text-align:center;color:#4a5ac9">▶</td>
+<td colspan="3" style="background:#fff;border:1pt solid #9aa2d6;text-align:center;padding:6pt"><b>Execution trace</b><br>historical BPMN + path overlay · Stop / Restart</td>
+</tr>
+</table>
+<p style="font-size:9pt;color:#5d5d60">Home, Rules and Executions are reached from the sidebar at any time; breadcrumbs walk detail pages back to their inventories.</p>
+
+<h2>5. Component inventory</h2>
+<table>
+<tr><th>Component</th><th>Purpose</th><th>Key props</th><th>Satisfies</th></tr>
+<tr><td><b>AppShell</b></td><td>Sidebar + TopBar + breadcrumbs around scrolling content; owns sidebar collapse</td><td class="mono">nav, topBar, breadcrumbs, children</td><td>ADR-003</td></tr>
+<tr><td><b>Sidebar</b></td><td>Capability navigation (Build/Monitor/Learn) with collapse; active item indigo-on-tint</td><td class="mono">sections, activeId, collapsed, onNavigate</td><td>FR-SHELL-008/009, ADR-018</td></tr>
+<tr><td><b>TopBar</b></td><td>Tenant label/selector, scoped global search, profile card with appearance menu</td><td class="mono">tenant, tenants, user, onSearch, theme, accent</td><td>FR-SHELL-002/003/004, ADR-006</td></tr>
+<tr><td><b>Breadcrumbs</b></td><td>Clickable trail; last crumb is current page, not clickable</td><td class="mono">items[{label, onClick}]</td><td>ADR-013</td></tr>
+<tr><td><b>PageHeader</b></td><td>Title + subtitle + right-aligned action slot</td><td class="mono">title, subtitle, actions</td><td>—</td></tr>
+<tr><td><b>MetricCard</b></td><td>KPI tile: kicker, large value, caption, trend</td><td class="mono">label, value, caption, trend</td><td>FR-WF-002, FR-RULE-001</td></tr>
+<tr><td><b>StatusIndicator</b></td><td>Fixed status language; always dot/glyph + text, never color alone</td><td class="mono">status, variant ('badge'|'text'), label</td><td>ADR-018, NFR-A11Y-003</td></tr>
+<tr><td><b>TrendIndicator</b></td><td>Arrow direction decoupled from semantic color (business effect)</td><td class="mono">direction, tone, label</td><td>ADR-018</td></tr>
+<tr><td><b>Badge</b></td><td>Tinted label; mono variant for IDs and versions</td><td class="mono">tone, mono, children</td><td>—</td></tr>
+<tr><td><b>DataTable</b></td><td>Themed table; React-node cells; keyboard-operable clickable rows</td><td class="mono">columns, rows, rowKey, onRowClick, empty</td><td>NFR-A11Y-002/005</td></tr>
+<tr><td><b>Canvas</b></td><td>Scrollable/zoomable vertical diagram stage; full-screen mode (Esc exits); toolbar: −/+/Fit/Center/Validate</td><td class="mono">height, contentWidth/Height, validate, allowFullscreen, onBackgroundClick</td><td>FR-WFD-004, FR-GRAPH-005, NFR-RESP-006</td></tr>
+<tr><td><b>WorkflowNode</b></td><td>Typed BPMN/DAG node (11 approved types); trace states green/amber/red; skipped = gray, non-interactive</td><td class="mono">type, name, x, y, status, selected, onSelect</td><td>ADR-010/016, FR-WFD-005</td></tr>
+<tr><td><b>Edge</b></td><td>Directed edge; traversed black, default neutral, inactive gray dashed; branch labels</td><td class="mono">x1, y1, x2, y2, state, label</td><td>ADR-016</td></tr>
+<tr><td><b>NodeInspector</b></td><td>Right panel: empty state, titled rows (mono for I/O), action slot (Go to Graph, Stop, Restart), collapsible</td><td class="mono">title, status, rows, actions, onClose</td><td>FR-WFD-003/008, FR-TRACE-011</td></tr>
+</table>
+<p><b>InfiniteList is built</b> (virtualized: windowed rows, load-more sentinel, 1,000-row cap). Named contracts still to implement from the approved inventory: <code>SearchInput, FilterBar, DateRangeFilter, SortControl, Chart, EmptyState, LoadingState, ErrorState, ConfirmationDialog, Drawer, Sheet, GraphNode</code> (GraphNode is currently WorkflowNode with <code>type="java"</code>; dialogs use the system <code>.dialog</code> classes).</p>
+
+<h2>6. Design tokens</h2>
+<h3>Theming pipeline</h3>
+<table style="width:100%;font-size:9.5pt">
+<tr>
+<td style="background:#eef0fb;border:1.5pt solid #4a5ac9;text-align:center;padding:6pt;width:22%"><b>User picks</b><br>theme (System/Light/Dark)<br>accent (Indigo/Blue/Teal/Purple)</td>
+<td style="border:none;text-align:center;color:#4a5ac9">▶</td>
+<td style="background:#fff;border:1pt solid #9aa2d6;text-align:center;padding:6pt;width:24%"><b>Token remap on :root</b><br><span class="mono">ground/ink swap · ramps re-derive</span></td>
+<td style="border:none;text-align:center;color:#4a5ac9">▶</td>
+<td style="background:#fff;border:1pt solid #9aa2d6;text-align:center;padding:6pt;width:24%"><b>Everything re-themes</b><br>components read <span class="mono">var(--*)</span> only</td>
+<td style="border:none;text-align:center;color:#4a5ac9">▶</td>
+<td style="background:#f5f5f8;border:1pt solid #9aa2d6;text-align:center;padding:6pt;width:20%"><b>Persisted</b><br><span class="mono">localStorage</span></td>
+</tr>
+</table>
+<p style="font-size:9pt;color:#5d5d60">Semantic status colors (success/warning/danger/inactive) stay fixed through every theme and accent (ADR-018).</p>
+<table>
+<tr><th>Group</th><th>Tokens</th><th>Usage</th></tr>
+<tr><td>Color roles</td><td class="mono">--color-bg/-surface/-text/-accent/-divider + --color-neutral-100…900, --color-accent-100…900</td><td>Light steps for tints/hovers, 500 base, deep steps for text-on-tint and pressed states</td></tr>
+<tr><td>Semantic status (fixed)</td><td class="mono">--color-success/-warning/-danger/-inactive (+ -100 tint, -800 text step each)</td><td>Success green, running/halted amber, failed red, inactive gray — stable across themes and accents</td></tr>
+<tr><td>Type</td><td class="mono">--font-heading, --font-body, --font-mono</td><td>OS-shipped stacks only; mono carries rules, JSON, IDs, inputs/outputs</td></tr>
+<tr><td>Layout</td><td class="mono">--layout-sidebar (232px), --layout-sidebar-collapsed (64px), --layout-topbar (56px), --layout-inspector (300px)</td><td>Shell dimensions</td></tr>
+<tr><td>Space / radius / elevation</td><td class="mono">--space-1…8, --radius-sm/md/lg, --shadow-sm/md/lg</td><td>Square corners on cards/buttons per the Industry blueprint grammar</td></tr>
+</table>
+
+<h2>7. Interaction and color language</h2>
+<ul>
+<li>The accent (indigo #4a5ac9) is the interactive color: primary buttons, links, breadcrumbs, selection, focus (2px accent focus-visible ring), active nav (accent-700 label on accent-100 background).</li>
+<li>Trends: color = business effect (green positive / red negative); the arrow only shows direction — lower duration is a green down-arrow.</li>
+<li>Charts: single series accent blue; multi-series uses an accessible categorical palette with labels/legends.</li>
+<li>Trace overlay: traversed edges black; non-traversed light gray; nodes green/amber/red with glyph + label; non-executed gray, dimmed and non-interactive.</li>
+</ul>
+
+<h2>8. Responsive behavior</h2>
+<table>
+<tr><th>Breakpoint</th><th>Shell</th><th>Content</th></tr>
+<tr><td>Desktop</td><td>Full sidebar · top bar · inline inspector</td><td>4-column metrics; full tables</td></tr>
+<tr><td>Tablet</td><td>Icon sidebar · inspector becomes overlay drawer</td><td>2-column metrics; filters into a drawer</td></tr>
+<tr><td>Mobile</td><td>Top controls + nav drawer · inspector full-screen sheet</td><td>1-column metrics; essential table columns only, secondary data in row details; search collapses to a control</td></tr>
+</table>
+<p>BPMN/DAG canvases always stay scrollable and zoomable; nodes are never compressed to fit (NFR-RESP-006).</p>
+
+<h2>9. Accessibility</h2>
+<p>Target WCAG 2.2 AA: semantic HTML controls, keyboard operation with visible focus, status never by color alone (glyph + text everywhere), accessible names on icon-only controls, and interactive canvas nodes represented as real buttons in a navigable structure (NFR-A11Y-001…007).</p>
+
+<h2>11. React implementation blueprint</h2>
+<p>This section names the concrete React artifacts the build creates — components, hooks, routes, contexts and state transitions — so engineering estimates and PRs can reference them directly. Paths follow the handoff project (<code>templates/react-ts-handoff/</code>).</p>
+
+<h3>11.1 Component tree</h3>
+<table>
+<tr><th>Path</th><th>Components created</th><th>Kind</th></tr>
+<tr><td class="mono">src/app/</td><td>App · AppRoutes · ProtectedRoute</td><td>Composition roots</td></tr>
+<tr><td class="mono">src/context/</td><td>UserProvider · TenantProvider · AppearanceProvider</td><td>Context providers</td></tr>
+<tr><td class="mono">src/components/shell/</td><td>AppShell · Sidebar · TopBar · TenantToggle · GlobalSearch · ProfileMenu · Breadcrumbs · PageHeader</td><td>Shell primitives</td></tr>
+<tr><td class="mono">src/components/data/</td><td>MetricCard · StatusIndicator · TrendIndicator · Badge · DataTable · <b>InfiniteList (virtualized — built)</b> · SearchInput · FilterBar · DateRangeFilter · EmptyState · LoadingState · ErrorState · ConfirmationDialog</td><td>Data/status primitives</td></tr>
+<tr><td class="mono">src/components/canvas/</td><td>Canvas · WorkflowNode · GraphNode · Edge · NodeInspector</td><td>Canvas primitives</td></tr>
+<tr><td class="mono">src/pages/</td><td>LoginPage · HomePage · WorkflowsPage · WorkflowDetailPage · GraphPage · RulesPage · RuleDetailPage · ExecutionsPage · TracePage · DeferredPage</td><td>Route modules (lazy)</td></tr>
+</table>
+<p>Rule: pages import primitives and hooks only — never fetch, never define visual styles (NFR-REACT-004).</p>
+
+<h3>11.2 Hooks</h3>
+<table>
+<tr><th>Hook</th><th>Signature (conceptual)</th><th>Purpose</th></tr>
+<tr><td class="mono">useUser()</td><td class="mono">→ { user, roles, permissions, can(action) }</td><td>Identity + permission checks; <code>can('workflow.create')</code> gates the + Workflow button</td></tr>
+<tr><td class="mono">useTenant()</td><td class="mono">→ { tenant, tenants, setTenant }</td><td>Tenant context; switching invalidates every tenant-scoped query (FR-SHELL-005)</td></tr>
+<tr><td class="mono">useAppearance()</td><td class="mono">→ { theme, accent, setTheme, setAccent }</td><td>Token remap on :root + localStorage persistence (NFR-REACT-005)</td></tr>
+<tr><td class="mono">useWorkflows(filters)</td><td class="mono">→ { data, isLoading, error, fetchNextPage }</td><td>Workflow inventory, paged for infinite scroll</td></tr>
+<tr><td class="mono">useWorkflow(id) / useRule(id)</td><td class="mono">→ { data, isLoading, error }</td><td>Detail records incl. BPMN definition / rule definition</td></tr>
+<tr><td class="mono">useExecutions(filters)</td><td class="mono">→ { data, …, fetchNextPage }</td><td>Executions; filter change resets pages and scroll position</td></tr>
+<tr><td class="mono">useExecutionTrace(id)</td><td class="mono">→ { execution, workflowVersion, path }</td><td>Historical workflow version + traversed path (FR-TRACE-002)</td></tr>
+<tr><td class="mono">useExecutionActions(id)</td><td class="mono">→ { stop, restartFrom(nodeId) }</td><td>Mutations with confirmation; restart returns linked new execution id</td></tr>
+<tr><td class="mono">useGlobalSearch(query)</td><td class="mono">→ { results, isLoading }</td><td>Debounced, tenant-scoped search across workflows/rules/executions</td></tr>
+<tr><td class="mono">useCanvasViewport()</td><td class="mono">→ { zoom, setZoom, fit, center, fullscreen }</td><td>Canvas view state, local to each canvas instance</td></tr>
+<tr><td class="mono">useInfiniteScroll(ref, cb)</td><td class="mono">→ void</td><td>IntersectionObserver trigger for InfiniteList</td></tr>
+</table>
+<p>Data hooks wrap a query layer (TanStack Query recommended: caching, invalidation, retries). Today they resolve from <code>fixtures.ts</code> adapters; swapping in real APIs changes only the adapter (FR-MOCK-003).</p>
+
+<h3>11.3 Routes (React Router v6, all lazy)</h3>
+<table>
+<tr><th>Path</th><th>Element</th><th>Guard / loader notes</th></tr>
+<tr><td class="mono">/login</td><td class="mono">&lt;LoginPage /&gt;</td><td>Redirects to /home when already authenticated</td></tr>
+<tr><td class="mono">/ (layout route)</td><td class="mono">&lt;ProtectedRoute&gt;&lt;AppShell /&gt;&lt;/ProtectedRoute&gt;</td><td>Shell renders once; children swap in &lt;Outlet /&gt;</td></tr>
+<tr><td class="mono">/home</td><td class="mono">&lt;HomePage /&gt;</td><td>index redirect from /</td></tr>
+<tr><td class="mono">/workflows</td><td class="mono">&lt;WorkflowsPage /&gt;</td><td>Search/filter state in URL search params</td></tr>
+<tr><td class="mono">/workflows/:workflowId</td><td class="mono">&lt;WorkflowDetailPage /&gt;</td><td>Selected node id in search param <code>?node=</code> (deep-linkable)</td></tr>
+<tr><td class="mono">/workflows/:workflowId/graphs/:graphId</td><td class="mono">&lt;GraphPage /&gt;</td><td>Breadcrumbs derive from params</td></tr>
+<tr><td class="mono">/rules · /rules/:ruleId</td><td class="mono">&lt;RulesPage /&gt; · &lt;RuleDetailPage /&gt;</td><td></td></tr>
+<tr><td class="mono">/executions</td><td class="mono">&lt;ExecutionsPage /&gt;</td><td>Filters in URL search params; shareable views</td></tr>
+<tr><td class="mono">/executions/:executionId</td><td class="mono">&lt;TracePage /&gt;</td><td><code>?node=</code> selects the inspected node</td></tr>
+<tr><td class="mono">/monitoring · /docs · /examples</td><td class="mono">&lt;DeferredPage /&gt;</td><td>Visible-but-deferred (FR-SHELL-010)</td></tr>
+<tr><td class="mono">*</td><td class="mono">&lt;ErrorState kind="not-found" /&gt;</td><td></td></tr>
+</table>
+
+<h3>11.4 State — what lives where, and what changes it</h3>
+<table>
+<tr><th>State</th><th>Lives in</th><th>Changed by → effect</th></tr>
+<tr><td>Session (user, roles, permissions)</td><td class="mono">UserProvider</td><td>SSO callback → shell renders; logout → redirect /login, caches cleared</td></tr>
+<tr><td>Tenant</td><td class="mono">TenantProvider</td><td>TenantToggle pick → all tenant-scoped queries invalidated; current route re-fetches; search rescopes</td></tr>
+<tr><td>Theme + accent</td><td class="mono">AppearanceProvider</td><td>ProfileMenu pick → tokens remapped on :root, persisted; no component re-render needed beyond the menu</td></tr>
+<tr><td>Server data (workflows, rules, executions, traces)</td><td class="mono">Query cache</td><td>Route mount / filter change / tenant change → fetch; Stop/Restart mutation → invalidate execution + list</td></tr>
+<tr><td>URL state (filters, search text, selected node)</td><td class="mono">Router search params</td><td>User input → URL updates → deep-linkable, survives refresh, back button works</td></tr>
+<tr><td>Sidebar collapsed</td><td class="mono">AppShell local + localStorage</td><td>Collapse click → width token flips</td></tr>
+<tr><td>Canvas viewport (zoom, fullscreen)</td><td class="mono">useCanvasViewport (local)</td><td>Toolbar → transform updates; Esc exits fullscreen; never global</td></tr>
+<tr><td>Dialog open/confirm</td><td class="mono">Page local state</td><td>Action click → open; Confirm → mutation → close + toast</td></tr>
+</table>
+<p>Deliberate choice: no Redux/Zustand at baseline. Server cache + contexts + URL params cover the approved scope; a global store is added only if a future feature demonstrates the need.</p>
+
+<h3>11.5 Key state flows (sequences)</h3>
+<ul>
+<li><b>Tenant switch:</b> TenantToggle → <code>setTenant</code> → provider updates → query keys (all include tenant) go stale → active page shows LoadingState → fresh tenant data renders. Search box clears.</li>
+<li><b>Node inspection:</b> node click → <code>setSearchParams({node: id})</code> → NodeInspector reads the param → renders config/execution rows; background click removes the param → inspector empty state.</li>
+<li><b>Restart from node:</b> inspector Restart → ConfirmationDialog → <code>restartFrom(nodeId)</code> mutation → optimistic “running” badge → on success navigate to the NEW execution id (linked to the old one) → trace re-renders.</li>
+<li><b>Infinite scroll:</b> sentinel zone triggers <code>fetchNextPage</code> → rows append into the <b>virtualized</b> InfiniteList — only the visible window (~15 rows + overscan) exists in the DOM at any scroll depth; a 1,000-row cap shows “refine your filters” instead of loading forever; changing any filter resets pagination and scrolls to top (FR-EXEC-007).</li>
+</ul>
+
+<h3>11.6 Additional React concerns</h3>
+<ul>
+<li><b>Code splitting:</b> every page module behind <code>React.lazy</code> + a route-level <code>&lt;Suspense fallback=&lt;LoadingState/&gt;&gt;</code> (NFR-REACT-006); the canvas bundle splits separately — it loads only for BPMN/graph/trace routes.</li>
+<li><b>Error boundaries:</b> one per route module rendering <code>ErrorState</code>; shell stays alive when a page crashes.</li>
+<li><b>Memoization:</b> node/edge arrays and DataTable rows are memoized; canvas re-renders on viewport change must not re-create node components (React.memo on WorkflowNode/Edge).</li>
+<li><b>Accessibility hooks:</b> focus trap in dialogs and the fullscreen canvas; focus returns to the invoking control on close; canvas nodes are real &lt;button&gt;s in DOM order.</li>
+<li><b>Testing seams:</b> primitives get RTL component tests against their .d.ts contracts; pages get interaction tests with mocked hooks; the fixtures layer doubles as MSW seed data later.</li>
+<li><b>Definition of done for a primitive:</b> typed props matching the contract · tokens only · keyboard + focus states · empty/loading/error variants where applicable · RTL tests · a specimen card.</li>
+</ul>
+
+<h2>13. Capability module structure</h2>
+<p>The UI is one repository whose routes are partitioned into capability packages, so a deployment can be built containing only the capabilities it is entitled to (ADR-033/035). Capability is decided at build time; tenant identity is applied at deploy time. Those two must never swap places.</p>
+
+<h3>13.1 Folder structure</h3>
+<pre class="tree">visualization-ui/
+  packages/
+    core/                       # always shipped — the only package that knows about "the app"
+      src/app/                  # App · AppRoutes · ProtectedRoute · CapabilityGate
+      src/shell/                # AppShell · Sidebar · TopBar · Breadcrumbs · PageHeader
+      src/primitives/           # the 14 design-system components (§5)
+      src/context/              # UserProvider · TenantProvider · AppearanceProvider
+                                #   · CapabilityProvider
+      src/registry/             # RouteRegistry · NavRegistry — capabilities register INTO these
+      src/query/                # query client, cache policy, error normalisation
+      src/styles/styles.css     # the token stylesheet
+                                # core MUST NOT import from any capability package
+    capability-monitor/         # executions, trace, alerts, monitoring overview,
+                                #   read-only workflow + graph views
+    capability-build/           # workflow authoring, rules, validate, publish
+    capability-tasks/           # task inventory and task detail (in design — §13.4)
+    capability-docs/            # documentation surfaces
+    capability-operate/         # stop / restart / intervene actions inside trace
+  apps/
+    app-monitor/  app-build/  app-tasks/  app-docs/  app-full/
+                                # composition roots — imports and a Vite config, no UI code
+  tenants/
+    &lt;tenant&gt;/deployment.json    # bundle, domain, region, idp — written by onboarding
+    &lt;tenant&gt;/branding.json      # accent token, product name, logo asset ref
+    &lt;tenant&gt;/overrides.json     # labels, column defaults, in-capability toggles
+    &lt;tenant&gt;/infra/             # CDK parameters for their account
+  ds-base/                      # design-system loader shared by all apps</pre>
+<p>A capability package owns its routes, its pages, its hooks and its API client. It may import from <code>core</code>; it may not import from another capability package. Cross-capability needs are expressed as a contribution to a core registry, never as a direct dependency — which is what lets any subset compile.</p>
+
+<h3>13.2 How a capability registers</h3>
+<p>Each package exports one manifest. The composition root imports the manifests it wants; nothing else in the app enumerates capabilities.</p>
+<pre class="tree">// packages/capability-monitor/src/manifest.ts
+export const monitorCapability: CapabilityManifest = {
+  id: 'monitor',
+  nav: [{ group: 'Monitor', items: [
+    { to: '/executions', label: 'Executions', icon: 'activity' },
+    { to: '/alerts',     label: 'Alerts',     icon: 'bell', badge: 'alertCount' },
+  ]}],
+  routes: [
+    { path: '/executions',     element: lazy(() =&gt; import('./pages/ExecutionsPage')) },
+    { path: '/executions/:id', element: lazy(() =&gt; import('./pages/TracePage')) },
+    { path: '/alerts',         element: lazy(() =&gt; import('./pages/AlertsPage')) },
+  ],
+  landing: '/executions',      // candidate landing route, priority-ordered in core
+};
+
+// apps/app-monitor/src/main.tsx — the ENTIRE difference between bundles
+bootstrap([coreCapability, monitorCapability, operateCapability]);</pre>
+<p>Three consequences follow, and they are the point of the design. The bundler tree-shakes every capability not imported by the composition root, so authoring code is <b>absent from the build output</b>, not merely lazy (ADR-038). Core contains no list of capability ids, so reading <code>core</code> discloses nothing about what else exists. And nav, routes and landing route all derive from the same manifests, so they cannot drift out of step.</p>
+
+<h3>13.3 CapabilityGate — and what it is not</h3>
+<p><code>useCapability('build')</code> answers whether a capability is present in <i>this</i> build, and <code>&lt;CapabilityGate cap="build"&gt;</code> renders children only if it is. Its legitimate use is <b>cross-capability links</b>: a trace page in the full bundle links to the workflow editor, and in a monitoring bundle renders the workflow name as text. It is not an authorization mechanism and not a way to hide routes — an absent capability has no route to hide, and permission checks remain <code>useUser().can(action)</code> as before. Two orthogonal questions: capability asks "is this feature in this deployment", permission asks "may this person use it".</p>
+
+<h3>13.4 Tasks (in design)</h3>
+<p>Tasks is a first-class capability package within the Experience UI, not a section of another capability. It is scaffolded now — package, manifest, nav group, inventory route and detail route — against the Inventory page pattern, so the shape is fixed while the content is being designed. It ships in the <code>tasks</code> and <code>full</code> bundles only; the monitoring bundle does not contain it. Nothing else in the codebase changes when its design lands, which is the test that the module boundary is correct.</p>
+
+<h2>14. Browser memory and component interaction</h2>
+<p>This section is the part of the architecture that keeps a long-lived internal tool from degrading over a working day: what is allowed to accumulate in the tab, what evicts it, and how components exchange state without re-rendering each other unnecessarily.</p>
+
+<h3>14.1 The four memory pools</h3>
+<table>
+<tr><th>Pool</th><th>Holds</th><th>Bound</th><th>Evicted by</th></tr>
+<tr><td><b>DOM</b></td><td>Rendered nodes</td><td>Constant — visible window + overscan (~30 rows; canvas: viewport tiles)</td><td>Virtualization; nothing off-screen exists</td></tr>
+<tr><td><b>Query cache</b></td><td>Server payloads keyed by query</td><td>5-minute stale, 15-minute GC; inventories keep a ~500-row window of pages</td><td>Age, tenant switch (full clear), mutation invalidation, page-window trimming</td></tr>
+<tr><td><b>Diagram store</b></td><td>Parsed nodes/edges per (workflow, version), plus loaded tile ids</td><td>Two diagrams; tiles beyond 2× viewport dropped</td><td>LRU on navigation away from a canvas; cleared on version change</td></tr>
+<tr><td><b>Component state</b></td><td>Zoom, selection, dialog, sidebar</td><td>Trivial — scalars</td><td>Unmount; nothing persists except sidebar collapse (localStorage)</td></tr>
+</table>
+<p>The invariant behind all four: <b>memory is a function of what is on screen, not of how long the tab has been open or how deep the user has scrolled.</b> Anything that violates that is a defect, not a tuning opportunity.</p>
+
+<h3>14.2 Virtualized inventory — memory over a long scroll</h3>
+<div class="seq">scroll depth →      0 rows        200 rows       800 rows       1,000 rows (cap)
+                    │              │              │              │
+DOM rows            30             30             30             30        ← constant
+cached pages        1              4              10             10        ← window trims oldest
+detached listeners  0              0              0              0         ← observers unbind on unmount
+                    │              │              │              │
+                    │              │              │              └─ cap notice replaces sentinel:
+                    │              │              │                 "1,000 rows loaded — narrow your filter"
+                    │              │              └─ pages older than the window are dropped;
+                    │              │                 scrolling back re-fetches from cursor
+                    │              └─ sentinel enters viewport → fetchNextPage(cursor)
+                    └─ first page + skeleton
+
+filter change → pages reset to 1, scroll to top, cursor discarded, in-flight request aborted</div>
+<p class="cap">Figure A — The list is bounded in three independent ways: DOM by windowing, cache by page trimming, and total load by the 1,000-row cap. A filter change is a reset, never a merge.</p>
+
+<h3>14.3 Canvas viewport and tile lifecycle</h3>
+<div class="seq">                    ┌──────────────────────────────────┐
+ stage (logical) ──▶│  tiles: [2,1] [3,1] [2,2] [3,2]   │  loaded = viewport × 2
+                    │  ┌─────────────┐                 │
+                    │  │  viewport   │  ◀─ CSS transform: translate + scale
+                    │  │  (visible)  │     zoom and pan cost ZERO requests
+                    │  └─────────────┘     and ZERO re-renders of node components
+                    └──────────────────────────────────┘
+
+pan crosses tile boundary → request bbox tile → append nodes/edges to diagram store
+                          → drop tiles outside 2× viewport (LRU)
+zoom &lt; 60%                → hide labels, keep shapes + status (no data change)
+nodes &gt; ~2,000            → BFF returns lod:"summary"; detail arrives on zoom-in
+navigate away             → diagram store keeps 2 most-recent (workflow, version) entries
+version changes           → entry invalidated — the key is immutable, so this is a new key</div>
+<p class="cap">Figure B — Zoom and pan are presentation-only. Only crossing into unloaded space is a network event, which is why a 4,000-node diagram stays interactive.</p>
+
+<h3>14.4 Component interaction — shell, page, canvas, inspector</h3>
+<div class="seq">  AppShell (never remounts on navigation)
+     │  context: user · tenant · appearance · capabilities
+     │
+     ├─ Sidebar ───── nav click ──▶ router.navigate(path)
+     ├─ TopBar ───── tenant switch ─▶ TenantProvider.set() ─▶ queryClient.clear()
+     │                                                          └▶ current route refetches
+     │              appearance ────▶ tokens remapped on :root  (NO React re-render)
+     │
+     └─ &lt;Outlet /&gt; ─▶ Page (lazy, own error boundary)
+           │
+           ├─ PageHeader   ← props only
+           ├─ FilterBar ─── change ─▶ setSearchParams()  ─▶ URL is the single source of truth
+           │                                              └▶ query key changes → refetch
+           └─ Canvas (memoised on { nodes, edges })
+                 │  local: zoom, pan, fullscreen  — never lifted, never in context
+                 ├─ WorkflowNode×N (memoised per node id)
+                 │     └─ click ─▶ setSearchParams({ node: id })   ← selection lives in the URL
+                 └─ NodeInspector
+                       └─ reads ?node= ─▶ useNode(id) ─▶ lazy I/O fetch on expand
+
+Re-render containment:
+  zoom change      → one CSS transform on the stage element; no node re-renders
+  node selection   → previously + newly selected node only; siblings memoised by id
+  theme change     → zero React renders; CSS custom properties do the work
+  tenant change    → full data refetch, shell intact, scroll position reset</div>
+<p class="cap">Figure C — State flows down through props and context; changes flow up through the router. The URL carries anything a user might bookmark, share or reach with the Back button — filters, search text and selected node — which also keeps it out of component state.</p>
+
+<h3>14.5 Leak rules</h3>
+<ul>
+<li><b>Every subscription unbinds on unmount</b> — IntersectionObserver, ResizeObserver, <code>window</code> listeners, timers. The canvas registers pointer listeners on the stage element, never on <code>document</code>, so a route change cannot orphan them.</li>
+<li><b>In-flight requests abort</b> on unmount and on filter change (AbortController through the query layer), so a fast-typing user cannot stack ten pending searches.</li>
+<li><b>No unbounded arrays in state.</b> Anything that grows with user activity — loaded pages, tiles, toasts, recent searches — has an explicit cap written next to its declaration.</li>
+<li><b>Detached DOM is a bug.</b> Node references held after unmount (a cached ref in a closure, a memo keyed on an element) retain their subtree; refs are cleared in cleanup.</li>
+<li><b>Long-session budget:</b> a tab left open for an eight-hour shift, navigating freely, must stay under ~250 MB heap. Verified by a scripted soak — navigate, scroll to cap, open three traces, switch tenant, repeat — comparing heap after forced GC at start and end.</li>
+</ul>
+
+<h3>14.6 Performance budgets</h3>
+<table>
+<tr><th>Interaction</th><th>Budget</th><th>Mechanism</th></tr>
+<tr><td>Route change (chunk cached)</td><td>&lt; 150 ms to first paint</td><td>Lazy chunk + skeleton; shell never remounts</td></tr>
+<tr><td>Scroll at any depth</td><td>60 fps</td><td>Constant DOM window; no per-row layout thrash</td></tr>
+<tr><td>Canvas zoom / pan</td><td>60 fps</td><td>Single composited transform; no React render</td></tr>
+<tr><td>Node select → inspector</td><td>&lt; 100 ms</td><td>Data already in the diagram store; I/O bodies load after</td></tr>
+<tr><td>Filter change → first rows</td><td>&lt; 400 ms</td><td>Abort previous, reset pages, single cursor request</td></tr>
+<tr><td>Initial load (warm cache)</td><td>&lt; 1.5 s to interactive</td><td>Hashed immutable assets; capability chunks only</td></tr>
+</table>
+
+<h2>15. Deliverables map</h2>
+<table>
+<tr><th>Path</th><th>What it is</th></tr>
+<tr><td class="mono">styles.css</td><td>Token sheet + component classes (the one stylesheet)</td></tr>
+<tr><td class="mono">components/platform-shell/ · platform-data/ · platform-canvas/</td><td>React primitives (.jsx) + typed contracts (.d.ts) + live demo pages</td></tr>
+<tr><td class="mono">templates/platform-app/</td><td>Interactive application: app.jsx, pages-build.jsx, pages-monitor.jsx, fixtures.js</td></tr>
+<tr><td class="mono">templates/react-ts-handoff/</td><td>Standalone React + TypeScript Vite project (components, pages, fixtures, README)</td></tr>
+<tr><td class="mono">vanilla/industry-shell.js</td><td>Framework-free custom elements (shell layer) + window.IndustryTheme token remap</td></tr>
+<tr><td class="mono">exports/Platform Wireframes.html</td><td>Self-contained interactive wireframes for stakeholder review</td></tr>
+<tr><td class="mono">UI Architecture.html</td><td>This architecture as a visual blueprint diagram</td></tr>
+<tr><td class="mono">readme.md · theme.json</td><td>Usage guide and machine-readable theme record</td></tr>
+</table>
+
+</body></html>

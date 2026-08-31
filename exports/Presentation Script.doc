@@ -1,0 +1,106 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Decisioning Platform UI — Presentation Script &amp; Q&amp;A</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:11pt;color:#1d1f20;line-height:1.5}
+h1{font-size:22pt;margin:0 0 4pt}
+h2{font-size:15pt;color:#293373;border-bottom:1pt solid #bfc6f0;padding-bottom:3pt;margin:22pt 0 8pt}
+h3{font-size:12pt;margin:14pt 0 4pt;color:#3a479c}
+p{margin:0 0 8pt}
+.meta{color:#5d5d60;font-size:10pt;margin-bottom:16pt}
+table{border-collapse:collapse;width:100%;margin:6pt 0 12pt;font-size:10pt}
+th{background:#eef0fb;color:#293373;text-align:left;padding:5pt 7pt;border:1pt solid #bfc6f0;font-size:9pt;text-transform:uppercase;letter-spacing:.5pt}
+td{padding:5pt 7pt;border:1pt solid #d4d4d7;vertical-align:top}
+code,.mono{font-family:Consolas,"Courier New",monospace;font-size:9.5pt}
+li{margin-bottom:4pt}
+.say{border-left:3pt solid #4a5ac9;background:#f5f5f8;padding:8pt 10pt;margin:6pt 0;font-style:italic}
+.do{font-size:9.5pt;color:#5d5d60;margin:0 0 4pt}
+.q{font-weight:bold;color:#293373}
+</style></head><body>
+
+<h1>Decisioning Platform UI — Presentation Script</h1>
+<p class="meta">For leadership + engineering alignment · ~20 minutes + Q&amp;A · Driver: open <b>Platform Wireframes.html</b> full-screen before you start; have both Word docs ready to share after</p>
+
+<h2>Before the meeting</h2>
+<ul>
+<li>Send nothing in advance except the meeting goal: <i>"Review the approved UI baseline and agree to start the React build."</i> The demo lands better live.</li>
+<li>Open <code>Platform Wireframes.html</code> in a browser tab, logged out (fresh login screen). It's one offline file — no environment, no VPN, nothing can break.</li>
+<li>Know your ask. This script assumes it is: <b>approve the baseline, agree the component-first approach, and staff the build.</b> Adjust the close if yours differs.</li>
+</ul>
+
+<h2>The script</h2>
+
+<h3>1 · Frame the problem (2 min)</h3>
+<p class="do">Slide/talk only — no demo yet.</p>
+<div class="say">"We're building the Decisioning Platform UI — the workbench where our teams design, run and monitor workflows, rules and decisions. Before writing production code, we did the design work up front: requirements, wireframes and architecture decisions were approved as a baseline, and today I'll show you that baseline running as an interactive prototype. What I need from this group by the end: agreement that this is the product we're building, and a go to start the React implementation."</div>
+
+<h3>2 · Show, don't tell — the walkthrough (8 min)</h3>
+<p class="do">Switch to the wireframes. Follow this exact click path; narrate the decision behind each screen, not the pixels.</p>
+<table>
+<tr><th>Click</th><th>Say (the decision, not the feature)</th></tr>
+<tr><td><b>Login</b> → Continue with SSO</td><td>"SSO only — no passwords to manage, no persona picker. Who you are decides what you see; permissions hide capabilities rather than disabling them."</td></tr>
+<tr><td><b>Home</b></td><td>"One shell for the whole product: capability navigation on the left — Build, Monitor, Learn — tenant context and scoped search on top. Every number on this dashboard is dummy data by design; the shapes don't constrain the API contracts."</td></tr>
+<tr><td><b>Workflows</b> (sidebar)</td><td>"Inventories are list-first: metrics, search, infinite scroll. The diagram never competes with the list."</td></tr>
+<tr><td>Open <b>Credit Decision – Real Time</b></td><td>"The BPMN view. Flows read top-to-bottom, the canvas scrolls and zooms — nodes are never compressed to fit. Click any node…" <i>(click Validate Request)</i> "…and the inspector shows its configuration. This is the same inspector pattern everywhere."</td></tr>
+<tr><td>Click <b>Evaluate Credit</b> → Go to Graph</td><td>"Workflows can invoke decision graphs — a Java real-time orchestrator DAG. Same canvas, same inspector, plus Validate. Breadcrumbs keep the workflow context."</td></tr>
+<tr><td><b>Rules</b> → open a rule</td><td>"Rules are first-class and reusable: definition in monospace on the left, properties and usage on the right."</td></tr>
+<tr><td><b>Executions</b></td><td>"The operational view — most recent first, last 7 days by default. Filters are instant." <i>(toggle Halted)</i></td></tr>
+<tr><td>Open the <b>halted execution</b></td><td>"The money screen. This is the exact historical workflow version with the traversed path overlaid — green ran, amber is waiting, gray never ran. The halted node explains why, and operators can Stop or Restart from here — restart creates a linked execution for auditability." <i>(open the Restart confirm, cancel it)</i></td></tr>
+<tr><td>Profile menu → switch to <b>Dark</b>, change accent</td><td>"Everything you've seen is one token system — theme and accent remap variables; status colors stay fixed so green never stops meaning success."</td></tr>
+</table>
+
+<h3>3 · What's under the hood (4 min)</h3>
+<p class="do">Back to slides/talk. This is the engineering-alignment part.</p>
+<div class="say">"This isn't a throwaway mock — it's built the way we'll build the product. Six layers: identity, a persistent shell, lazily-loaded route modules, ~14 shared primitives, a token system, and a data boundary that today serves dummy data and later serves APIs — pages never know the difference. Deliverables already exist at three levels: the design system itself — one stylesheet, framework-agnostic; typed component contracts with reference implementations; and a runnable React + TypeScript project the team can clone and start from. The design-to-code gap is already closed."</div>
+
+<h3>4 · Scope honesty (2 min)</h3>
+<div class="say">"Just as important is what this deliberately does <b>not</b> include: workflow authoring and editing, Intent, Decisions, Data, Connectors, Scripts, Tasks, Alerts — visible-but-deferred pages say so on screen. We're building the monitoring and inspection workbench first because that's where daily operational value is, and authoring needs its own design cycle."</div>
+
+<h3>5 · The ask (2 min)</h3>
+<div class="say">"Three things: One — sign off that these screens are the baseline; changes from here go through change control, not drift. Two — agree we build component-first: primitives land with tests before pages, so screens assemble fast and stay consistent. Three — staffing and a start date. The TypeScript scaffold is ready today; with N engineers I'd estimate the approved scope in X sprints."</div>
+<p class="do">Fill in N and X with your real numbers before the meeting — this is the line they'll remember.</p>
+
+<h2>Q&amp;A — likely questions and answers</h2>
+
+<h3>From leadership</h3>
+<table>
+<tr><th style="width:38%">Question</th><th>Answer</th></tr>
+<tr><td class="q">"How much of this is real vs. mockup?"</td><td>"The UI is real, running code — same components we ship. What's simulated is the data layer: fixtures behind adapters. Backend integration replaces the adapters, not the screens."</td></tr>
+<tr><td class="q">"When can users touch it?"</td><td>"Today — the wireframes file is a single HTML file anyone can open. For production, the sequencing question is API readiness, not UI readiness."</td></tr>
+<tr><td class="q">"Why isn't workflow authoring in scope?"</td><td>"Deliberate. Monitoring and inspection deliver daily operational value and de-risk the platform first; authoring is a design cycle of its own and the approved ADRs defer it. The navigation already reserves its place."</td></tr>
+<tr><td class="q">"What does this cost us if the backend contracts change?"</td><td>"Very little. The mock data shapes explicitly don't constrain the APIs — pages consume hooks, hooks consume adapters. A contract change is an adapter change."</td></tr>
+<tr><td class="q">"Is this accessible / compliant?"</td><td>"Designed to WCAG 2.2 AA: keyboard operable, visible focus, status never conveyed by color alone — every status pairs color with a glyph and text."</td></tr>
+<tr><td class="q">"Why build a design system instead of using an off-the-shelf one?"</td><td>"We consume off-the-shelf conventions where they're free (native controls, standard patterns), but our constraints — internal-only fonts, fixed semantic status colors, tenant-scoped chrome, BPMN/DAG canvases — aren't in any kit. The system is one stylesheet plus 14 components; it's small on purpose."</td></tr>
+<tr><td class="q">"What's the risk in the plan?"</td><td>"Lowest-risk part is the UI — it exists. The risks are API readiness and the deferred canvas performance work at very large node counts; both are tracked, neither blocks the approved scope."</td></tr>
+</table>
+
+<h3>From engineering</h3>
+<table>
+<tr><th style="width:38%">Question</th><th>Answer</th></tr>
+<tr><td class="q">"React version, tooling, TypeScript?"</td><td>"React 18 + TypeScript on Vite; the handoff project runs today with npm install / npm run dev. It ships strict:false to stay 1:1 with the reference — we enable strict incrementally."</td></tr>
+<tr><td class="q">"Are we locked into React?"</td><td>"No. The core — tokens, CSS component classes, theming — is plain CSS and vanilla JS; there's a web-components layer for non-React consumers. React is the reference implementation, not a dependency of the design system."</td></tr>
+<tr><td class="q">"How does theming actually work?"</td><td>"One mechanism: CSS custom properties remapped on :root. Dark mode swaps ground and ink and every ramp re-derives; accents rebuild the accent ramp; semantic colors never move. No per-page overrides — that's a hard rule."</td></tr>
+<tr><td class="q">"What about state management / routing?"</td><td>"The prototype uses local state and an in-memory router on purpose — those are implementation choices the team makes. The architecture only fixes the boundaries: lazy route modules, pages composed from primitives, data behind hooks."</td></tr>
+<tr><td class="q">"Who owns the design system going forward?"</td><td>"Propose: one named owner, contributions by PR, and the adherence rules already encoded (tokens only, no hard-coded values). The system versions independently of the app."</td></tr>
+<tr><td class="q">"The BPMN canvas — hand-rolled or a library?"</td><td>"The primitive is ours: a scrollable, zoomable stage with typed nodes and edges — small and fully in our control. If authoring lands later and needs auto-layout or drag-editing, we evaluate a graph library then; the read-only cases don't justify one."</td></tr>
+<tr><td class="q">"How do we keep pages from drifting off-system?"</td><td>"Pages can't define colors, fonts or status treatments — they compose primitives and tokens. That's enforceable in review and by lint; the contract is one sentence."</td></tr>
+<tr><td class="q">"What's not built yet?"</td><td>"Named contracts still to implement: FilterBar, DateRangeFilter, SortControl, InfiniteList as a real virtualized list, Chart, Empty/Loading/Error states, Drawer/Sheet for tablet-mobile, ConfirmationDialog as a component. All specified, none blocking."</td></tr>
+</table>
+
+<h3>If the discussion stalls</h3>
+<ul>
+<li><b>Design debates ("I'd move that panel…")</b> — "Noted for change control. Today's question is whether the baseline is right enough to build on; refinements ride on top of it."</li>
+<li><b>Scope creep ("Can we add authoring?")</b> — "Yes, as the next cycle. Adding it now re-opens the approved baseline and delays operational value."</li>
+<li><b>Estimation pressure</b> — commit only to component-first sequencing and the next two sprints; the runnable scaffold makes early velocity visible fast.</li>
+</ul>
+
+<h2>Leave-behinds</h2>
+<table>
+<tr><th>Artifact</th><th>Audience</th></tr>
+<tr><td><b>Platform Wireframes.html</b></td><td>Everyone — single offline file, click through at their desk</td></tr>
+<tr><td><b>Industry Design System.doc</b></td><td>Design + engineering — tokens, grammar, catalog, do/don't</td></tr>
+<tr><td><b>UI Architecture.doc</b></td><td>Engineering — layers, routes, contracts, diagrams, porting guide</td></tr>
+<tr><td><b>React + TypeScript project</b></td><td>The build team — clone, npm install, start</td></tr>
+</table>
+
+</body></html>

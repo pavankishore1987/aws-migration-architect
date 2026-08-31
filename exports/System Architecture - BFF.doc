@@ -1,0 +1,170 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Decisioning Platform — System Architecture: BFF, Experience API, Deployment &amp; Performance</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:11pt;color:#1d1f20;line-height:1.5}
+h1{font-size:22pt;margin:0 0 4pt}
+h2{font-size:15pt;color:#293373;border-bottom:1pt solid #bfc6f0;padding-bottom:3pt;margin:22pt 0 8pt}
+h3{font-size:12pt;margin:14pt 0 4pt;color:#3a479c}
+p{margin:0 0 8pt}
+.meta{color:#5d5d60;font-size:10pt;margin-bottom:16pt}
+table{border-collapse:collapse;width:100%;margin:6pt 0 12pt;font-size:10pt}
+th{background:#eef0fb;color:#293373;text-align:left;padding:5pt 7pt;border:1pt solid #bfc6f0;font-size:9pt;text-transform:uppercase;letter-spacing:.5pt}
+td{padding:5pt 7pt;border:1pt solid #d4d4d7;vertical-align:top}
+code,.mono{font-family:Consolas,"Courier New",monospace;font-size:9.5pt}
+pre{font-family:Consolas,"Courier New",monospace;font-size:9pt;background:#f5f5f8;border:1pt solid #d4d4d7;padding:8pt;white-space:pre-wrap;margin:4pt 0 10pt}
+li{margin-bottom:4pt}
+.callout{border-left:3pt solid #4a5ac9;background:#f5f5f8;padding:8pt 10pt;margin:8pt 0}
+.box{background:#eef0fb;border:1.5pt solid #4a5ac9;text-align:center;padding:7pt}
+.box2{background:#fff;border:1pt solid #9aa2d6;text-align:center;padding:7pt}
+.arr{border:none;text-align:center;color:#4a5ac9;padding:1pt}
+</style></head><body>
+
+<h1>System Architecture — BFF, Experience API, Deployment &amp; Performance</h1>
+<p class="meta">Decisioning Platform UI · companion to the UI Architecture doc · August 29, 2026</p>
+
+<h2>1. Why a BFF (experience API)</h2>
+<p>The React app should never talk to domain services directly. A Backend-for-Frontend owns the experience contract: it aggregates domain APIs into screen-shaped responses, holds the session, enforces tenancy, and redacts fields by role — so the browser receives exactly what a screen needs and nothing more.</p>
+<table>
+<tr><th>Concern</th><th>Without BFF</th><th>With BFF</th></tr>
+<tr><td>Screen data</td><td>4–6 calls per page (workflow + metrics + executions + rules), joined in the browser</td><td>1 call per screen, joined server-side</td></tr>
+<tr><td>Auth</td><td>Tokens in the browser (localStorage risk)</td><td>httpOnly session cookie; tokens never reach JS</td></tr>
+<tr><td>Tenancy</td><td>Client sends tenant id — spoofable</td><td>BFF resolves tenant from session; client can only pick among its own</td></tr>
+<tr><td>Redaction / PII</td><td>UI receives everything, hides some</td><td>Field-level redaction by role before the wire</td></tr>
+<tr><td>Domain churn</td><td>Every backend change hits the React code</td><td>BFF absorbs it; experience contract stays stable</td></tr>
+</table>
+
+<h2>2. System architecture</h2>
+<table style="width:100%">
+<tr><td class="box" colspan="3"><b>Browser — React SPA (static assets)</b><br><span class="mono">pages → hooks → query cache → fetch /api/* (same origin, cookie auth)</span></td></tr>
+<tr><td class="arr" colspan="3">▼ HTTPS, session cookie (httpOnly, SameSite=Strict)</td></tr>
+<tr><td class="box" colspan="3"><b>CDN / static host + edge routing</b><br><span class="mono">serves the SPA bundle · routes /api/* to the BFF (same origin ⇒ no CORS)</span></td></tr>
+<tr><td class="arr" colspan="3">▼</td></tr>
+<tr><td class="box" colspan="3"><b>BFF — Experience API (Node/Java, stateless, per-frontend)</b><br><span class="mono">OIDC client · session store · aggregation · authorization · redaction · rate limiting · response shaping</span></td></tr>
+<tr><td class="arr" colspan="3">▼ service-to-service auth (mTLS / client credentials)</td></tr>
+<tr><td class="box2"><b>Workflow service</b><br><span class="mono">definitions · versions · BPMN</span></td><td class="box2"><b>Execution service</b><br><span class="mono">runs · traces · stop/restart</span></td><td class="box2"><b>Rules / Decision service</b><br><span class="mono">rules · graphs · validation</span></td></tr>
+<tr><td class="arr" colspan="3">▼</td></tr>
+<tr><td class="box2" colspan="3"><b>Identity provider (OIDC/SAML SSO)</b> · <b>Metrics store</b> · <b>Audit log</b></td></tr>
+</table>
+<ul>
+<li><b>Auth flow:</b> SPA hits <code>/api/auth/login</code> → BFF redirects to IdP (OIDC code + PKCE) → callback at the BFF → BFF stores tokens server-side, sets an httpOnly session cookie → SPA calls <code>/api/me</code>. The browser never sees an access token.</li>
+<li><b>One BFF per frontend.</b> If a mobile or admin app arrives later, it gets its own BFF; domain services stay experience-agnostic.</li>
+<li><b>Stateless BFF instances</b> behind a load balancer; session in a shared store (Redis) or an encrypted cookie — horizontal scaling is trivial.</li>
+</ul>
+
+<h2>3. Experience API contracts</h2>
+<p>Screen-shaped, versioned under <code>/api/v1</code>. Envelope for lists: <code>{ items, cursor, total? }</code> — cursor pagination matches the infinite-scroll UI. Errors: RFC 7807 problem+json (<code>{ type, title, status, detail, traceId }</code>).</p>
+
+<h3>Session &amp; context</h3>
+<pre>GET  /api/me
+→ { user: { id, name, role }, permissions: ["workflow.create", ...],
+    tenants: [{ id, name }], activeTenantId }
+
+POST /api/me/tenant            { tenantId }        → 204   (server-side switch; all data calls follow)
+GET  /api/search?q=…&amp;limit=10
+→ { workflows: [...], rules: [...], executions: [...] }     (scoped to active tenant, debounced client-side)</pre>
+
+<h3>Home (one call, one screen)</h3>
+<pre>GET  /api/home
+→ { metrics: { workflows, executions7d, successRate7d, avgDuration7d,
+               trends: { executions7d: {dir, pct}, ... } },
+    myWorkflows:      { items: [ WorkflowSummary ] },
+    recentExecutions: { items: [ ExecutionSummary ] },
+    announcements:    [ { title, body, date } ],
+    usage:            { series: [ { date, count } ] } }</pre>
+
+<h3>Workflows</h3>
+<pre>GET  /api/workflows?query=…&amp;status=…&amp;cursor=…&amp;limit=50
+→ { items: [ { id, name, description, status, version, updatedAt,
+               executions7d, avgDuration7d } ], cursor }
+
+GET  /api/workflows/{id}
+→ { id, name, status, version, metrics: {...},
+    definition: { nodes: [ { id, type, name, position, config } ],
+                  edges: [ { from, to, label? } ] } }        // config pre-redacted by role
+
+GET  /api/workflows/{id}/graphs/{graphId}
+→ { id, name, version, nodes: [...], edges: [...] }
+POST /api/workflows/{id}/graphs/{graphId}/validate  → { valid, issues: [ { nodeId, severity, message } ] }</pre>
+
+<h3>Rules</h3>
+<pre>GET  /api/rules?query=…&amp;cursor=…        → { items: [ RuleSummary ], cursor }
+GET  /api/rules/{id}
+→ { id, name, status, version, priority, definitionText, usedBy: [ { workflowId, name } ],
+    metrics: { evaluations7d, triggered7d } }</pre>
+
+<h3>Executions &amp; trace</h3>
+<pre>GET  /api/executions?workflowId=…&amp;status=…&amp;from=…&amp;to=…&amp;cursor=…
+→ { items: [ { id, workflowId, workflowName, status, durationMs, startedAt } ], cursor }
+
+GET  /api/executions/{id}/trace
+→ { execution: { id, status, startedAt, workflowVersion },
+    workflow:  { nodes: [...], edges: [...] },               // the HISTORICAL version
+    path:      { nodeStates: { nodeId: { status, startedAt, durationMs,
+                                          input?, output?, haltReason? } },   // redacted by role
+                 traversedEdges: [ edgeId ] } }
+
+POST /api/executions/{id}/stop                      → 202 { id, status: "stopping" }
+POST /api/executions/{id}/restart  { fromNodeId }   → 201 { newExecutionId, linkedTo }   // audit link</pre>
+<p>Contract rules: the BFF never proxies domain payloads verbatim — it maps them; every response is tenant-filtered and role-redacted before serialization; all mutating endpoints are idempotent-safe (restart returns the same new id on retry via an idempotency key header).</p>
+
+<h2>4. How the React application scales</h2>
+<table>
+<tr><th>Axis</th><th>Mechanism</th></tr>
+<tr><td>Code size</td><td>Route-level code splitting (React.lazy) — first paint ships the shell + home only; canvas code loads only on diagram routes. Budget: initial JS &lt; 250 KB gz, enforced in CI (size-limit).</td></tr>
+<tr><td>Team scale</td><td>Feature-folder ownership (pages/ + hooks/ per capability) over the shared primitive layer; primitives change by PR to the design-system owner. Pages can't define visuals, so 10 teams can't fork the look.</td></tr>
+<tr><td>Data scale</td><td>Cursor pagination + virtualized lists (only visible rows in the DOM); query cache dedupes identical requests across components; BFF aggregation keeps request count per screen at 1–2.</td></tr>
+<tr><td>Traffic scale</td><td>SPA is static — CDN scales it for free. BFF is stateless — add instances. The browser holds no server affinity.</td></tr>
+<tr><td>Future modules</td><td>New capability = new lazy route module + new BFF endpoints; nothing existing recompiles. If org structure demands it later, module federation is possible — but don't start there.</td></tr>
+</table>
+
+<h2>5. Static cloud deployment</h2>
+<p><code>npm run build</code> emits a fully static bundle (<code>dist/</code>: index.html + hashed JS/CSS chunks). Host it on any static platform — S3+CloudFront, Azure Static Web Apps, GCS+Cloud CDN, or an internal Nginx. The only two requirements beyond file serving:</p>
+<ol>
+<li><b>SPA fallback:</b> every non-file, non-/api path rewrites to <code>/index.html</code> (deep links like <code>/executions/exe_7K21A</code> must load the app).</li>
+<li><b>Same-origin /api:</b> the CDN/edge routes <code>/api/*</code> to the BFF so cookies are first-party and CORS never exists.</li>
+</ol>
+<h3>Caching &amp; releases</h3>
+<table>
+<tr><th>Asset</th><th>Cache policy</th><th>Why</th></tr>
+<tr><td class="mono">assets/*-[hash].js/.css</td><td class="mono">Cache-Control: immutable, max-age=1y</td><td>Hash changes on every build — safe forever-cache</td></tr>
+<tr><td class="mono">index.html</td><td class="mono">no-cache (revalidate)</td><td>The 2 KB pointer that flips a release</td></tr>
+<tr><td class="mono">/api/*</td><td class="mono">no-store</td><td>Tenant + role scoped; never edge-cached</td></tr>
+</table>
+<ul>
+<li><b>Deploy = upload new hashed assets, then swap index.html.</b> Instant, atomic, and rollback is re-pointing index.html at the previous hashes.</li>
+<li><b>Version skew guard:</b> the SPA sends its build id header; if a lazy chunk 404s after a deploy (user has old index.html), the app shows "new version available — reload" instead of a broken screen.</li>
+<li><b>Security headers at the edge:</b> <code>Content-Security-Policy: default-src 'self'</code> (no CDN scripts — everything is bundled, fonts are OS-local so no font-src needed), <code>frame-ancestors 'none'</code>, <code>X-Content-Type-Options: nosniff</code>.</li>
+<li><b>Environment config:</b> one static bundle for all environments; the only runtime config is the same-origin <code>/api</code> root, so dev/stage/prod differ by DNS, not by build.</li>
+</ul>
+
+<h2>6. Browser memory management — keeping it unstuck</h2>
+<h3>Where an app like this leaks or bloats</h3>
+<table>
+<tr><th>Risk</th><th>Prevention</th></tr>
+<tr><td>Infinite scroll accumulating thousands of DOM rows</td><td><b>Virtualize</b> (TanStack Virtual / react-window): only visible rows exist in the DOM (~30 nodes, constant); older pages beyond a window (e.g. 500 rows) are dropped from the cache and re-fetched by cursor if scrolled back</td></tr>
+<tr><td>Query cache growing forever</td><td>Bounded cache: <code>gcTime</code> ~5 min for lists, ~15 min for details; tenant switch clears the whole cache (it's all invalid anyway)</td></tr>
+<tr><td>Canvas re-render storms on zoom/pan</td><td>Zoom/pan mutate a CSS transform on one stage element — no React re-render per frame; nodes/edges are memoized components; drag handlers write scrollLeft/Top directly</td></tr>
+<tr><td>Giant traces (hundreds of nodes, MB-size payloads)</td><td>The trace endpoint returns node <i>states</i> without input/output bodies; bodies load per node on inspection (<code>?include=io</code>) and are dropped when the inspector closes. Node budget per canvas ~1–2k before we consider level-of-detail rendering</td></tr>
+<tr><td>Event-listener / observer leaks</td><td>Every <code>addEventListener</code>, IntersectionObserver, interval and matchMedia subscription is created in <code>useEffect</code> with a cleanup return; ESLint exhaustive-deps + a leak check in code review. Fullscreen canvas removes its keydown/overflow overrides on unmount</td></tr>
+<tr><td>Closures pinning stale data (e.g. old executions in a dialog callback)</td><td>Dialogs/inspectors receive ids, not objects — they read current data from the cache; unmounted pages therefore pin nothing</td></tr>
+<tr><td>Long sessions (ops dashboard open for days)</td><td>Polling pauses on <code>document.hidden</code>; the version-skew reload doubles as a natural memory reset; no unbounded arrays in contexts (announcements, search results capped)</td></tr>
+<tr><td>Main-thread stalls (JSON parse of big payloads)</td><td>BFF pagination keeps payloads &lt; ~200 KB; anything bigger (future exports) streams or moves to a Web Worker</td></tr>
+</table>
+<h3>Guardrails in CI / monitoring</h3>
+<ul>
+<li>Bundle budget (size-limit) and Lighthouse CI on every PR.</li>
+<li>A soak test in the E2E suite: navigate all routes 50×, assert <code>performance.memory</code> heap plateaus (no monotonic growth).</li>
+<li>RUM in production: long-task count, INP, and JS heap sampled — regressions page the owning team, not the users.</li>
+</ul>
+
+<h2>7. Decision summary</h2>
+<ul>
+<li>BFF (experience API) per frontend; browser never holds tokens; tenancy and redaction enforced server-side.</li>
+<li>Screen-shaped, cursor-paginated, versioned contracts under <code>/api/v1</code>; problem+json errors; idempotent mutations.</li>
+<li>Static SPA on CDN with SPA fallback + same-origin /api routing; immutable hashed assets, no-cache index.html; CSP 'self'.</li>
+<li>Scaling: code splitting + virtualization + bounded query cache in the client; stateless horizontal scaling behind it.</li>
+<li>Memory: virtualized lists, transform-based canvas, per-node IO loading, effect cleanup discipline, soak tests in CI.</li>
+</ul>
+
+</body></html>

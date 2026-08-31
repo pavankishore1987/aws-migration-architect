@@ -1,0 +1,595 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>Visualization UI &amp; BFF Architecture on AWS</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+@page{size:A4;margin:2cm}
+body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:11pt;color:#1d1f20;line-height:1.5}
+h1{font-size:22pt;margin:0 0 4pt}
+h2{font-size:15pt;color:#293373;border-bottom:1pt solid #bfc6f0;padding-bottom:3pt;margin:22pt 0 8pt}
+h3{font-size:12pt;margin:14pt 0 4pt}
+p{margin:0 0 8pt}
+.meta{color:#5d5d60;font-size:10pt;margin-bottom:16pt}
+.lead{font-size:11.5pt;color:#3a3a3d}
+table{border-collapse:collapse;width:100%;margin:6pt 0 12pt;font-size:10pt}
+th{background:#eef0fb;color:#293373;text-align:left;padding:5pt 7pt;border:1pt solid #bfc6f0;font-size:9pt;text-transform:uppercase;letter-spacing:.5pt}
+td{padding:5pt 7pt;border:1pt solid #d4d4d7;vertical-align:top}
+code,.mono{font-family:Consolas,"Courier New",monospace;font-size:9.5pt}
+li{margin-bottom:4pt}
+.callout{border-left:3pt solid #4a5ac9;background:#f5f5f8;padding:8pt 10pt;margin:8pt 0}
+.pull{border-left:3pt solid #9aa2d6;padding:2pt 0 2pt 10pt;margin:10pt 0;color:#293373;font-size:11.5pt}
+.seq{font-family:Consolas,"Courier New",monospace;font-size:9pt;line-height:1.45;background:#f5f5f8;border:1pt solid #bfc6f0;padding:9pt 11pt;margin:6pt 0 10pt;white-space:pre}
+pre.api{font-family:Consolas,"Courier New",monospace;font-size:9pt;line-height:1.45;background:#fbfbfd;border:1pt solid #d4d4d7;padding:8pt 10pt;margin:4pt 0 12pt;white-space:pre-wrap}
+.cap{font-size:9pt;color:#5d5d60;margin:-4pt 0 14pt}
+</style></head><body>
+
+<h1>Visualization UI &amp; BFF Architecture on AWS</h1>
+<p class="meta">Decisioning Platform · Updated August 30, 2026 · React SPA on S3 + CloudFront, modular Java/Spring Boot BFF (experience API) on Fargate · centralized and federated deployment models · companion to the UI Architecture, Design System and ADR documents</p>
+
+<p class="lead">Every frontend hosting discussion on AWS eventually collapses into one question, and it is not which service is most powerful. It is this: <b>can this frontend be fully generated at build time and served as files, or does it need behaviour at request time?</b> Answer that honestly and the platform picks itself. Answer it by brand comparison and you end up with either a container serving static files or a static bucket accumulating workarounds.</p>
+
+<p>This document answers that question for the Visualization UI — the BPMN canvas, dependency graph, execution trace and inventory screens of the Decisioning Platform — and defines the BFF (experience API) that sits behind it.</p>
+
+<h2>1. What the Visualization UI actually does at request time</h2>
+<p>The temptation with a diagram-heavy application is to assume it must be "dynamic" and therefore must run on a server. It is worth being precise about what is dynamic and what merely feels dynamic.</p>
+<table>
+<tr><th>Behaviour</th><th>Where it happens</th><th>Implication</th></tr>
+<tr><td>Rendering the shell, nav, tables, cards</td><td>Browser, from a pre-built bundle</td><td>Static</td></tr>
+<tr><td>Zoom, pan, fit, full-screen, node selection</td><td>Browser — CSS transform on the canvas stage</td><td>Static (no server involved at all)</td></tr>
+<tr><td>Theme and accent switching</td><td>Browser — token remap on <span class="mono">:root</span></td><td>Static</td></tr>
+<tr><td>Routing, deep links, filters in the URL</td><td>Browser — client-side router</td><td>Static, with one CDN rule (§4)</td></tr>
+<tr><td><b>Parsing BPMN 2.0 XML into a drawable graph</b></td><td><b>Server</b></td><td>Dynamic — belongs to the BFF</td></tr>
+<tr><td><b>Fetching only the nodes in the current viewport</b></td><td><b>Server</b></td><td>Dynamic — belongs to the BFF</td></tr>
+<tr><td><b>Session, tenancy, role-based redaction</b></td><td><b>Server</b></td><td>Dynamic — belongs to the BFF</td></tr>
+<tr><td><b>Aggregating domain services into screen-shaped payloads</b></td><td><b>Server</b></td><td>Dynamic — belongs to the BFF</td></tr>
+</table>
+<p>Every dynamic item on that list is a <i>data</i> concern, not a <i>rendering</i> concern. Nothing in the UI needs to be assembled per request on a server: there is no SEO requirement (it is behind SSO), no first-paint mandate that HTML must arrive pre-rendered, no per-request personalisation of markup, and no runtime secret that must live in the page. The heavy lifting — turning a 4,000-element BPMN definition into something a browser can draw at 60 fps — is real, but it is work the BFF does <i>behind an API</i>, not work the frontend host does while serving a document.</p>
+<div class="pull">The visualization is compute-heavy. The <i>hosting</i> of the visualization is not. Those are two different problems, and conflating them is what puts static frontends into containers they do not need.</div>
+
+<h2>2. The three models, and why we land where we land</h2>
+<table>
+<tr><th>Model</th><th>Best when</th><th>For the Visualization UI</th></tr>
+<tr><td><b>CloudFront + S3</b></td><td>The app is truly static or can be fully generated at build time</td><td><b>Chosen.</b> Vite build emits hashed assets; lowest ops, no fleet, no patching, edge-cached, works inside a locked-down account with no public bucket</td></tr>
+<tr><td><b>Amplify Hosting</b></td><td>You want managed Git-based delivery and managed SSR without owning a runtime</td><td>Rejected. We have no SSR to manage, and an internal, firewalled platform wants its own pipeline and network controls rather than a managed-service boundary</td></tr>
+<tr><td><b>ECS on Fargate</b></td><td>The frontend has become an application service: runtime secrets, health checks, rollout control, private networking</td><td>Rejected <i>for the UI</i> — a task whose only job is returning files an edge cache already holds. <b>Chosen for the BFF</b>, which genuinely is an application service (§5)</td></tr>
+</table>
+<div class="callout"><b>The failure mode to avoid is not picking CloudFront + S3 — it is keeping it after the frontend starts needing request-time behaviour.</b> §9 lists the specific signals that would mean the Visualization UI has crossed that line. Until one of them appears, static is not a compromise; it is the correct shape.</div>
+
+<h2>3. Target architecture</h2>
+<table style="width:100%;border:1.5pt solid #4a5ac9">
+<tr><td colspan="2" style="background:#eef0fb;text-align:center;padding:6pt;border:1pt solid #9aa2d6"><b>Browser</b> — React SPA · canvas stage · httpOnly session cookie · no tokens in JS</td></tr>
+<tr><td colspan="2" style="border:none;text-align:center;padding:2pt;color:#4a5ac9">▼ HTTPS · one domain</td></tr>
+<tr><td colspan="2" style="background:#eef0fb;text-align:center;padding:6pt;border:1.5pt solid #4a5ac9"><b>CloudFront</b> — TLS · WAF (corporate IP set) · Response Headers Policy (CSP <span class="mono">default-src 'self'</span>) · 403/404 → <span class="mono">/index.html</span> (200)</td></tr>
+<tr>
+<td style="width:50%;text-align:center;padding:3pt;border:none;color:#4a5ac9">▼ default <span class="mono">/*</span> — cached, no cookies forwarded</td>
+<td style="width:50%;text-align:center;padding:3pt;border:none;color:#4a5ac9">▼ <span class="mono">/api/*</span> — caching disabled, cookies forwarded</td>
+</tr>
+<tr>
+<td style="background:#fff;text-align:center;padding:9pt;border:1pt solid #9aa2d6"><b>S3 (private, OAC)</b><br><span class="mono">index.html · config.json · assets/[hash].js|css</span><br>no public access · no website endpoint</td>
+<td style="background:#f5f5f8;text-align:center;padding:9pt;border:1.5pt solid #4a5ac9"><b>BFF — Experience API</b><br><span class="mono">Java / Spring Boot · ALB → ECS Fargate, private subnets</span><br>OIDC client · session · aggregation · authorization · redaction<br><b>BPMN XML → experience JSON</b> · spatial index · LOD</td>
+</tr>
+<tr><td style="border:none"></td><td style="border:none;text-align:center;padding:3pt;color:#4a5ac9">▼ mTLS / client credentials</td></tr>
+<tr><td style="border:none"></td><td style="background:#fff;text-align:center;padding:8pt;border:1pt solid #d4d4d7">Workflow · Execution · Rules services · <b>ElastiCache</b> (parsed diagrams) · corporate <b>IdP</b></td></tr>
+</table>
+<p class="cap">Figure 1 — One distribution, two behaviours. Because <code>/api/*</code> is same-origin, the session cookie flows automatically and there is no CORS anywhere in the system. The bucket is never publicly reachable: we use the S3 REST endpoint with Origin Access Control, not the website endpoint (website endpoints are HTTP-only and, used as an origin, are treated as custom origins — which disqualifies OAC).</p>
+
+<h2>4. The one static-hosting workaround we accept</h2>
+<p>S3 serves objects that exist. A user opening <code>/workflows/wf-201</code> directly is asking for an object that was never uploaded, and behind OAC the bucket answers <b>403</b>, not 404. CloudFront custom error responses map both 403 and 404 to <code>/index.html</code> with status 200, and the client router takes it from there.</p>
+<div class="seq">Browser        CloudFront        S3 (private, OAC)        BFF
+   │                │                    │                    │
+   │─ GET /workflows/wf-201 ─────────────▶│                    │
+   │                │─ origin request ───▶│                    │
+   │                │◀── 403 no such key ─│                    │
+   │                │  custom error response → /index.html, 200
+   │◀ 200 index.html  (Cache-Control: no-cache) ───────────────│
+   │─ GET /assets/app.[hash].js ──▶ edge HIT (immutable, 1 yr) │
+   │─ GET /config.json (no-cache) ─▶ { apiBaseUrl:"/api", env }│
+   │  router resolves /workflows/wf-201 client-side
+   │─ GET /api/v1/workflows/wf-201  (cookie, same origin) ─────▶│
+   │◀ 200 screen-shaped JSON ──────────────────────────────────│
+</div>
+<p class="cap">Figure 2 — Deep link into the SPA. If <code>/api/*</code> ever shares a behaviour with the SPA, replace the blanket error mapping with a CloudFront Function that rewrites only non-asset, non-API paths, so genuine API 404s survive.</p>
+<p>This is a routing workaround and we should call it that. It is an acceptable one — two rules, no logic, no per-request code. The moment we find ourselves writing request-time <i>logic</i> at the edge to keep the app working, that is the app asking for a runtime.</p>
+
+<h2>5. The BFF is the experience API</h2>
+<p>There is no separate "experience layer" service: the BFF <i>is</i> the experience API. One BFF per frontend, owned by the frontend team, serving screen-shaped contracts rather than domain shapes. It exists for four reasons the browser cannot satisfy on its own.</p>
+<table>
+<tr><th>Concern</th><th>Why it must be server-side</th></tr>
+<tr><td><b>Tokens and session</b></td><td>OIDC code+PKCE terminates at the BFF; tokens stay server-side; the browser holds only an httpOnly cookie. Nothing in the SPA bundle is a secret, which is also what keeps CSP at <span class="mono">'self'</span></td></tr>
+<tr><td><b>Tenancy and redaction</b></td><td>Tenant comes from the session, never from a client-supplied id; role-based field redaction happens before serialization, not in the UI</td></tr>
+<tr><td><b>BPMN parsing</b></td><td>XML is the versioned source of truth in the workflow service. Parsing megabyte definitions in the browser blocks the main thread and ships a parser to every client. The BFF parses once per immutable (workflow, version) and caches the result</td></tr>
+<tr><td><b>Aggregation and chunking</b></td><td>A trace screen is one BFF call, not six domain calls fanned out from the browser. Large diagrams are served by viewport tile with level-of-detail summaries above ~2k nodes</td></tr>
+</table>
+
+<h3>5.1 Contract conventions (owned by <span class="mono">bff-core</span>)</h3>
+<p>Every module obeys the same envelope, so the client's query layer is written once and a new module adds no client plumbing.</p>
+<table>
+<tr><th>Convention</th><th>Rule</th></tr>
+<tr><td>Versioning</td><td><span class="mono">/api/v1</span>. Additive change only within a version — required because federated tenants lag (§9.5)</td></tr>
+<tr><td>Lists</td><td><span class="mono">{ items, cursor, total? }</span>. Cursor paging only; no page numbers anywhere in the product</td></tr>
+<tr><td>Errors</td><td>RFC 7807 problem+json. <b>Never names a capability</b> the artifact does not carry (§9.8)</td></tr>
+<tr><td>Mutations</td><td>Idempotency-keyed; return the changed resource or an accepted-status envelope</td></tr>
+<tr><td>Scoping</td><td>Tenant from the session, role redaction before serialization — both in core, so a module cannot forget them</td></tr>
+<tr><td>Shape</td><td>Screen-shaped, not domain-shaped: one call per screen, drawable geometry included, no client-side joins</td></tr>
+</table>
+
+<h3>5.2 <span class="mono">bff-core</span> — present in every bundle</h3>
+<pre class="api">GET  /api/v1/me                          → { user, roles, permissions, tenants, activeTenantId,
+                                             capabilities[] }   // derived from the classpath
+POST /api/v1/me/tenant   { tenantId }    → 204   server-side switch; all later data follows
+GET  /api/v1/search?q=                   → { results[] }  // fans out to mounted modules only
+GET  /actuator/health | /actuator/info   → liveness + version/entitlement (management port)</pre>
+<p><code>capabilities</code> is computed from the <span class="mono">CapabilityContribution</span> beans present, never from configuration — so it cannot claim a capability the artifact lacks, and global search cannot fan out to a module that is not there.</p>
+
+<h3>5.3 <span class="mono">bff-module-monitor</span></h3>
+<pre class="api">GET  /api/v1/executions?from=&to=&status=&workflowId=&cursor=
+   → { items:[{ id, workflowName, status, startedAt, durationMs }], cursor }
+GET  /api/v1/executions/{id}/trace
+   → { execution:{…}, diagram:{ nodes, edges },
+       overlay:{ nodeStates:{ id:"success|running|failed|skipped" }, traversedEdges:[id] } }
+GET  /api/v1/executions/{id}/nodes/{nodeId}?include=io   → I/O bodies, on demand only
+
+GET  /api/v1/alerts?severity=&status=&cursor=  → { items:[…], cursor }
+GET  /api/v1/alerts/{id}                       → { alert, relatedExecutionId? }
+POST /api/v1/alerts/{id}/acknowledge           → 200 { id, status:"acknowledged" }
+
+// READ-ONLY slice of workflow — monitoring must still DRAW workflows
+GET  /api/v1/workflows?cursor=&q=&status=      → { items:[…], cursor }
+GET  /api/v1/workflows/{id}                    → { id, name, version, status, metrics[4] }
+GET  /api/v1/workflows/{id}/diagram?version=7&bbox=x,y,w,h&lod=auto
+   → { version, bounds:{w,h}, lod:"full"|"summary",
+       nodes:[{ id, type, name, x, y, w, h, status? }],
+       edges:[{ id, from, to, points[], label?, state? }],
+       tiles:{ loaded:[…], pending:[…] } }      // viewport-driven chunking
+GET  /api/v1/workflows/{id}/graphs/{graphId}   → DAG in the same node/edge shape
+GET  /api/v1/workflows/{id}/nodes/{nodeId}     → inspector rows (config, no bodies)</pre>
+<div class="callout"><b>The split is by verb, not by entity.</b> A monitoring bundle owns the read half of the workflow surface because trace and graph views have to draw a diagram. Writes live in <span class="mono">bff-module-build</span> and are absent from the monitoring artifact. The consequence to raise with clients early: a monitoring deployment still needs read access to workflow definitions, so the federated backend footprint includes the workflow service in read mode or a replicated read model.</div>
+
+<h3>5.4 <span class="mono">bff-module-build</span></h3>
+<pre class="api">POST   /api/v1/workflows                        → 201 { id, version:"draft" }
+PUT    /api/v1/workflows/{id}/definition        → 200 { version, bounds }   // BPMN XML in
+POST   /api/v1/workflows/{id}/validate          → { valid, issues:[{ nodeId, severity, message }] }
+POST   /api/v1/workflows/{id}/publish           → 201 { version:8, publishedAt }
+POST   /api/v1/workflows/{id}/graphs/{graphId}/validate  → { valid, issues[] }
+GET    /api/v1/rules?cursor= · GET /api/v1/rules/{id} · PUT /api/v1/rules/{id}
+DELETE /api/v1/workflows/{id}                   → 204</pre>
+<p>Publishing writes a new immutable version, which is why the parse cache in §6 never needs invalidation: a publish produces a new key rather than dirtying an old one.</p>
+
+<h3>5.5 <span class="mono">bff-module-operate</span> and <span class="mono">bff-module-docs</span></h3>
+<pre class="api">// operate — intervention on a running execution
+POST /api/v1/executions/{id}/stop                   → 202 { id, status:"stopping" }
+POST /api/v1/executions/{id}/restart { fromNodeId } → 201 { newExecutionId, linkedTo }
+
+// docs — documentation surfaces
+GET  /api/v1/docs?section=&cursor=   → { items:[{ id, title, section, updatedAt }], cursor }
+GET  /api/v1/docs/{id}               → { title, bodyHtml, relatedIds[] }
+GET  /api/v1/docs/export/workflows/{id}?format=pdf|html  → rendered definition document</pre>
+<p><code>operate</code> is separated from <code>monitor</code> deliberately: some tenants may observe without intervening, and that is a bundle decision rather than a permission toggle.</p>
+
+<h3>5.6 <span class="mono">bff-module-tasks</span> — in design</h3>
+<p>Tasks is a first-class module of the Experience UI, scaffolded now so the boundary is fixed while the content is designed. The shape below is provisional and is recorded to establish the contract style, not the semantics.</p>
+<pre class="api">GET  /api/v1/tasks?status=&assignee=&cursor=  → { items:[{ id, title, status, dueAt,
+                                                   workflowId?, executionId? }], cursor }
+GET  /api/v1/tasks/{id}                       → { task, context:{ workflow?, execution? } }
+// actions TBD — shape follows the operate module's accepted-status envelope</pre>
+<p>It ships in the <code>tasks</code> and <code>full</code> bundles only. The test that the module boundary is right: when the design lands, nothing outside <span class="mono">bff-module-tasks</span> and <span class="mono">capability-tasks</span> changes.</p>
+
+<h3>5.7 Module dependency rules</h3>
+<ul>
+<li><b>Modules never call each other.</b> A module depends on <span class="mono">bff-core</span> and on domain services — never on a sibling module, or any subset would fail to compile.</li>
+<li><b>Shared server-side work lives in core</b>, capability-neutral: the BPMN parser, spatial index and cache are core services because monitor (drawing traces) and build (validating edits) both need them, and neither may own the other's dependency.</li>
+<li><b>Shared types live in core only if genuinely shared</b> — page envelope, problem+json, node/edge geometry. A DTO used by one module lives in that module, or the full contract leaks into every artifact (§9.8).</li>
+<li><b>Overlap is expressed by verb split, not duplication.</b> The read workflow endpoints exist once, in monitor; build adds writes. Two modules never define the same path.</li>
+</ul>
+
+<h2>6. Sequence — opening a large BPMN diagram</h2>
+<div class="seq">Browser        CloudFront      BFF (Fargate)     ElastiCache     Workflow service
+   │              │                 │                 │                 │
+   │─ GET /api/v1/workflows/wf-201/diagram?version=7 ─▶│                 │
+   │              │                 │─ get wf-201:v7 ▶│                 │
+   │              │                 │◀── MISS ────────│                 │
+   │              │                 │─ GET definition (BPMN 2.0 XML) ──▶│
+   │              │                 │◀── XML ───────────────────────────│
+   │              │   parse → nodes/edges/BPMNDI positions
+   │              │   auto-layout if DI missing · build spatial index
+   │              │                 │─ set wf-201:v7 ▶│                 │
+   │◀ 200 { nodes, edges } for initial viewport + bounds ────────────────│
+   │  canvas renders; zoom/pan are pure CSS transforms — no requests
+   │
+   │  user pans beyond the loaded region
+   │─ GET …/diagram?version=7&bbox=1200,800,900,600 ──▶│                 │
+   │              │                 │─ get wf-201:v7 ▶│                 │
+   │              │                 │◀── HIT (warm) ──│                 │
+   │◀ 200 tile of nodes/edges (spatial index query) ─────────────────────│
+   │
+   │  user clicks a node → NodeInspector
+   │─ GET …/nodes/n-14 ───────────────────────────────▶│                 │
+   │◀ 200 inspector rows ────────────────────────────────────────────────│
+</div>
+<p class="cap">Figure 3 — The cache key is the immutable (workflow, version) pair, so entries never need invalidation: a new publish is a new key. Zoom and pan cost zero requests; only crossing into unloaded space fetches a tile.</p>
+
+<h2>7. Sequence — execution trace with overlay</h2>
+<div class="seq">Browser              BFF (Fargate)        Execution service     Workflow service
+   │                      │                      │                    │
+   │─ GET /api/v1/executions/exec-8842/trace ────▶│                    │
+   │                      │─ get run + node states ──────────────────▶ │
+   │                      │◀─ states, timings, traversed path ─────────│
+   │                      │─ get diagram (cached, same key as §6) ────────────────▶
+   │                      │◀─ parsed nodes/edges ─────────────────────────────────
+   │   merge: diagram + overlay in ONE screen-shaped payload
+   │   redact I/O bodies (role-based) before serialization
+   │◀ 200 { execution, diagram, overlay } ────────│                    │
+   │   canvas draws path: traversed edges black, success green,
+   │   running amber, failed red, skipped gray non-interactive
+   │
+   │─ GET …/nodes/n-14?include=io  (only when inspected) ─────────────▶ │
+   │◀ 200 input/output bodies ────────────────────│                    │
+   │
+   │─ POST …/restart { fromNodeId:"n-14" } ──────▶│                    │
+   │                      │─ authorize (permission + tenant) ─────────▶│
+   │◀ 201 { newExecutionId, linkedTo } ───────────│  audit-linked run
+</div>
+<p class="cap">Figure 4 — One call per screen. I/O bodies are excluded by default so a trace with hundreds of nodes stays a small payload; they load per node on inspection.</p>
+
+<h2>8. React application architecture</h2>
+<p>The frontend mirrors the BFF's module structure one-to-one, so a bundle is a coherent slice of both halves rather than a UI subset bolted onto a full API. Each BFF module has exactly one UI capability package, and they ship together.</p>
+<table>
+<tr><th>UI package</th><th>BFF module</th><th>Screens</th></tr>
+<tr><td class="mono">packages/core</td><td class="mono">bff-core</td><td>Shell, nav, auth, theming, primitives, registries — always present</td></tr>
+<tr><td class="mono">capability-monitor</td><td class="mono">bff-module-monitor</td><td>Monitoring overview · Executions · Trace · Alerts · read-only Workflows and Graph</td></tr>
+<tr><td class="mono">capability-build</td><td class="mono">bff-module-build</td><td>Workflow authoring · Rules · Validate · Publish</td></tr>
+<tr><td class="mono">capability-tasks</td><td class="mono">bff-module-tasks</td><td>Task inventory · Task detail (in design)</td></tr>
+<tr><td class="mono">capability-docs</td><td class="mono">bff-module-docs</td><td>Documentation surfaces</td></tr>
+<tr><td class="mono">capability-operate</td><td class="mono">bff-module-operate</td><td>Stop / restart affordances inside Trace</td></tr>
+</table>
+
+<h3>8.1 Composition</h3>
+<div class="seq">apps/app-monitor/src/main.tsx        ← the ENTIRE difference between bundles
+  bootstrap([ core, monitor, operate ])
+        │
+        ▼
+  CapabilityProvider ─▶ RouteRegistry + NavRegistry   (capabilities register INTO core)
+        │                      │
+        │                      └▶ router built from manifests · nav built from manifests
+        │                          landing route computed from what is present
+        ▼
+  AppShell (renders once, never remounts)
+     TopBar · Sidebar · &lt;Outlet /&gt;
+        │
+        └▶ lazy page chunk per route, each behind its own error boundary
+
+Bundler tree-shakes every capability the composition root does not import
+  ⇒ authoring code is ABSENT from ui-monitor's output, not merely unfetched (§9.8)</div>
+<p class="cap">Figure 7 — Core owns the registries; capabilities contribute to them. Core never imports a capability package, so any subset compiles and reading core discloses nothing about what else exists.</p>
+
+<h3>8.2 What each layer may do</h3>
+<table>
+<tr><th>Layer</th><th>May</th><th>May not</th></tr>
+<tr><td>Composition root (<span class="mono">apps/*</span>)</td><td>Import manifests, configure the build</td><td>Contain UI code or business logic</td></tr>
+<tr><td>Capability package</td><td>Own routes, pages, hooks and its API client; import core</td><td>Import another capability package; define colors, fonts or spacing</td></tr>
+<tr><td>Core</td><td>Shell, primitives, contexts, registries, query client</td><td>Import any capability; enumerate capability ids</td></tr>
+<tr><td>Pages</td><td>Compose primitives and call hooks</td><td>Fetch directly; declare visual styles</td></tr>
+</table>
+<p>Cross-capability references go through <code>&lt;CapabilityGate&gt;</code>: a trace links to the workflow editor when <code>build</code> is present and renders the workflow name as plain text when it is not. That is presentation only — authorization remains <code>useUser().can(action)</code>, and an absent capability has no route to authorize.</p>
+
+<h3>8.3 Runtime characteristics</h3>
+<ul>
+<li><b>Memory is a function of what is on screen</b>, never of session length or scroll depth: inventories virtualize to a constant DOM window, the query cache trims to a ~500-row page window with a 1,000-row cap, and the diagram store keeps two (workflow, version) entries with tiles beyond 2× viewport dropped.</li>
+<li><b>Zoom and pan are a single composited transform</b> — no requests, no React renders. Only crossing into unloaded space fetches a tile.</li>
+<li><b>Theme changes cost zero renders</b> — tokens are remapped on <span class="mono">:root</span>.</li>
+<li><b>The URL is the source of truth</b> for filters, search text and selected node, so every view is deep-linkable and the Back button behaves.</li>
+</ul>
+<p>The full treatment — memory pools, tile lifecycle, component interaction and performance budgets, with diagrams — is §13–14 of the UI Architecture document.</p>
+
+<h2>9. Two hosting topologies: centralized and federated</h2>
+<p>Everything above describes one deployment serving many tenants. That is the default and it should stay the default. But some clients will not accept their data or their UI being served from infrastructure they do not control — regulated industries, data-residency mandates, clients whose own security policy forbids cross-tenant shared runtimes. For those, and only those, the same repository is cloned and deployed inside the tenant's own AWS account. Both topologies run the <i>same artifact and the same code</i>; what differs is who owns the account, the distribution and the release cadence.</p>
+<div class="callout"><b>Rule we are adopting:</b> centralized is the default and the reference deployment. Federated is granted per client on evidence of a hard requirement (residency, contractual isolation, or a network model that cannot reach our VPC) — never as a preference, and never as the answer to a capacity or performance concern. Every federated deployment is a permanent operating cost: a distribution to patch, a pipeline to run, and a version to keep in step.</div>
+
+<h3>9.0 Who hosts what</h3>
+<p>Before the topologies themselves, the question they most often raise: the UI and the BFF are <b>always deployed together, into the same AWS account</b>. Which account is the only thing the topology decides.</p>
+<table>
+<tr><th>Component</th><th>Centralized</th><th>Federated</th></tr>
+<tr><td>UI — S3 + CloudFront</td><td>Our account</td><td>Tenant account</td></tr>
+<tr><td>BFF — ALB + Fargate</td><td>Our account</td><td>Tenant account</td></tr>
+<tr><td>Domain services, cache, data</td><td>Our account</td><td>Tenant account</td></tr>
+<tr><td>IdP</td><td>Our IdP, federated to tenant directories</td><td>Tenant IdP</td></tr>
+<tr><td>Source repo, CI, signed artifact registry</td><td colspan="2" style="text-align:center"><b>Always our account</b> — build-time only; the tenant pulls a versioned artifact at deploy and has no runtime dependency on us</td></tr>
+</table>
+<p>They are never split across accounts, and this is not merely operational tidiness. The UI and BFF are same-origin by design (§3) — one CloudFront distribution, <span class="mono">/*</span> to S3 and <span class="mono">/api/*</span> to the BFF. That is what lets the httpOnly session cookie flow with no CORS and no third-party-cookie exposure. A federated UI calling back to our centrally hosted BFF would need cross-account CORS, third-party cookies (which browsers are actively killing), and would route the tenant's user traffic through our infrastructure at runtime — defeating the residency and isolation requirements that justified federating in the first place (§9.2).</p>
+
+<h3>9.1 Centralized (default) — one deployment, many tenants</h3>
+<table style="width:100%;border:1.5pt solid #4a5ac9">
+<tr><td colspan="3" style="background:#eef0fb;text-align:center;padding:6pt;border:1pt solid #9aa2d6">Tenant A users&nbsp;&nbsp;·&nbsp;&nbsp;Tenant B users&nbsp;&nbsp;·&nbsp;&nbsp;Tenant C users — all at <span class="mono">platform.ourcompany.com</span></td></tr>
+<tr><td colspan="3" style="border:none;text-align:center;padding:2pt;color:#4a5ac9">▼</td></tr>
+<tr><td colspan="3" style="background:#eef0fb;text-align:center;padding:6pt;border:1.5pt solid #4a5ac9"><b>One CloudFront distribution</b> — one S3 origin (<span class="mono">/*</span>) · one BFF origin (<span class="mono">/api/*</span>)</td></tr>
+<tr>
+<td style="width:34%;background:#fff;text-align:center;padding:8pt;border:1pt solid #9aa2d6"><b>S3 (private, OAC)</b><br>identical bundle for every tenant</td>
+<td style="width:33%;background:#f5f5f8;text-align:center;padding:8pt;border:1.5pt solid #4a5ac9"><b>BFF (Java / Spring Boot on Fargate)</b><br>tenant resolved from the session<br>every query tenant-scoped</td>
+<td style="width:33%;background:#fff;text-align:center;padding:8pt;border:1pt solid #d4d4d7"><b>Domain services</b><br>row/partition isolation per tenant</td>
+</tr>
+</table>
+<p class="cap">Figure 5 — Centralized. The bundle is tenant-agnostic; the only tenant-aware component is the BFF, which derives tenant from the session and never from anything the client sends.</p>
+<p>Tenant identity is established at sign-in and carried in the httpOnly session, so a tenant id is never a request parameter the browser can tamper with. Branding, feature flags and enabled modules arrive at runtime from <code>/api/v1/me</code> and <code>config.json</code>, not from a per-tenant build — which is precisely why one artifact can serve everyone. Users belonging to more than one tenant switch with <code>POST /api/v1/me/tenant</code>, a server-side switch that re-scopes every subsequent call.</p>
+
+<h3>9.2 Federated (by exception) — the repo cloned into the tenant's account</h3>
+<table style="width:100%;border:1.5pt solid #9aa2d6">
+<tr><td colspan="2" style="background:#f5f5f8;text-align:center;padding:6pt;border:1pt solid #9aa2d6"><b>Our account</b> — source repository · release tags · published build artifact + container image</td></tr>
+<tr><td colspan="2" style="border:none;text-align:center;padding:2pt;color:#4a5ac9">▼ versioned release pulled by the tenant (never a live runtime dependency)</td></tr>
+<tr>
+<td style="width:50%;background:#fff;text-align:center;padding:9pt;border:1pt solid #9aa2d6"><b>Tenant A's AWS account</b><br><span class="mono">app.tenant-a.com</span><br>own CloudFront + S3 + Fargate BFF<br>own IdP · own VPC · own KMS keys</td>
+<td style="width:50%;background:#fff;text-align:center;padding:9pt;border:1pt solid #9aa2d6"><b>Tenant B's AWS account</b><br><span class="mono">decisioning.tenant-b.internal</span><br>own CloudFront + S3 + Fargate BFF<br>own IdP · own VPC · own KMS keys</td>
+</tr>
+</table>
+<p class="cap">Figure 6 — Federated. Each deployment is a complete, self-contained copy of the stack. Nothing crosses between tenant accounts, and nothing calls back to ours at runtime.</p>
+<p>The critical property is that a federated deployment has <b>no runtime dependency on us</b>. It pulls a versioned release at deploy time and then runs independently: if our account is unreachable, the tenant's platform is unaffected. That is usually the whole reason the client asked for federation, and quietly introducing a call-home — a license check, a telemetry beacon, a remote config fetch — destroys it.</p>
+
+<h3>9.3 What differs, precisely</h3>
+<table>
+<tr><th>Dimension</th><th>Centralized</th><th>Federated</th></tr>
+<tr><td>Frontend artifact</td><td colspan="2" style="text-align:center"><b>Identical.</b> Same commit, same hashed bundle — the code has no notion of which topology it is in</td></tr>
+<tr><td>Tenant resolution</td><td>From the session, many tenants per deployment</td><td>Single tenant per deployment; the tenant claim is constant but still enforced server-side (never removed from the code path)</td></tr>
+<tr><td>Identity</td><td>Our IdP, federated to tenant IdPs</td><td>Tenant's IdP directly; OIDC client registered in their directory</td></tr>
+<tr><td>Domain &amp; certificates</td><td><span class="mono">platform.ourcompany.com</span>, our ACM cert</td><td>Tenant domain, tenant-issued cert, tenant DNS</td></tr>
+<tr><td>Data location</td><td>Our account, logically isolated per tenant</td><td>Tenant account and region — the residency answer</td></tr>
+<tr><td>Release cadence</td><td>We deploy; all tenants are current within minutes</td><td>Tenant deploys on their change calendar; expect versions to lag</td></tr>
+<tr><td>Config</td><td>Runtime <span class="mono">config.json</span> + <span class="mono">/api/v1/me</span></td><td>Same mechanism, tenant-authored values — still no rebuild</td></tr>
+<tr><td>Observability</td><td>Central dashboards, full fleet visibility</td><td>Tenant's CloudWatch. We see nothing unless they export it — assume we are blind during incidents</td></tr>
+<tr><td>Support model</td><td>We diagnose directly</td><td>Diagnosis by log bundle and version report; runbook must be self-serve</td></tr>
+<tr><td>Cost owner</td><td>Us, amortised across tenants</td><td>Tenant, full stack</td></tr>
+</table>
+
+<h3>9.4 What this demands of the codebase</h3>
+<p>Federation is affordable only if it stays a <i>deployment</i> difference. The moment it becomes a code difference, we own N products. Four rules keep it one:</p>
+<ul>
+<li><b>No tenant forks, ever.</b> A federated deployment is a tagged release of <code>main</code>, not a branch. Tenant-specific behaviour is configuration or a feature flag in the shared codebase — anything that cannot be expressed that way is a product gap to close, not a fork to open.</li>
+<li><b>Nothing tenant-specific at build time.</b> No per-tenant environment baking, no per-tenant bundles. Everything variable — API base, branding, enabled modules, IdP metadata — resolves at runtime from <code>config.json</code> and the session. This is the same one-artifact rule as §3, and it is what makes federation cheap.</li>
+<li><b>Tenant scoping stays in the code even when there is one tenant.</b> A single-tenant deployment must not become the deployment where authorization was optional; the same server-side scoping runs, so the two topologies share one security model and one test suite.</li>
+<li><b>Infrastructure ships as code.</b> The repo carries the CloudFront/S3/Fargate definition (CDK or Terraform) parameterised by domain, IdP, region and VPC, so a tenant deploys the reference topology rather than reinventing it — and so our topology decisions in §3–§7 remain true in their account.</li>
+</ul>
+
+<h3>9.5 Version skew across the fleet</h3>
+<p>Centralized has one version. Federated has as many versions as tenants who have deployed, and the oldest one defines what the BFF contract must still honour. Three mitigations: version the experience API (<code>/api/v1</code>) and add fields rather than change them; publish a support window (we support the current release and the two preceding minors) so lag is bounded contractually rather than by hope; and have the federated BFF expose a version endpoint the tenant's own monitoring reads, so drift is visible to the party who can act on it. The version-skew reload described for centralized deploys works identically inside a federated deployment, because there too index.html is <span class="mono">no-cache</span> and assets are immutable.</p>
+
+<h3>9.6 Shipping a subset: the Monitoring-only deployment</h3>
+<p>Most federated clients do not want the whole platform. The common case is <b>Monitoring only</b> — executions, trace, live status — with authoring (BPMN canvas, dependency graph, rules) staying with us. This must not become a second frontend. The mechanism is <b>capability scoping</b>: the product is a set of named capabilities, every route, nav item, action and API surface declares which capability it belongs to, and a deployment enables a subset.</p>
+<table>
+<tr><th>Capability</th><th>Routes</th><th>Experience API</th></tr>
+<tr><td class="mono">monitor</td><td>/executions · /executions/{id} (trace) · /alerts · /home (monitoring cards) · read-only /workflows and graph views</td><td>/executions* · /alerts* · read-only /workflows/{id}/diagram and /graphs (trace and graph views need the drawing)</td></tr>
+<tr><td class="mono">build</td><td>/workflows/{id} authoring tabs — canvas editing, rules, publish</td><td>write /workflows* · /graphs* · /validate · /publish</td></tr>
+<tr><td class="mono">operate</td><td>stop / restart actions inside trace</td><td>POST /executions/{id}/stop · /restart</td></tr>
+<tr><td class="mono">tasks</td><td>/tasks · /tasks/{id}</td><td>/tasks* (in design — §5.6)</td></tr>
+<tr><td class="mono">docs</td><td>/library and documentation surfaces</td><td>/docs* · exported definitions</td></tr>
+</table>
+<p>A Monitoring-only tenant enables <code>monitor</code> (and optionally <code>operate</code>): workflow inventory, graph views, executions, trace and alerts — all read-only, with authoring absent. Note what the table forces us to notice: monitoring surfaces still <i>draw</i> workflows, so "Monitoring only" is not "no workflow API" — it is a <b>read-only slice</b> of it. The split is not by entity, it is by verb. Drawing the capability boundaries explicitly is what surfaces that kind of dependency before it becomes a support ticket.</p>
+
+<h4>Three layers of enforcement</h4>
+<ul>
+<li><b>Deployment manifest (what exists).</b> <span class="mono">config.json</span> carries <span class="mono">"capabilities": ["monitor","operate"]</span>. The route registry mounts only routes whose capability is enabled; nav groups with no surviving children disappear; the default landing route is computed from what is enabled rather than hard-coded to <span class="mono">/home</span>. A disabled route is a 404 inside the SPA, not a hidden link.</li>
+<li><b>Entitlement from the BFF (what this deployment is licensed for).</b> <code>/api/v1/me</code> returns <span class="mono">capabilities</span> alongside roles and permissions, derived from the capability modules actually on the classpath rather than from a configured list; a request to an endpoint whose module is absent is a 404 from Spring's own dispatcher, not a rejection we implement. Client-side gating is presentation; this is the control.</li>
+<li><b>Permissions within a capability (what this user may do).</b> Unchanged — the existing role/permission model still applies inside whatever is enabled. Capability answers "is this feature part of this deployment", permission answers "may this person use it".</li>
+</ul>
+<p>The two-key structure matters: config alone would let a tenant enable <code>build</code> by editing a JSON file in their own bucket. The BFF's entitlement is authoritative; the client manifest exists only so the UI does not render links to routes that will fail.</p>
+
+<h4>Bundle size without per-tenant builds</h4>
+<p>The obvious way to ship less is to build less — and for <i>tenant</i> variation it is the wrong way, because a per-tenant build breaks the one-artifact rule in £8.4 and multiplies release verification. For <i>capability</i> scope it is exactly right, and for a stronger reason than payload: a federated tenant can read whatever we ship them, so authoring code must be excluded from the <span class="mono">ui-monitor</span> build output rather than merely left unfetched (§9.8). Within an artifact, route-level code splitting still applies — each capability's routes are dynamic <code>import()</code> chunks, so even the full profile loads only what a session uses. Two artifact pairs, one pipeline, one test matrix per artifact.</p>
+<div class="callout"><b>Where this earns its keep:</b> capability scoping is not federation-only. The same manifest drives centralized tenants on different plan tiers, and it drives our own staged rollout of an unfinished capability. Building it for the Monitoring client gives us tiering for free; building a Monitoring fork gives us a second product to maintain.</div>
+
+<h4>Sequence — boot in a Monitoring-only deployment</h4>
+<div class="seq">Browser        CloudFront (tenant acct)    BFF (tenant acct, monitor profile)
+   │                │                              │
+   │─ GET /index.html ─▶│────────────────────────────│
+   │◀ 200 shell (no-cache) ──────────────────────│
+   │─ GET /config.json ─▶                          │
+   │◀ { apiBaseUrl:"/api", capabilities:["monitor","operate"], brand:{…} }
+   │   route registry mounts /executions* only; nav shows Monitor group
+   │─ GET /api/v1/me ─────────────────────────────▶│
+   │◀ { user, roles, permissions, capabilities:["monitor","operate"] }
+   │   client intersects config ∩ entitlement — entitlement wins on conflict
+   │─ import() monitoring chunks only (authoring chunks never fetched)
+   │─ GET /api/v1/executions?… ───────────────────▶│
+   │◀ 200 items, cursor ───────────────────────────│
+   │
+   │   a stale bookmark to an authoring route:
+   │─ GET /workflows/wf-201 ▶ 403→index.html → router: capability disabled
+   │   → in-app "not available in this deployment" page, no dead nav
+   │─ (if forged) POST /api/v1/workflows ───────────────▶│ 404 — router not mounted
+</div>
+<p class="cap">Figure 7 — Capability scoping at boot. The client intersects the deployment manifest with the BFF entitlement and the entitlement always wins, so a tenant cannot widen their own footprint by editing config.json.</p>
+
+<h3>9.7 Mirroring the platform's repo and build model on the frontend</h3>
+<p>The backend already solves this problem and the frontend should not invent a second answer. The platform team owns a centralized repository containing shared core code plus a per-tenant folder; tenant Java builds against the shared core; CI produces a container artifact; that artifact is extracted into a deployment-specific repository and deployed to the tenant's own Fargate service. The frontend adopts the same shape — <b>one UI repository, shared core, capability profiles, artifact promotion, tenant-owned deployment</b> — with two deliberate divergences explained below.</p>
+
+<h4>Repository layout</h4>
+<pre class="api">visualization-ui/                      # ONE repo — the analogue of the platform monorepo
+  packages/
+    core/                              # shell, router registry, primitives, styles.css,
+                                       #   theming, auth wiring — always shipped
+    capability-monitor/                # executions, trace, alerts, graph views, read-only workflows
+    capability-build/                  # canvas authoring, rules, publish
+    capability-operate/                # stop / restart / intervene
+    capability-learn/                  # library, guidance
+  bff/                                 # Gradle multi-module Spring Boot project
+    bff-core/                          # session, OIDC resource-server config, tenant scoping,
+                                       #   error model (problem+json), cache, HTTP clients
+                                       #   MUST NOT enumerate capabilities it does not carry (§9.8)
+    bff-module-monitor/                # executions, trace, alerts, read-only workflow/graph
+    bff-module-build/                  # authoring, rules, validate, publish
+    bff-module-tasks/                  # task inventory and task detail (in design — §5.6)
+    bff-module-docs/                   # documentation, guidance, exported definitions
+    bff-module-operate/                # stop / restart / intervene
+                                       #   each module is its own jar carrying an
+                                       #   AutoConfiguration that registers itself into core
+    bff-app-monitor/  bff-app-build/  bff-app-tasks/  bff-app-docs/  bff-app-full/
+                                       # assembly modules — dependency declarations only, no code.
+                                       #   Each produces one boot jar / image (§9.7 bundle catalogue)
+  profiles/
+    monitor.json                       # capabilities: [monitor, operate]
+    full.json                          # capabilities: [monitor, build, operate, learn]
+  tenants/
+    acme/                              # the analogue of the tenant folder — DECLARATIVE
+      deployment.json                  # bundle: "monitor", domain, region, idp, vpc refs
+                                       #   written by onboarding; read by BOTH the UI manifest
+                                       #   and the BFF, so capability sets cannot disagree
+      branding.json                    # logo asset ref, accent token, product name
+      overrides.json                   # labels, column defaults, feature toggles within a capability
+      infra/                           # CDK/Terraform parameters for their account
+    globex/
+      …</pre>
+
+<h4>The two divergences from the Java model — and why</h4>
+<table>
+<tr><th>Backend today</th><th>Frontend equivalent</th><th>Reason for the difference</th></tr>
+<tr><td>Tenant folder contains <b>tenant-authored Java</b> compiled against shared core</td><td>Tenant folder is <b>declarative only</b> — JSON config, tokens, asset refs. Tenant-specific behaviour reaches the UI through registered extension points in core, not arbitrary components</td><td>Tenant Java runs server-side in an isolated container. Tenant JSX runs <i>in the user's browser, inside our session cookie's origin</i> — arbitrary tenant code there is an XSS vector against the platform itself and defeats CSP <span class="mono">'self'</span>. Declarative config gives the same variation with none of that surface. If a tenant genuinely needs new UI behaviour, it becomes a core capability behind a flag — which is a product improvement rather than a private fork</td></tr>
+<tr><td>Artifact built <b>per tenant</b></td><td>Artifact built <b>per module profile</b> (<span class="mono">ui-monitor</span>/<span class="mono">ui-full</span>, <span class="mono">bff-monitor</span>/<span class="mono">bff-full</span>) — tenant identity injected at deploy time</td><td>Tenant-level variation is entirely runtime-resolvable (§9.4), so N tenants collapse to two artifact pairs. Capability scope, by contrast, is resolved at <b>build</b> time on purpose — so code a tenant is not entitled to is absent from the artifact they receive (§9.8), not merely switched off inside it</td></tr>
+</table>
+<div class="callout"><b>The load-bearing rule:</b> a tenant folder may change <i>what is configured</i>, never <i>what is compiled</i>. The instant a tenant folder needs a <span class="mono">.tsx</span> file to express something, that is a gap in a capability — close it in <span class="mono">packages/</span> behind a flag. This is what keeps the fleet on one test matrix.</div>
+
+<h4>Build and promotion pipeline</h4>
+<div class="seq">UI repo (main)        CI                Artifact registry        Deployment repo       Tenant AWS account
+    │                  │                       │                      │                      │
+    │─ tag v2.14.0 ───▶│                       │                      │                      │
+    │                  │─ install, typecheck, unit, a11y, adherence lint                    │
+    │                  │─ build profile=monitor ─▶ ui-monitor:2.14.0  (S3 zip of dist/)   │
+    │                  │─ build profile=full ───▶ ui-full:2.14.0                          │
+    │                  │─ gradle :bff-app-{bundle}:bootBuildImage ▶ ECR bff-{bundle}:2.14.0
+    │                  │                       │   bundle ∈ { monitor, build, tasks, docs, full } — fixed CI matrix
+    │                  │                       │   (modules outside the bundle are NOT on the classpath)
+    │                  │─ sign artifacts, publish per-artifact SBOM, write release notes         │
+    │                  │                       │                      │                      │
+    │  centralized (our account): promote v2.14.0 → dev → stage → prod, profile=full
+    │                  │                       │                      │                      │
+    │  federated (tenant acme, profile=monitor):
+    │                  │                       │─ extract ui-monitor:2.14.0 + bff-monitor:2.14.0 ▶│
+    │                  │                       │   + tenants/acme/{deployment,branding,overrides}.json
+    │                  │                       │   + infra params → commit to acme-deployment repo
+    │                  │                       │                      │─ tenant pipeline ───▶│
+    │                  │                       │                      │   sync dist/ → their S3
+    │                  │                       │                      │   push image → their ECR
+    │                  │                       │                      │   ECS update-service (rolling)
+    │                  │                       │                      │   invalidate /index.html /config.json
+</div>
+<p class="cap">Figure 8 — The same promotion path the platform already uses. The tenant's pipeline runs in their account on their change calendar; our pipeline's responsibility ends at publishing a signed, versioned artifact.</p>
+<p>Two details worth fixing now. First, <b><span class="mono">config.json</span> is generated at deploy time</b>, not baked at build time: the tenant pipeline composes it from <code>deployment.json</code> + <code>branding.json</code> + <code>overrides.json</code> and writes it beside <code>index.html</code>. That is what lets one <span class="mono">ui-monitor</span> zip serve every monitoring tenant. Second, <b>the BFF ships as module-scoped boot jars, not one image with a runtime switch</b>: <span class="mono">bff-app-monitor</span> declares Gradle dependencies on <span class="mono">bff-core</span>, <span class="mono">bff-module-monitor</span> and <span class="mono">bff-module-operate</span> — the authoring jars are not on its classpath and therefore not in the image. A single image selecting controllers via <span class="mono">BFF_PROFILE</span> or a Spring profile was the earlier design and is rejected; §9.8 explains why a runtime flag is not a control in an account the tenant owns.</p>
+
+<h4>How Spring Boot makes this a dependency decision, not a flag</h4>
+<p>The mechanism is ordinary Spring Boot auto-configuration, used in the direction that keeps core ignorant of its modules.</p>
+<ul>
+<li><b>Each module jar registers itself.</b> <span class="mono">bff-module-monitor</span> ships an <span class="mono">@AutoConfiguration</span> class listed in its own <span class="mono">META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports</span>. On the classpath, its controllers exist; absent, they do not. <b>Core never imports, names or enumerates a module</b> — so <span class="mono">bff-core</span> read in isolation reveals nothing about authoring.</li>
+<li><b>No <span class="mono">@ConditionalOnProperty</span> or <span class="mono">@Profile</span> for capability gating.</b> Those are precisely the runtime flags §9.8 rejects, and they require the code to be present in order to switch it off. Keep them for genuine environment differences (a stub client in dev), never for entitlement.</li>
+<li><b>Extension points instead of a registry.</b> Where core must compose module contributions — nav metadata, health details, the capability list on <code>/api/v1/me</code> — it injects <span class="mono">List&lt;CapabilityContribution&gt;</span> and reports what it finds. The answer is derived from the classpath, not from a hard-coded catalogue.</li>
+<li><b>DTOs split by capability.</b> One shared <span class="mono">bff-api-dto</span> jar containing authoring request records would leak the full contract into a monitoring image. DTOs live in their owning module; only genuinely shared types (page envelope, problem+json, node/edge shapes) sit in core.</li>
+<li><b>Gradle enforces the boundary</b> — a <span class="mono">bff-core</span> compile dependency on any <span class="mono">bff-module-*</span> fails the build, and an ArchUnit test asserts no core package references a module package. This is the Java equivalent of the import-direction lint on the UI side.</li>
+</ul>
+
+<h4>The bundle catalogue, and how onboarding drives it</h4>
+<p>An assembly module contains no code — only dependency declarations — so adding a bundle costs a build file, and each bundle is an independently buildable jar. A deployment runs exactly one of them.</p>
+<pre class="api">// bff-app-monitor/build.gradle.kts — the entire module
+dependencies {
+  implementation(project(":bff-core"))
+  implementation(project(":bff-module-monitor"))
+  implementation(project(":bff-module-operate"))
+}                       // build and docs jars are absent from the classpath, therefore from the image</pre>
+<table>
+<tr><th>Bundle</th><th>Modules</th><th>Typical use</th></tr>
+<tr><td class="mono">bff-monitor</td><td>core + monitor + operate</td><td>Federated monitoring-only tenant</td></tr>
+<tr><td class="mono">bff-build</td><td>core + build</td><td>Authoring-only deployment; also the base for an independent-scaling split (below)</td></tr>
+<tr><td class="mono">bff-tasks</td><td>core + tasks</td><td>Task-management deployment (module in design — §5.6)</td></tr>
+<tr><td class="mono">bff-docs</td><td>core + docs</td><td>Documentation-only surface, e.g. a read-only reference deployment</td></tr>
+<tr><td class="mono">bff-full</td><td>core + every module</td><td>Our centralized deployment; federated tenants who bought everything</td></tr>
+</table>
+<p><b>Onboarding selects a bundle; it does not compose one.</b> The tenant onboarding record writes <span class="mono">"bundle": "monitor"</span> into <code>deployment.json</code>, and CI builds from a fixed matrix of the four catalogue entries — four images, four smoke suites, four SBOMs. Allowing onboarding to pass an arbitrary module list would generate 2<sup>n</sup> combinations of which only the ones someone happened to order are ever tested; a new bundle must therefore be a deliberate addition to the catalogue, reviewed like any other release artifact. Both the UI and the BFF read the same <span class="mono">bundle</span> value, so their capability sets cannot disagree.</p>
+
+<h4>One service per deployment — and when to split</h4>
+<p>The default is that a bundle is <b>one deployable service</b>: a monitoring tenant runs a single <span class="mono">bff-monitor</span> task set behind one ALB target group, and <span class="mono">/api/*</span> routes to it wholesale. Independently <i>buildable</i> jars do not imply independently <i>deployed</i> services, and conflating the two imports cost that nothing in the current requirements justifies.</p>
+<p>Deploying two or three bundles side by side as separate services is possible and occasionally right — if monitoring traffic dwarfs authoring and the two need separate scaling or release cadence. It is not free, and the price is paid in three places:</p>
+<ul>
+<li><b>Routing becomes path-prefix aware.</b> CloudFront needs a behaviour per service (<span class="mono">/api/v1/executions/*</span> → monitor, <span class="mono">/api/v1/workflows/*</span> → build), which couples the CDN configuration to the API's URL structure — a coupling the single-service model avoids entirely.</li>
+<li><b>Session state must be externalised.</b> Two services cannot each hold their own in-memory session; the session moves to a stateless signed cookie or a shared ElastiCache, which is a security-reviewable change rather than a deployment tweak.</li>
+<li><b>The parsed-diagram cache is duplicated</b> unless it also moves to shared ElastiCache — and both monitoring (trace, graph views) and authoring need it, so the split reintroduces the cost §6 was designed to avoid.</li>
+</ul>
+<p>So: build independently always, deploy independently only on evidence. Splitting is a reversible decision made later against real traffic; making it now would mean paying for shared session and shared cache infrastructure that a single-service deployment does not need.</p>
+
+<h4>What a Monitoring-profile deployment actually contains</h4>
+<table>
+<tr><th>Layer</th><th>Monitoring profile</th><th>Full profile</th></tr>
+<tr><td>Shell, nav, theming, auth</td><td>Yes (core)</td><td>Yes (core)</td></tr>
+<tr><td>Workflow inventory + detail</td><td>Read-only — no edit affordances rendered, no publish</td><td>Full</td></tr>
+<tr><td>Graph views</td><td>Yes — view, zoom, full-screen, inspect</td><td>Yes + edit, validate</td></tr>
+<tr><td>Executions + trace</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Alerts</td><td>Yes</td><td>Yes</td></tr>
+<tr><td>Canvas authoring, rules editing, publish</td><td><b>Not in the artifact</b> — excluded from the UI build output; modules not compiled into <span class="mono">bff-monitor</span></td><td>Yes</td></tr>
+<tr><td>BFF modules compiled in</td><td>core + <span class="mono">monitor</span> + <span class="mono">operate</span> + read-only workflow/graph</td><td>All</td></tr>
+<tr><td>Actuator endpoints exposed</td><td><span class="mono">health</span>, <span class="mono">info</span> only — management port unrouted</td><td>Same in production; fuller set in our own dev accounts</td></tr>
+<tr><td>Domain services required in-account</td><td>Execution, alerting, workflow (read)</td><td>All, including authoring/publish</td></tr>
+</table>
+<p>The last row is the one to raise in client conversations early: a Monitoring deployment still needs read access to workflow definitions to draw anything, so the federated footprint includes the workflow service in read mode or a replicated read model. "Monitoring only" reduces the UI surface substantially and the backend surface only partly.</p>
+
+<h4>Keeping the fleet coherent</h4>
+<ul>
+<li><b>One version number across UI, BFF and profile.</b> <span class="mono">ui-monitor:2.14.0</span> and <span class="mono">bff-monitor:2.14.0</span> deploy together as a pinned pair, referenced by immutable digest. Mixed versions are the failure mode that federation makes easy and expensive.</li>
+<li><b>Profile is declared once, in <span class="mono">deployment.json</span></b>, and read by both the UI manifest and the BFF entitlement (§9.6). They can never disagree because they derive from the same file.</li>
+<li><b>Capability tests run per artifact in CI</b> — the monitor build has its own smoke suite asserting that authoring routes 404 in the UI, that authoring endpoints do not exist in <span class="mono">bff-app-monitor</span>, and that only <span class="mono">health</span>/<span class="mono">info</span> actuator endpoints are exposed — plus a leakage test (§9.8) asserting the generated OpenAPI document and error output name no capability the artifact does not carry. A subset tested only implicitly will regress the first time someone adds a controller outside a capability module.</li>
+<li><b>Adherence lint on the capability tag.</b> Every UI route must declare a capability and every BFF controller must live in a capability module; CI fails on an untagged route, on a controller found in <span class="mono">bff-core</span>, and on a core file importing from a capability module. This is what makes "the profile mechanism is complete" a machine-checked property rather than a convention.</li>
+</ul>
+
+<h3>9.8 Threat model: a federated tenant controls the runtime</h3>
+<p>Everything in §9.6 that gates by configuration — <span class="mono">config.json</span> capabilities, an entitlement field, a <span class="mono">BFF_PROFILE</span> environment variable — is enforceable in <i>our</i> account and unenforceable in someone else's. A federated tenant has root on the host, owns the environment variables, owns the bucket, and can read the image. It follows that <b>a runtime flag is a configuration convenience, never a control</b>, and the design must not depend on one. Two distinct concerns follow, needing different answers.</p>
+
+<h4>Concern 1 — discovering functionality they were not sold</h4>
+<p>The objection is not only "can they enable authoring", it is "can they read the artifact and learn what the full product does". Both have the same answer: <b>ship an artifact in which the other capabilities do not exist.</b> That requires closing every surface that would otherwise enumerate them.</p>
+<table>
+<tr><th>Surface</th><th>Leak to close</th></tr>
+<tr><td>BFF modules</td><td><span class="mono">bff-app-monitor</span> depends on core + monitor + operate only. Authoring controllers, DTOs, validators and queries are not on the classpath and not in the image — nothing to decompile. This matters more in Java than elsewhere: boot-jar class files decompile to near-source, so "present but disabled" would be close to shipping the source</td></tr>
+<tr><td>Core code</td><td>Core must not enumerate what it does not carry: no master <span class="mono">Capability</span> enum listing <span class="mono">BUILD</span>/<span class="mono">LEARN</span>, no central registry class importing every module, no shared error catalogue naming authoring failures. Modules <b>auto-configure themselves into</b> core; core never references a module by name. Gradle and an ArchUnit test enforce the direction</td></tr>
+<tr><td>Spring Actuator</td><td>The sharpest Java-specific leak: <span class="mono">/actuator/mappings</span>, <span class="mono">/beans</span>, <span class="mono">/env</span>, <span class="mono">/configprops</span> and <span class="mono">/conditions</span> enumerate every controller, bean and evaluated condition in the running app. Expose <span class="mono">health</span> and <span class="mono">info</span> only, on a separate management port not routed through CloudFront, and assert the exposure list in a test</td></tr>
+<tr><td>Generated API docs</td><td>springdoc generates the OpenAPI document from the controllers actually present, so a monitor image's spec describes monitoring only — provided no spec file is checked in or published from a full build. No hand-maintained combined spec</td></tr>
+<tr><td>UI bundle</td><td>Authoring chunks are excluded from the <span class="mono">ui-monitor</span> build output, not merely left unfetched. Route tables, nav definitions and capability constants are per-build, so a reader of the bundle finds no authoring identifiers</td></tr>
+<tr><td>Source maps</td><td>UI source maps are not published to tenant buckets; retained in our registry for symbolising reported errors. The BFF jar is not obfuscated — obfuscation is not a control, module absence is</td></tr>
+<tr><td>Config and error text</td><td><span class="mono">config.json</span> lists what is enabled, never the full catalogue. No "upgrade to unlock" strings, no 403 body that names a capability</td></tr>
+</table>
+
+<h4>Concern 2 — reaching back into our boundary</h4>
+<p>Separately: a tampered federated deployment must not be able to touch our systems or another tenant's. That control is credential and network scope, and it is deliberately minimal.</p>
+<ul>
+<li><b>Exactly one credential exists</b> in a federated deployment — a cross-account pull role scoped by ARN to that tenant's entitled repositories (<span class="mono">bff-monitor</span>, <span class="mono">ui-monitor</span>) and nothing else. They cannot pull <span class="mono">bff-full</span>, because entitlement is an IAM policy on our registry rather than a check inside their runtime.</li>
+<li><b>Short-lived and revocable</b> — OIDC-federated role assumption from their pipeline; no long-lived keys; per-tenant; revocable unilaterally.</li>
+<li><b>No path inwards.</b> No VPC peering, no PrivateLink into our account, no service account, no database credential, no shared cache. The pull role is the entire runtime relationship.</li>
+<li><b>Blast radius stops at their own account.</b> Their deployment holds only their data, so tampering yields access to what they already own; there is no shared plane to move laterally through.</li>
+</ul>
+
+<h4>The strongest control is that the vertical is absent</h4>
+<p>Suppose a determined tenant rebuilt the authoring UI from scratch. It would call endpoints absent from their BFF image; were they to write those too, they would still need the authoring domain services, the authoring data model, the validation engine and the publish pipeline — none of which are deployed in their account. <b>Capability scoping in a federated deployment is the absence of an entire vertical, not a hidden menu item.</b> So the honest answer to "can they tamper?" is: they can change what runs on their own hardware, and it gets them nothing, because what they would need was never delivered.</p>
+
+<h4>Detection and contract, for what remains</h4>
+<p>The remainder is deterrence and evidence, and should be labelled as such rather than dressed up as prevention. Images are signed and pinned by immutable digest, so a modified artifact is a detectable, deliberate act. A short-lived signed entitlement (capabilities, expiry, tenant) is verified by the BFF at startup and logged into their own audit trail; stripping it means rebuilding a signed image, which is where support-warranty and contractual clauses apply. Version and entitlement are reported on a health endpoint their monitoring reads, so drift is visible to the party able to act on it.</p>
+<div class="callout"><b>The principle:</b> you cannot cryptographically prevent someone from running code they possess on hardware they own. The architecture's job is therefore to ensure they never possess the code, never hold a credential into our boundary, and could not operate the capability even if they tried. Flags, config and entitlements exist for us and for auditability — the artifact boundary is the control.</div>
+
+<h2>10. What would move the UI off S3</h2>
+<p>Recording these now means the decision can be revisited on evidence rather than instinct.</p>
+<ul>
+<li><b>Server-side rendering becomes a requirement</b> — a first-paint mandate, or markup that must vary per request. Then the frontend has joined the application platform and belongs on Fargate beside the BFF.</li>
+<li><b>Runtime secrets must reach the page.</b> Today none do: every privileged call goes through the BFF.</li>
+<li><b>Edge logic starts multiplying.</b>  Two error-response mappings is a healthy static SPA. A growing set of CloudFront Functions doing request-time decisions is the app asking for a runtime.</li>
+<li><b>Per-user builds or runtime feature-flag rendering.</b> Currently handled by <code>config.json</code> plus permissions from <code>/api/v1/me</code> — client-side, which is sufficient.</li>
+</ul>
+<p>None of these are on the roadmap. Notably, <i>bigger diagrams</i> is not on this list — scaling the visualization is BFF work (tiling, LOD, cache), and it does not touch how the UI is hosted.</p>
+
+<h2>11. Summary</h2>
+<table>
+<tr><th>Layer</th><th>Decision</th><th>Rationale in one line</th></tr>
+<tr><td>Visualization UI</td><td>S3 (private, OAC) + CloudFront</td><td>Fully generated at build time; no request-time behaviour</td></tr>
+<tr><td>Deep links</td><td>403/404 → /index.html (200)</td><td>The one accepted workaround; no edge logic</td></tr>
+<tr><td>Experience API</td><td>BFF, one per frontend, <span class="mono">/api/v1</span></td><td>Screen-shaped contracts; browser never sees domain shapes or XML</td></tr>
+<tr><td>BFF compute</td><td>ECS Fargate behind an ALB (Java / Spring Boot boot jar)</td><td>Warm parse cache, no cold starts, no 29-s ceiling, SSE-ready — and a JVM is a poor fit for Lambda cold starts</td></tr>
+<tr><td>Routing</td><td><span class="mono">/api/*</span> behaviour on the same distribution</td><td>Same origin ⇒ httpOnly cookie flows, no CORS</td></tr>
+<tr><td>Config</td><td>Runtime <span class="mono">config.json</span></td><td>One build artifact promotes dev → stage → prod</td></tr>
+<tr><td>Security</td><td>CSP <span class="mono">default-src 'self'</span>, WAF IP set, private bucket</td><td>No CDN scripts, no web fonts, nothing public</td></tr>
+<tr><td>Hosting topology</td><td>Centralized by default; federated by exception</td><td>Same artifact both ways; federation granted only on residency or isolation requirements</td></tr>
+<tr><td>Federated constraint</td><td>Tagged releases, no forks, no build-time tenant config</td><td>Keeps federation a deployment difference, not a second product</td></tr>
+<tr><td>Feature subsets</td><td>Module jars assembled into a fixed bundle catalogue (<span class="mono">monitor</span>/<span class="mono">build</span>/<span class="mono">docs</span>/<span class="mono">full</span>); onboarding selects, never composes</td><td>A Monitoring tenant receives an artifact in which authoring does not exist — no fork, no per-tenant bundle, no untested combinations</td></tr>
+<tr><td>Repo &amp; build model</td><td>One UI repo, per-profile artifacts, tenant folder declarative only</td><td>Mirrors the platform's monorepo → artifact → deployment-repo path; tenant JSX is refused because it runs inside our origin</td></tr>
+<tr><td>Placement</td><td>UI and BFF always co-located in one account — ours if centralized, the tenant's if federated</td><td>Same-origin is what removes CORS and third-party cookies; splitting them would undo federation's purpose</td></tr>
+<tr><td>BFF topology</td><td>One bundle = one deployed service; split into per-module services only on traffic evidence</td><td>Independently buildable does not mean independently deployed — splitting costs path-prefix routing, shared session and shared cache</td></tr>
+<tr><td>Capability enforcement</td><td><span class="mono">bff-monitor</span>/<span class="mono">bff-full</span> module artifacts + ARN-scoped pull role</td><td>A runtime flag is not a control in an account the tenant owns — the artifact boundary is</td></tr>
+</table>
+<div class="pull">The best architecture here is not the most powerful one available. It is the one whose operating model still matches what the application actually does at request time — a static shell, and a hard-working experience API behind it.</div>
+
+</body></html>

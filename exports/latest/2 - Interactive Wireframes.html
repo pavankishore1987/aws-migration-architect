@@ -1,0 +1,1521 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-accent="indigo"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Interactive Wireframes — Workflow Orchestrator</title>
+<style>
+:root{
+  --ac:#4a5ac9; --ac-600:#4f5ec2; --ac-700:#3a479c; --ac-50:#eef0fb; --ac-100:#dbdff7; --ac-200:#bfc6f0;
+  --bg:#f4f4f6; --surface:#fff; --raised:#fafafb; --side:#fff; --ink:#1d1f23; --ink-2:#5d6068; --ink-3:#8a8d96;
+  --line:#e4e5ea; --line-2:#d2d4db;
+  --ok:#4f8f63; --ok-bg:#e9f3ec; --warn:#b8892f; --warn-bg:#f9f0dd; --bad:#b04a44; --bad-bg:#f9e9e8;
+  --off:#98989b; --off-bg:#f0f0f2;
+  --r:8px; --r-sm:6px; --r-lg:12px;
+  --sh:0 1px 2px rgba(20,22,30,.06); --sh-md:0 4px 14px rgba(20,22,30,.10); --sh-lg:0 12px 34px rgba(20,22,30,.18);
+}
+:root[data-accent="blue"]{--ac:#4a7ab5;--ac-600:#3f689c;--ac-700:#325480;--ac-50:#eaf1f8;--ac-100:#d7e6f2;--ac-200:#b4d0e6}
+:root[data-accent="teal"]{--ac:#3f8f8f;--ac-600:#357a7a;--ac-700:#2a6161;--ac-50:#eaf4f4;--ac-100:#d8ebeb;--ac-200:#b3d8d8}
+:root[data-accent="purple"]{--ac:#7f5fb5;--ac-600:#6d519c;--ac-700:#584180;--ac-50:#f2eef9;--ac-100:#e7e0f3;--ac-200:#d0c4e8}
+:root[data-theme="dark"]{
+  --bg:#191b21; --surface:#20232b; --raised:#262a33; --side:#171a20; --ink:#eceef2; --ink-2:#a4a9b5; --ink-3:#787e8c;
+  --line:#2e323c; --line-2:#3c4250;
+  --ac-50:#252a41; --ac-100:#2d3350; --ac-200:#3f4870;
+  --ok:#7cb894; --ok-bg:#1e3227; --warn:#d3ac6b; --warn-bg:#332a1a; --bad:#cf8a85; --bad-bg:#33201f;
+  --off:#9a9a9e; --off-bg:#282b33;
+  --sh:0 1px 2px rgba(0,0,0,.45); --sh-md:0 4px 14px rgba(0,0,0,.5); --sh-lg:0 14px 38px rgba(0,0,0,.62);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer;font-family:inherit}
+svg{display:block}
+/* banner */
+#banner{background:var(--surface);border-bottom:1px solid var(--line);padding:9px 18px;display:flex;align-items:center;gap:14px;font-size:12px;color:var(--ink-2);flex-wrap:wrap}
+#banner b{font-weight:600;letter-spacing:.06em;text-transform:uppercase;font-size:10px;color:var(--ac);background:var(--ac-50);border:1px solid var(--ac-200);padding:4px 9px;border-radius:999px}
+#banner .sp{margin-left:auto;display:flex;align-items:center;gap:14px}
+#banner select{background:var(--raised);color:var(--ink);border:1px solid var(--line-2);padding:5px 8px;font-size:12px;border-radius:var(--r-sm)}
+.livedot{display:inline-flex;align-items:center;gap:6px;font-size:12px}
+.livedot i{width:7px;height:7px;border-radius:50%;background:var(--ok);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.28}}
+/* app frame: full-height sidebar + content column */
+#app{max-width:1340px;margin:18px auto 46px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);min-height:700px;display:flex;overflow:hidden;box-shadow:var(--sh-md)}
+.side{width:214px;flex:none;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:0 0 14px}
+.sidebrand{display:flex;align-items:center;gap:10px;padding:20px 16px 18px;font-weight:600;font-size:15.5px;letter-spacing:-.015em}
+.logo{width:27px;height:27px;border-radius:7px;background:var(--ac);display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:none}
+.nav{padding:0 9px;overflow:auto;flex:1}
+.navg{font-weight:600;font-size:9.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3);padding:15px 9px 7px}
+.navi{display:flex;align-items:center;gap:11px;width:100%;text-align:left;border:0;background:none;padding:9px 10px;font-size:13.5px;color:var(--ink-2);border-radius:var(--r);margin-bottom:2px}
+.navi:hover{background:var(--raised);color:var(--ink)}
+.navi.on{background:var(--ac-50);color:var(--ac);font-weight:600}
+.navi svg{width:17px;height:17px;flex:none}
+.col{flex:1;min-width:0;display:flex;flex-direction:column}
+.top{height:60px;flex:none;display:flex;align-items:center;gap:14px;padding:0 20px;position:relative;border-bottom:1px solid var(--line)}
+.tenant{display:flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--raised);border-radius:var(--r);padding:8px 12px;font-size:13px;font-weight:500}
+.tenant:hover{border-color:var(--ac)}
+.tenant.static{cursor:default;background:none;color:var(--ink-2)}
+.tenant.static:hover{border-color:var(--line-2)}
+.search{flex:1;max-width:440px;height:38px;border:1px solid var(--line-2);background:var(--raised);border-radius:var(--r);display:flex;align-items:center;gap:9px;padding:0 12px;color:var(--ink-3);font-size:13px}
+.who{display:flex;align-items:center;gap:10px;border:0;background:none;padding:5px 7px;border-radius:var(--r);margin-left:auto}
+.who:hover{background:var(--raised)}
+.av{width:34px;height:34px;border-radius:var(--r-sm);background:var(--ac-50);border:1px solid var(--ac-200);display:grid;place-items:center;font-weight:700;font-size:12px;color:var(--ac)}
+.whoname{text-align:left;line-height:1.3}
+.whoname b{display:block;font-size:13px;font-weight:600}
+.whoname span{font-size:11.5px;color:var(--ink-3)}
+.main{flex:1;min-width:0;padding:24px 26px 34px;overflow:auto}
+.crumb{font-size:12.5px;color:var(--ink-3);margin-bottom:10px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.crumb button{border:0;background:none;padding:0;color:var(--ac);font-size:12.5px}
+.crumb button:hover{text-decoration:underline}
+.head{display:flex;align-items:flex-start;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.h1{font-weight:600;font-size:29px;line-height:1.15;letter-spacing:-.022em}
+.sub{font-size:13.5px;color:var(--ink-3);margin-top:5px}
+.acts{margin-left:auto;display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:var(--raised);color:var(--ink);padding:9px 14px;font-size:13px;font-weight:500;border-radius:var(--r)}
+.btn:hover{border-color:var(--ac)}
+.btn.pri{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+.btn.pri:hover{background:var(--ac-600)}
+.btn.sm{padding:6px 11px;font-size:12px}
+.btn.quiet{border-color:transparent;background:none;color:var(--ac)}
+.btn.quiet:hover{background:var(--ac-50)}
+.btn svg{width:15px;height:15px}
+.seg{display:inline-flex;border:1px solid var(--line-2);border-radius:var(--r);overflow:hidden;background:var(--raised)}
+.seg button{border:0;background:none;padding:8px 14px;font-size:12.5px;color:var(--ink-2);font-weight:500}
+.seg button+button{border-left:1px solid var(--line-2)}
+.seg button.on{background:var(--ac);color:#fff;font-weight:600}
+.seg button:not(.on):hover{color:var(--ink)}
+.chips{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.chip{border:1px solid var(--line-2);background:var(--raised);color:var(--ink-2);font-size:12.5px;padding:7px 13px;border-radius:var(--r);font-weight:500}
+.chip.on{background:var(--ac);border-color:var(--ac);color:#fff;font-weight:600}
+.chip:not(.on):hover{border-color:var(--ac)}
+.sfield{position:relative;display:flex;align-items:center;min-width:290px}
+.sfield .sicon{position:absolute;left:11px;color:var(--ink-3);pointer-events:none}
+.sinput{width:100%;height:36px;border:1px solid var(--line-2);background:var(--raised);border-radius:var(--r);padding:0 12px 0 34px;font:inherit;font-size:12.5px;color:var(--ink)}
+.sinput::placeholder{color:var(--ink-3)}
+.sinput:focus{outline:2px solid var(--ac);outline-offset:-1px;border-color:var(--ac)}
+.sortwrap{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.sortlab{font-size:11.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--ink-3)}
+.sortsel{height:36px;border:1px solid var(--line-2);background:var(--raised);color:var(--ink);border-radius:var(--r);padding:0 9px;font:inherit;font-size:12.5px}
+.sortsel:focus{outline:2px solid var(--ac);outline-offset:-1px;border-color:var(--ac)}
+.vtag{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10.5px;font-weight:600;color:var(--ink-3);border:1px solid var(--line-2);border-radius:999px;padding:2px 8px;white-space:nowrap}
+.newpill{display:block;width:100%;border:1px solid var(--ac);background:var(--ac-50);color:var(--ac);font-size:12.5px;font-weight:600;padding:9px 12px;border-radius:var(--r);margin-bottom:12px}
+.newpill:hover{background:var(--ac-100)}
+.emptyrow{padding:36px 20px;text-align:center;color:var(--ink-3);font-size:13px}
+.emptyrow b{display:block;color:var(--ink);font-size:15px;margin-bottom:6px}
+.filters{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.finput{height:38px;min-width:300px;flex:1;max-width:420px;border:1px solid var(--line-2);background:var(--raised);border-radius:var(--r);display:flex;align-items:center;padding:0 12px;color:var(--ink-3);font-size:13px}
+/* metric cards */
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+.card{border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 17px;background:var(--surface)}
+.card .k{font-weight:600;font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.card .v{font-weight:600;font-size:34px;font-variant-numeric:tabular-nums;margin-top:9px;letter-spacing:-.03em;line-height:1.05;border-radius:var(--r-sm);transition:background .7s}
+.card .v.bump{background:var(--ac-50)}
+.card .m{font-size:11.5px;color:var(--ink-3);margin-top:7px;display:flex;align-items:center;gap:6px}
+
+.trend{display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:600}
+.trend.up{color:var(--ok)}.trend.down{color:var(--bad)}.trend.flat{color:var(--ink-3)}
+/* panels */
+.pan{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);overflow:hidden;margin-bottom:18px}
+.panh{display:flex;align-items:center;gap:12px;padding:15px 17px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panh h3{margin:0;font-size:16.5px;font-weight:600;letter-spacing:-.015em}
+.panh .r{margin-left:auto;display:flex;align-items:center;gap:10px}
+.panb{padding:16px 17px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.two>*{min-width:0}
+/* table */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;font-weight:600;font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-3);padding:11px 17px;border-bottom:1px solid var(--line);background:var(--raised)}
+td{padding:13px 17px;border-bottom:1px solid var(--line)}
+tbody tr:last-child td{border-bottom:0}
+tbody tr{cursor:pointer}
+tbody tr:hover{background:var(--raised)}
+tbody tr.new td{animation:slidein 1.1s ease-out}
+td.bumpcell{animation:slidein 1.1s ease-out}
+@keyframes slidein{0%{background:var(--ac-50)}100%{background:transparent}}
+.mono{font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:12.5px}
+.right{text-align:right}
+.scroller{max-height:340px;overflow:auto}
+/* status */
+.pillst{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:5px 11px;border-radius:999px;white-space:nowrap}
+.pillst.done{background:var(--ok-bg);color:var(--ok)}
+.pillst.run{background:var(--warn-bg);color:var(--warn)}
+.pillst.fail{background:var(--bad-bg);color:var(--bad)}
+.pillst.skip{background:var(--off-bg);color:var(--off)}
+.pillst i{font-style:normal;font-weight:700;font-size:10px;font-family:ui-monospace,Consolas,monospace}
+.pillst.run i{animation:pulse 1.4s ease-in-out infinite}
+/* steps */
+.steps{display:flex;flex-wrap:wrap;gap:9px;align-items:center;border:1px solid var(--line);border-radius:var(--r-lg);background:var(--raised);padding:16px 17px;margin-bottom:18px}
+.step{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--line-2);background:var(--surface);font-size:12.5px;padding:7px 12px;border-radius:999px;color:var(--ink-2)}
+.step i{font-style:normal;font-weight:700;font-size:10px;font-family:ui-monospace,Consolas,monospace}
+.step.done{border-color:transparent;background:var(--ok-bg);color:var(--ok);font-weight:600}
+.step.now{border-color:var(--warn);background:var(--warn-bg);color:var(--warn);font-weight:600}
+.step.fail{border-color:transparent;background:var(--bad-bg);color:var(--bad);font-weight:600}
+.step.halt{border-color:transparent;background:var(--off-bg);color:var(--off);font-weight:600}
+.step.skip{opacity:.5}
+.sep{color:var(--line-2)}
+/* canvas */
+.cvwrap{display:flex;gap:0;align-items:stretch;flex-wrap:wrap;border:1px solid var(--line);border-radius:var(--r-lg);overflow:hidden;background:var(--surface)}
+.cv{flex:1;min-width:320px;display:flex;flex-direction:column}
+.cvbar{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);background:var(--raised);flex-wrap:wrap}
+.cvbar .lab{font-weight:600;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.cvbar .r{margin-left:auto;display:flex;align-items:center;gap:7px}
+.cvbar .z{font-size:12px;color:var(--ink-3);min-width:38px;text-align:right}
+.cvstage{flex:1;min-height:440px;max-height:560px;padding:22px;background-image:radial-gradient(var(--line) 1px, transparent 1px);background-size:18px 18px;overflow:auto}
+.bn{position:absolute;display:flex;flex-direction:column;gap:2px;align-items:flex-start;text-align:left;width:216px;padding:10px 13px;border:1px solid var(--line-2);background:var(--surface);border-radius:var(--r);box-shadow:var(--sh);z-index:2}
+.bn:hover{border-color:var(--ac)}
+.bn-t{font-weight:600;font-size:8.5px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-3)}
+.bn-n{font-size:13px;font-weight:500;line-height:1.25}
+.bn-s{display:inline-flex;align-items:center;gap:5px;font-size:9.5px;font-weight:600;margin-top:3px;padding:2px 7px;border-radius:999px}
+.bn-s i{font-style:normal;font-family:ui-monospace,Consolas,monospace;font-size:9px}
+.bn.ev{width:108px;align-items:center;border-radius:999px;padding:11px 13px}
+.bn-ev{font-weight:600;font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+/* diamond for a conditional */
+.bn.ch{width:200px;height:120px;padding:0;border:0;background:none;box-shadow:none;align-items:center;justify-content:center}
+.bn.ch .dm-edge,.bn.ch .dm-fill{position:absolute;inset:0;clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%)}
+.bn.ch .dm-edge{background:var(--line-2)}
+.bn.ch .dm-fill{inset:2px;background:var(--surface)}
+.bn.ch .dm-lab{position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;gap:3px;max-width:118px;text-align:center}
+.bn.ch .dm-n{font-size:11.5px;font-weight:500;line-height:1.2}
+.bn.ch .dm-g{font-size:15px;font-weight:700;line-height:1;color:var(--ink-3)}
+.bn.ch:hover .dm-edge{background:var(--ac)}
+.bn.ch.done .dm-edge{background:var(--ok)}
+.bn.ch.now .dm-edge{background:var(--warn)}
+.bn.ch.fail .dm-edge{background:var(--bad)}
+.bn.ch.sel{outline:none}
+.bn.ch.sel .dm-edge{background:var(--ac)}
+.bn.ch.sel .dm-fill{inset:3px}
+.bn.done{border-color:var(--ok)}
+.bn.done .bn-s{background:var(--ok-bg);color:var(--ok)}
+.bn.now{border-color:var(--warn);border-width:2px}
+.bn.now .bn-s{background:var(--warn-bg);color:var(--warn)}
+.bn.now .bn-s i{animation:pulse 1.4s ease-in-out infinite}
+.bn.fail{border-color:var(--bad);border-width:2px}
+.bn.fail .bn-s{background:var(--bad-bg);color:var(--bad)}
+.bn.halt{border-color:var(--off)}
+.bn.halt .bn-s{background:var(--off-bg);color:var(--off)}
+.bn.ch.halt .dm-edge{background:var(--off)}
+.bn.skip{opacity:.4;cursor:not-allowed;box-shadow:none}
+.bn.skip .bn-s{background:var(--off-bg);color:var(--off)}
+.bn.sel{outline:2px solid var(--ac);outline-offset:2px;border-color:var(--ac)}
+.dgcol{display:flex;flex-direction:column;align-items:center;transform-origin:top center;transition:transform .18s}
+.node{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--surface);font-size:13px;padding:11px 17px;min-width:200px;justify-content:center;color:var(--ink);border-radius:var(--r);box-shadow:var(--sh)}
+.node:hover{border-color:var(--ac)}
+.node i{font-style:normal;font-weight:700;font-size:10.5px;font-family:ui-monospace,Consolas,monospace}
+.node.done{border-color:transparent;background:var(--ok-bg);color:var(--ok);font-weight:600}
+.node.now{border-color:var(--warn);background:var(--warn-bg);color:var(--warn);font-weight:600}
+.node.fail{border-color:var(--bad);background:var(--bad-bg);color:var(--bad);font-weight:600}
+.node.skip{opacity:.42;cursor:not-allowed;box-shadow:none}
+.node.gate{border-radius:999px}
+.node.sel{outline:2px solid var(--ac);outline-offset:2px;border-color:var(--ac)}
+.conn{width:2px;height:20px;background:var(--line-2);border-radius:2px}
+.conn.dim{opacity:.3}
+.conn.taken{background:var(--ok)}
+.branch{display:flex;gap:30px;align-items:flex-start}
+.branch>div{display:flex;flex-direction:column;align-items:center}
+.blab{font-size:11px;color:var(--ink-3);margin-bottom:7px;font-weight:600;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:2px 10px}
+.props{width:278px;flex:none;border-left:1px solid var(--line);display:flex;flex-direction:column}
+.propsh{display:flex;align-items:center;padding:11px 14px;border-bottom:1px solid var(--line);background:var(--raised)}
+.propsh .lab{font-weight:600;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.propsh button{margin-left:auto;border:0;background:none;color:var(--ink-3);padding:2px 5px;border-radius:var(--r-sm);font-size:15px;line-height:1}
+.propsh button:hover{background:var(--surface);color:var(--ink)}
+.propsb{padding:15px 15px 18px;overflow:auto}
+.propsb h4{margin:0 0 4px;font-size:15px;font-weight:600}
+.pr{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;padding:9px 0;border-bottom:1px solid var(--line)}
+.pr span:first-child{color:var(--ink-3)}
+.pbtn{width:100%;justify-content:center;margin-top:12px}
+.exp{display:flex;align-items:center;gap:8px;border:1px solid var(--line-2);background:var(--raised);font-size:12.5px;padding:9px 11px;margin-top:9px;width:100%;text-align:left;border-radius:var(--r)}
+.exp:hover{border-color:var(--ac)}
+.expbody{border:1px solid var(--line);border-radius:var(--r);background:var(--raised);padding:11px;margin-top:7px;font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--ink-2);white-space:pre-wrap}
+.emptyprops{padding:30px 16px;text-align:center;color:var(--ink-3);font-size:12.5px}
+/* misc */
+.note{border:1px solid var(--line);border-left:3px solid var(--ac);border-radius:var(--r);background:var(--ac-50);font-size:12.5px;color:var(--ink-2);padding:13px 15px;margin:14px 0}
+.note.bad{border-left-color:var(--bad);background:var(--bad-bg);color:var(--bad)}
+.note.warn{border-left-color:var(--warn);background:var(--warn-bg);color:var(--warn)}
+.empty{border:1px dashed var(--line-2);border-radius:var(--r-lg);background:var(--raised);text-align:center;padding:44px 20px;color:var(--ink-3);font-size:13px}
+.empty b{display:block;color:var(--ink);font-size:15px;margin-bottom:6px}
+.sect{font-weight:600;font-size:16px;margin:22px 0 10px;letter-spacing:-.015em}
+/* sign in */
+.login{flex:1;display:grid;place-items:center;padding:60px 20px}
+.loginbox{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-lg);padding:38px 36px}
+.loginbox .logo{width:46px;height:46px;border-radius:12px;font-size:18px;margin:0 0 18px}
+.loginbox h2{margin:0 0 6px;font-size:24px;font-weight:600;letter-spacing:-.022em}
+.loginbox p{color:var(--ink-3);font-size:13.5px;margin:0 0 26px}
+.flabel{display:block;font-size:12.5px;font-weight:500;color:var(--ink-2);margin-bottom:7px}
+.finp{width:100%;height:42px;border:1px solid var(--line-2);background:var(--raised);border-radius:var(--r);padding:0 13px;font:inherit;font-size:13.5px;color:var(--ink);margin-bottom:18px}
+.finp:focus{outline:2px solid var(--ac);outline-offset:-1px;border-color:var(--ac)}
+.loginbox .btn{width:100%;justify-content:center;padding:12px 14px;font-size:14px}
+.loginfoot{margin-top:20px;font-size:11.5px;color:var(--ink-3);line-height:1.55}
+/* menus */
+.menu{position:absolute;right:18px;top:56px;width:298px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-lg);z-index:30;overflow:hidden}
+.menu-id{padding:16px 17px 14px;border-bottom:1px solid var(--line)}
+.menu-id b{display:block;font-size:14.5px;font-weight:600}
+.menu-id span{font-size:12px;color:var(--ink-3)}
+.menu-s{padding:15px 17px;border-bottom:1px solid var(--line)}
+.menu-h{font-weight:600;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:12px}
+.menu-l{font-size:12.5px;color:var(--ink-2);margin:0 0 8px}
+.menu-s .seg{width:100%}
+.menu-s .seg button{flex:1;padding:8px 6px}
+.swatches{display:flex;gap:10px;margin-top:4px}
+.sw{width:36px;height:36px;border-radius:var(--r-sm);border:2px solid transparent;cursor:pointer;padding:0}
+.sw.on{border-color:var(--ink)}
+.menu-b{display:flex;align-items:center;gap:9px;width:100%;border:0;background:none;padding:13px 17px;font-size:13px;text-align:left}
+.menu-b:hover{background:var(--raised)}
+.orgmenu{position:absolute;left:20px;top:56px;width:250px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-lg);z-index:30;overflow:hidden}
+.orgmenu .menu-h{padding:14px 16px 0;margin-bottom:9px}
+.orgmenu button{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;background:none;padding:10px 16px;font-size:13px;text-align:left}
+.orgmenu button:hover{background:var(--raised)}
+.orgmenu button.on{background:var(--ac-50);color:var(--ac);font-weight:600}
+.orgfoot{padding:11px 16px;border-top:1px solid var(--line);font-size:11px;color:var(--ink-3);line-height:1.5}
+.tabs{display:flex;border-bottom:1px solid var(--line);margin-bottom:18px;flex-wrap:wrap;gap:2px}
+.tab{border:0;background:none;padding:10px 15px;font-size:13.5px;color:var(--ink-3);border-bottom:2px solid transparent;margin-bottom:-1px;font-weight:500}
+.tab:hover{color:var(--ink)}
+.tab.on{color:var(--ac);font-weight:600;border-bottom-color:var(--ac)}
+.docwrap{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap}
+.doclist{width:224px;flex:none;border:1px solid var(--line);border-radius:var(--r-lg);padding:9px;background:var(--surface)}
+.doclist button{display:block;width:100%;text-align:left;border:0;background:none;padding:10px 12px;font-size:13px;color:var(--ink-2);border-radius:var(--r);margin-bottom:2px}
+.doclist button:hover{background:var(--raised)}
+.doclist button.on{background:var(--ac-50);color:var(--ac);font-weight:600}
+.docbody{flex:1;min-width:280px;max-width:66ch}
+.docbody h3{margin:0 0 14px;font-size:21px;font-weight:600;letter-spacing:-.02em}
+.docbody p{font-size:14.5px;line-height:1.7;color:var(--ink-2);margin:0 0 15px}
+.evi>div{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:13px 17px;border-bottom:1px solid var(--line);font-size:13px}
+.evi>div:last-child{border-bottom:0}
+.ta{width:100%;border:1px solid var(--line-2);background:var(--raised);border-radius:var(--r);min-height:82px;padding:12px;font:inherit;font-size:13px;color:var(--ink)}
+.ta:focus{outline:2px solid var(--ac);outline-offset:-1px;border-color:var(--ac)}
+.fullwrap{position:fixed;inset:0;z-index:80;background:var(--bg);display:flex;flex-direction:column}
+.fullbar{flex:none;display:flex;align-items:center;gap:14px;padding:13px 18px;border-bottom:1px solid var(--line);background:var(--surface)}
+.fullbar .lab{font-weight:600;font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.fullbar .r{margin-left:auto;display:flex;align-items:center;gap:9px}
+.fullbar .z{font-size:12px;color:var(--ink-3);min-width:38px;text-align:right}
+.fullbody{flex:1;min-height:0;display:flex}
+.fullstage{flex:1;min-width:0;overflow:auto;padding:28px;background-image:radial-gradient(var(--line) 1px, transparent 1px);background-size:18px 18px}
+.fullprops{width:300px;border-left:1px solid var(--line);border-right:0;border-top:0;border-bottom:0;border-radius:0;background:var(--surface);overflow:auto}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:26px;z-index:90;background:var(--ink);color:var(--bg);padding:13px 20px;border-radius:var(--r);font-size:13px;box-shadow:var(--sh-lg);z-index:60;font-weight:500}
+@media (max-width:1000px){.cards{grid-template-columns:repeat(2,1fr)}.two{grid-template-columns:1fr}.side{width:64px}.navi{justify-content:center;padding:11px 0}.navi .lbl,.navg,.sidebrand .lbl{display:none}.sidebrand{justify-content:center;padding:18px 0}}
+</style></head><body>
+
+<div id="banner">
+  <b>Interactive wireframe</b>
+  <span class="sp">
+    <span class="livedot"><i></i> live</span>
+    <label style="font-size:12px;color:var(--ink-3)">Signed in as
+      <select id="role">
+        <option value="tenant">Tenant</option>
+        <option value="platform">Platform Engineer</option>
+      </select>
+    </label>
+    <label style="font-size:12px;color:var(--ink-3)">Deployment
+      <select id="combo">
+        <option value="all">Everything</option>
+        <option value="mon">Monitoring only</option>
+        <option value="mondoc">Monitoring + Documentation</option>
+      </select>
+    </label>
+  </span>
+</div>
+
+<div id="app"></div>
+
+<script>
+/* ============================================================
+   Workflow Orchestrator — interactive wireframes
+   Modules: Session · Authoring (incl. Tasks) · Monitoring · Documentation
+   Single file, no dependencies, works offline.
+   ============================================================ */
+var MODULES = { all:['session','monitoring','authoring','documentation'], mon:['session','monitoring'], mondoc:['session','monitoring','documentation'] };
+var state = {
+  combo:'all', signedIn:false, route:'login', id:null, step:null, tab:'diagram',
+  filter:'all', range:'7d', wfQuery:'', wfSort:'updated', version:null, graphOpen:null, role:'tenant', org:'UK-Acquisitions', orgOpen:false, whoOpen:false,
+  theme:'dark', accent:'indigo', docSec:'d1', expanded:{}, checked:false, taskNote:'', toast:null, zoom:0.8, full:false, fullRun:null, fitOnOpen:false, fitInline:false
+};
+function has(m){ return MODULES[state.combo].indexOf(m) > -1; }
+// Only the platform team and tenant admins can see across tenants. A regular tenant user
+// sees their own tenant's data and is never offered a switcher.
+function canSwitchTenant(){ return state.role === 'platform'; }
+var ROLE_LABEL = { platform:'Platform Engineer', tenant:'Tenant' };
+
+var ICONS = {
+  home:'<path d="M3 9.5 10 3l7 6.5V17a1 1 0 0 1-1 1h-4v-5H8v5H4a1 1 0 0 1-1-1z"/>',
+  flow:'<circle cx="5" cy="5" r="2"/><circle cx="15" cy="10" r="2"/><circle cx="5" cy="15" r="2"/><path d="M7 5h4a2 2 0 0 1 2 2v1M7 15h4a2 2 0 0 0 2-2v-1"/>',
+  runs:'<path d="M3 10h3l2 5 4-11 2 6h3"/>',
+  rules:'<path d="M3 5h14M3 10h9M3 15h11"/>',
+  task:'<rect x="3" y="3" width="14" height="14" rx="2"/><path d="M7 10l2 2 4-4"/>',
+  docs:'<path d="M5 2.5h6l4 4v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-14a1 1 0 0 1 1-1z"/><path d="M11 2.5v4h4"/>',
+  search:'<circle cx="9" cy="9" r="5.5"/><path d="M13 13l4 4"/>',
+  plus:'<path d="M10 4v12M4 10h12"/>',
+  chev:'<path d="M5 8l5 5 5-5"/>',
+  full:'<path d="M12 3h5v5M8 17H3v-5M17 3l-6 6M3 17l6-6"/>'
+};
+function icon(n, s){ s = s || 17; return '<svg viewBox="0 0 20 20" width="'+s+'" height="'+s+'" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">'+ICONS[n]+'</svg>'; }
+
+/* ---------- data ---------- */
+var WORKFLOWS = [
+  { tenant:'UK-Acquisitions', id:'wf1', code:'wkf_CRD_RT', name:'Credit Decision – Real Time', desc:'Scores and routes credit applications', version:'3.1', live:true, changed:'2h ago', updatedRank:4 },
+  { tenant:'UK-Acquisitions', id:'wf2', code:'wkf_ACC_ONB', name:'Account Onboarding', desc:'Identity, screening and account opening', version:'2.4', live:true, changed:'yesterday', updatedRank:2 },
+  { tenant:'UK-Acquisitions', id:'wf3', code:'wkf_PAY_PLAN', name:'Payment Plan Offer', desc:'Builds and offers affordable plans', version:'1.7', live:true, changed:'4 days ago', updatedRank:1 },
+  { tenant:'UK-Acquisitions', id:'wf4', code:'wkf_FRD_MAN', name:'Fraud Review – Manual', desc:'Routes suspect cases for human review', version:'0.9', live:false, changed:'12 min ago', updatedRank:5, deployedVersion:'0.8', deployedChanged:'6 days ago' },
+  // A second tenant, so switching demonstrates isolation rather than only relabelling.
+  { tenant:'Discover Personal Loan', id:'wf5', code:'wkf_CLM_TRI', name:'Claims Triage', desc:'Sorts incoming claims by complexity', version:'4.2', live:true, changed:'35 min ago', updatedRank:4 },
+  { tenant:'Discover Personal Loan', id:'wf6', code:'wkf_RNW_PRC', name:'Renewal Pricing', desc:'Prices policy renewals against risk', version:'1.3', live:true, changed:'3 days ago', updatedRank:2 }
+];
+function tenantWorkflows(){ return WORKFLOWS.filter(function(w){ return w.tenant === state.org; }); }
+var NODE_TYPES = { start:'Start event', end:'End event', choice:'Choice', parallel:'Parallel split', join:'Parallel join', db:'Database operation',
+  api:'Third-party API call', graph:'Graph invocation', rule:'Rule', human:'Human task', java:'Java orchestrator' };
+
+// BPMN view — nodes carry their own position, so the canvas is a real stage rather than a column.
+var BPMN = {
+  w:900, h:820,
+  nodes:{
+    start:    { type:'start', x:396, y:20,  name:'Start', rows:[['Type','Start event']], io:{ in:'{\n  "trigger": "api",\n  "applicationId": "APP-88213"\n}', out:'{\n  "applicationId": "APP-88213",\n  "receivedAt": "10:32:04"\n}' } },
+    validate: { type:'api',   x:340, y:110, name:'Validate Request', rows:[['Type','Third-party API call'],['Connector','core-validation',1],['Timeout','2s']], io:{ in:'{\n  "applicationId": "APP-88213"\n}', out:'{\n  "valid": true,\n  "applicant": { "id": "C-4471", "segment": "retail" }\n}' } },
+    graph:    { type:'graph', x:340, y:230, name:'Evaluate Credit', graphName:'Credit Decision Graph', rows:[['Type','Graph invocation'],['Graph','Credit Decision Graph'],['Version','v2.4']], io:{ in:'{\n  "application": { "id": "APP-88213", "amount": 24000 }\n}', out:'{\n  "risk_score": 63,\n  "risk_band": "MEDIUM"\n}' } },
+    risk:     { type:'choice',x:372, y:350, name:'High risk?', rows:[['Type','Choice'],['Expression','risk_score >= 70',1],['Outcomes','2']], io:{ in:'{\n  "risk_score": 63,\n  "risk_band": "MEDIUM"\n}', out:'{\n  "outcome": "no",\n  "matched": "risk_score < 70"\n}' } },
+    manual:   { type:'human', x:150, y:490, name:'Manual Review', rows:[['Type','Human task'],['Queue','risk_team'],['Target','4h']], io:{ in:'{\n  "applicationId": "APP-88213",\n  "risk_score": 63\n}', out:'{\n  "decision": "approved",\n  "reviewer": "jane.smith"\n}' } },
+    auto:     { type:'rule',  x:570, y:490, name:'Auto Approve', rows:[['Type','Rule'],['Rule','Large amount – require approval']], io:{ in:'{\n  "risk_score": 63,\n  "amount": 24000\n}', out:'{\n  "decision": "approved",\n  "rule": "large-amount-approval"\n}' } },
+    write:    { type:'db',    x:340, y:620, name:'Write Decision', rows:[['Type','Database operation'],['Operation','INSERT decisions',1]], io:{ in:'{\n  "applicationId": "APP-88213",\n  "decision": "approved"\n}', out:'{\n  "rows": 1,\n  "decisionId": "DEC-99231"\n}' } },
+    end:      { type:'end',   x:396, y:740, name:'End', rows:[['Type','End event']], io:{ in:'{\n  "decisionId": "DEC-99231"\n}', out:'{\n  "status": "completed"\n}' } }
+  },
+  edges:[
+    ['start','validate'], ['validate','graph'], ['graph','risk'],
+    ['risk','manual','yes'], ['risk','auto','no'],
+    ['manual','write'], ['auto','write'], ['write','end']
+  ],
+  // the order a run walks, and the two branch alternatives
+  seq:['start','validate','graph','risk','auto','write','end'],
+  branches:{ risk:['manual','auto'] }
+};
+
+// Graph view — the DAG the "Evaluate Credit" step invokes.
+var DAG = {
+  w:900, h:1010,
+  nodes:{
+    load:   { type:'java', x:350, y:20,  name:'Load Application', rows:[['Component','application-loader'],['Output','application',1]], io:{ in:'{\n  "applicationId": "APP-88213"\n}', out:'{\n  "application": { "amount": 24000, "term": 36 }\n}' } },
+    split:  { type:'parallel', x:378, y:130, name:'Fetch in parallel', rows:[['Type','Parallel split'],['Branches','3'],['Waits for','all branches']] },
+    bureau: { type:'java', x:110, y:290, name:'Fetch Bureau', rows:[['Component','bureau-client'],['Timeout','2s'],['Runs','in parallel']], io:{ in:'{\n  "applicant": { "id": "C-4471" }\n}', out:'{\n  "bureau": { "score": 712, "records": 7 }\n}' } },
+    internal:{type:'java', x:350, y:290, name:'Internal History', rows:[['Component','history-reader'],['Source','core-db'],['Runs','in parallel']], io:{ in:'{\n  "applicant": { "id": "C-4471" }\n}', out:'{\n  "history": { "accounts": 3, "arrears": 0 }\n}' } },
+    device: { type:'java', x:590, y:290, name:'Device Signals', rows:[['Component','device-svc'],['Optional','yes'],['Runs','in parallel']], io:{ in:'{\n  "sessionId": "S-2210"\n}', out:'{\n  "device": { "trusted": true, "risk": "low" }\n}' } },
+    join:   { type:'join', x:378, y:430, name:'All branches done', rows:[['Type','Parallel join'],['Waits for','3 branches']] },
+    score:  { type:'java', x:350, y:590, name:'Compute Score', rows:[['Component','scoring-engine'],['Model','v11']], io:{ in:'{\n  "bureau": {…}, "history": {…}, "device": {…}\n}', out:'{\n  "risk_score": 63\n}' } },
+    thin:   { type:'choice', x:378, y:700, name:'Thin credit file?', rows:[['Type','Choice'],['Expression','bureau.records < 3',1],['Outcomes','2']], io:{ in:'{\n  "bureau": { "records": 7 }\n}', out:'{\n  "outcome": "no"\n}' } },
+    uplift: { type:'java', x:600, y:880, name:'Alternative Data Uplift', rows:[['Component','altdata-svc'],['Used when','thin file only']], io:{ in:'{\n  "applicant": { "id": "C-4471" }\n}', out:'{\n  "uplift": 12\n}' } },
+    band:   { type:'java', x:140, y:880, name:'Assign Band', rows:[['Component','band-mapper'],['Output','risk_band',1]], io:{ in:'{\n  "risk_score": 63\n}', out:'{\n  "risk_band": "MEDIUM"\n}' } }
+  },
+  edges:[ ['load','split'],
+          ['split','bureau','parallel'], ['split','internal','parallel'], ['split','device','parallel'],
+          ['bureau','join'], ['internal','join'], ['device','join'],
+          ['join','score'],
+          ['score','thin'], ['thin','uplift','yes'], ['thin','band','no'], ['uplift','band'] ],
+  seq:['load','split','bureau','internal','device','join','score','thin','band'],
+  branches:{ thin:['uplift','band'] }
+};
+
+// The workflow is one view. A node that invokes a graph can be drilled into, which
+// REPLACES the canvas rather than sitting beside it as a tab.
+function model(){ return state.graphOpen ? DAG : BPMN; }
+function graphName(){ return state.graphOpen ? (BPMN.nodes[state.graphOpen].graphName || BPMN.nodes[state.graphOpen].name) : null; }
+
+/* A run walks the workflow AND, inside the graph-invocation step, the graph. The two are
+   recorded separately, so drawing one model against the other's path would mark every node
+   "not executed". This projects the run onto whichever model is being drawn. */
+var DAG_ORDER = ['load','split','bureau','internal','device','join','score','thin','band'];
+
+function graphRunFor(r){
+  // Progress through the graph follows the invoking step's own progress.
+  var invoked = r.path.indexOf('graph') > -1, atInvoke = r.at === 'graph';
+  var path, at, st;
+  if (r.state === 'failed' && atInvoke) {
+    // the recorded failure is the bureau call timing out
+    // A parallel split dispatches all three branches, so the siblings ran even though the
+    // bureau call timed out. The gateway itself must be executed for any branch to have run.
+    path = ['load','split','internal','device']; at = 'bureau'; st = 'failed';
+  } else if (invoked) {
+    path = DAG_ORDER.slice(); at = null; st = 'done';
+  } else if (atInvoke) {
+    path = ['load','split','bureau','internal']; at = 'device';
+    st = r.state === 'stopped' ? 'stopped' : 'running';
+  } else {
+    path = []; at = null; st = 'running';       // the step has not been reached yet
+  }
+  var times = {};
+  path.concat(at ? [at] : []).forEach(function(id, i){
+    times[id] = { started:clockLabel((path.length + 1 - i) * 2), dur: (id === at && st !== 'done') ? null : (0.02 + Math.random() * 0.18).toFixed(2) + 's' };
+  });
+  return { wfId:r.wfId, state:st, path:path, at:at, times:times, why:r.why, graph:true, started:r.started, id:r.id, wf:r.wf };
+}
+
+function runFor(r, m){
+  if (!r || r.state === 'view') return r;
+  return (m === DAG) ? graphRunFor(r) : r;
+}
+
+var RUNS = [
+  { id:'exe_0JAG0', wf:'Credit Decision – Real Time', tenant:'UK-Acquisitions', wfId:'wf1', state:'running', started:'just now', dur:null, at:'risk', path:['start','validate','graph'] },
+  { id:'exe_0JAFZ', wf:'Fraud Review – Manual', tenant:'UK-Acquisitions', wfId:'wf4', state:'failed', started:'4 min ago', dur:'1.8s', at:'graph', path:['start','validate'], why:'The credit reference service did not respond within the time allowed.' },
+  { id:'exe_0JAFY', wf:'Payment Plan Offer', tenant:'UK-Acquisitions', wfId:'wf3', state:'done', started:'8 min ago', dur:'0.6s', at:null, path:['start','validate','graph','risk','auto','write','end'] },
+  { id:'exe_0JAFX', wf:'Credit Decision – Real Time', tenant:'UK-Acquisitions', wfId:'wf1', state:'done', started:'12 min ago', dur:'0.7s', at:null, path:['start','validate','graph','risk','auto','write','end'] },
+  { id:'exe_0JAFW', wf:'Account Onboarding', tenant:'UK-Acquisitions', wfId:'wf2', state:'done', started:'16 min ago', dur:'0.8s', at:null, path:['start','validate','graph','risk','manual','write','end'] },
+  { id:'exe_0JAFV', wf:'Payment Plan Offer', tenant:'UK-Acquisitions', wfId:'wf3', state:'running', started:'20 min ago', dur:null, at:'validate', path:['start'] },
+  { id:'exe_0JAFU', wf:'Fraud Review – Manual', tenant:'UK-Acquisitions', wfId:'wf4', state:'stopped', started:'26 min ago', dur:null, at:'validate', path:['start'] }
+];
+var TASKS = [
+  { tenant:'UK-Acquisitions', id:'tsk_4411', title:'Manual review — application 88213', runId:'exe_0JAFZ', wf:'Fraud Review – Manual', due:'Today, 17:00', state:'open',
+    ask:'Automated scoring was inconclusive. Confirm or reject this application.',
+    evidence:[['Credit report','Attached','done'],['Identity check','Passed','done'],['Policy check','Exceeds limit','run']] },
+  { tenant:'UK-Acquisitions', id:'tsk_4410', title:'Approve payment plan — account 40921', runId:'exe_0JAFY', wf:'Payment Plan Offer', due:'Today, 12:30', state:'open',
+    ask:'The offer exceeds the automatic approval threshold.',
+    evidence:[['Affordability check','Passed','done'],['Prior arrangements','Two on record','run']] },
+  { tenant:'UK-Acquisitions', id:'tsk_4407', title:'Verify documents — onboarding 20114', runId:'exe_0JAFW', wf:'Account Onboarding', due:'Overdue', state:'open',
+    ask:'The identity provider returned a partial match.',
+    evidence:[['Submitted documents','Attached','done'],['Provider response','Partial match','fail']] }
+];
+var DOCS = [
+  { id:'d1', t:'What this product does', p:['The Workflow Orchestrator runs business decisions as automated workflows. This product is where you see and work with them.','Workflows are published as versions. A run always refers to the exact version it used, so a decision made last year can still be examined against the rules that applied at the time.'] },
+  { id:'d2', t:'Reading a workflow', p:['Workflows read from top to bottom. Each box is a step; a rounded shape is a decision point with more than one way out.','Zooming and moving around happen instantly in your browser — nothing is fetched while you do it.'] },
+  { id:'d3', t:'Following a run', p:['Opening a run shows the workflow it used, with the route it actually took highlighted and the steps it never reached faded out.','Selecting a step shows its properties beside the diagram. Larger data is loaded only when you open it.'] },
+  { id:'d4', t:'Publishing a change', p:['Publishing creates a new version. Runs already in progress keep the version they started with.','Checking a workflow before publishing lists any problems and takes you straight to the step each one is on.'] }
+];
+
+/* ---------- live figures ---------- */
+var M = { workflows:18, executions:312400, success:99.4, avg:'1.2s', running:2, failedToday:6 };
+var WFM = {
+  wf5:{ executions:31200, success:99.3, avg:'0.8s', running:0 },
+  wf6:{ executions:6400,  success:99.9, avg:'1.5s', running:0 },
+  wf1:{ executions:42700, success:99.6, avg:'1.2s', running:1 },
+  wf2:{ executions:18400, success:99.1, avg:'3.1s', running:0 },
+  wf3:{ executions:9600,  success:98.8, avg:'0.6s', running:1 },
+  wf4:{ executions:1240,  success:91.0, avg:'1.8s', running:0 }
+};
+var counter = 1, bumped = {}, arrived = 0;
+
+/* A run records its own timing per step. Without this, every node in an in-progress run
+   reports the run's null duration and claims to be "still running". */
+function clockLabel(offsetSec){
+  var d = new Date(Date.now() - offsetSec * 1000);
+  return (d.getHours() < 10 ? '0' : '') + d.getHours() + ':' + (d.getMinutes() < 10 ? '0' : '') + d.getMinutes() + ':' + (d.getSeconds() < 10 ? '0' : '') + d.getSeconds();
+}
+function seedTimes(r){
+  if (r.times) return;
+  r.times = {};
+  var back = (r.path.length + 1) * 3;
+  r.path.forEach(function(id, i){
+    r.times[id] = { started:clockLabel(back - i * 3), dur:(0.1 + Math.random() * 0.6).toFixed(2) + 's' };
+  });
+  if (r.at) r.times[r.at] = { started:clockLabel(0), dur:null };
+}
+function noteStep(r, id, done){
+  if (!r.times) r.times = {};
+  if (!r.times[id]) r.times[id] = { started:clockLabel(0), dur:null };
+  if (done) r.times[id].dur = (0.1 + Math.random() * 0.6).toFixed(2) + 's';
+}
+// Trend deltas. These move as the live figures move — the card shows the direction and
+// the amount rather than announcing that it is updating.
+var DELTA = { executions:8.4, running:0, failedToday:2, workflows:2, success:0.2, avgMs:-80 };
+function fmt(n){ return n >= 1000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'K' : String(n); }
+
+function tickFigures(){
+  var add = Math.floor(6 + Math.random() * 22);
+  M.executions += add; bumped.executions = true;
+  DELTA.executions = Math.round((DELTA.executions + add / 900) * 10) / 10;
+  var prevRunning = M.running;
+  M.running = tenantRuns().filter(function(r){ return r.state === 'running'; }).length; bumped.running = true;
+  DELTA.running = M.running - prevRunning;
+  if (Math.random() < 0.22) { M.failedToday += 1; DELTA.failedToday += 1; bumped.failedToday = true; }
+  var ids = tenantWorkflows().map(function(w){ return w.id; });
+  var k = ids[Math.floor(Math.random() * ids.length)];
+  WFM[k].executions += Math.floor(1 + Math.random() * 9); bumped['wf-' + k] = true;
+  Object.keys(WFM).forEach(function(id){
+    WFM[id].running = tenantRuns().filter(function(r){ return r.wfId === id && r.state === 'running'; }).length;
+  });
+  if (state.signedIn && !typing()) render();
+  setTimeout(function(){ bumped = {}; }, 900);
+}
+function tickRuns(){
+  RUNS.forEach(function(r){
+    if (r.state !== 'running') return;
+    var seq = BPMN.seq, i = seq.indexOf(r.at);
+    if (i > -1 && i < seq.length - 1) { noteStep(r, r.at, true); r.path = r.path.concat([r.at]); r.at = seq[i + 1]; noteStep(r, r.at, false); }
+    else { if (r.at) noteStep(r, r.at, true); if (r.at && r.path.indexOf(r.at) === -1) r.path = r.path.concat([r.at]);
+           r.state = 'done'; r.dur = (0.4 + Math.random() * 2.4).toFixed(1) + 's'; r.at = null; }
+  });
+  if (Math.random() < 0.65) {
+    var pool = tenantWorkflows(); var w = pool[Math.floor(Math.random() * pool.length)];
+    RUNS.unshift({ tenant:state.org, id:'exe_0JAG' + (counter++), wf:w.name, wfId:w.id, state:'running', started:'just now', dur:null, at:'validate', path:['start'], fresh:true, times:null });
+    seedTimes(RUNS[0]);
+    arrived += 1;
+    if (RUNS.length > 16) RUNS.pop();
+    setTimeout(function(){ RUNS.forEach(function(r){ r.fresh = false; }); }, 1200);
+  }
+  if (state.signedIn && !typing()) render();
+}
+RUNS.push(
+  { tenant:'Discover Personal Loan', id:'exe_0KBB4', wf:'Claims Triage', wfId:'wf5', state:'done', started:'6 min ago', dur:'0.8s', at:null, path:['start','validate','graph','risk','auto','write','end'] },
+  { tenant:'Discover Personal Loan', id:'exe_0KBB3', wf:'Renewal Pricing', wfId:'wf6', state:'running', started:'just now', dur:null, at:'validate', path:['start'] },
+  { tenant:'Discover Personal Loan', id:'exe_0KBB2', wf:'Claims Triage', wfId:'wf5', state:'failed', started:'22 min ago', dur:'2.1s', at:'graph', path:['start','validate'], why:'The policy service returned an unexpected response.' }
+);
+function tenantRuns(){ return RUNS.filter(function(r){ return r.tenant === state.org; }); }
+function tenantTasks(){ return TASKS.filter(function(t){ return t.tenant === state.org; }); }
+RUNS.forEach(seedTimes);
+setInterval(tickFigures, 4200);
+setInterval(tickRuns, 6200);
+
+/* ---------- helpers ---------- */
+function el(tag, attrs, kids){
+  var n = document.createElement(tag);
+  if (attrs) Object.keys(attrs).forEach(function(k){
+    if (k === 'class') n.className = attrs[k];
+    else if (k === 'html') n.innerHTML = attrs[k];
+    else if (k === 'text') n.textContent = attrs[k];
+    else if (k.indexOf('on') === 0) n.addEventListener(k.slice(2), attrs[k]);
+    else if (attrs[k] === true) n.setAttribute(k, '');
+    else if (attrs[k] !== false && attrs[k] != null) n.setAttribute(k, attrs[k]);
+  });
+  (kids || []).forEach(function(c){ if (c) n.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+  return n;
+}
+function go(route, id, version){ arrived = 0; state.route = route; state.id = id || null; state.version = version || null; state.graphOpen = null; state.step = null; state.tab = 'diagram'; state.orgOpen = false; state.whoOpen = false; state.expanded = {}; state.checked = false; render(); }
+function toast(m){ state.toast = m; render(); setTimeout(function(){ state.toast = null; render(); }, 2600); }
+var STATUS = { running:{i:'◐',w:'Running',c:'run'}, done:{i:'✓',w:'Success',c:'done'}, failed:{i:'✕',w:'Failed',c:'fail'},
+  stopped:{i:'□',w:'Halted',c:'skip'}, open:{i:'·',w:'Open',c:'wait'}, waiting:{i:'·',w:'Not reached',c:'skip'} };
+function status(k){ var s = STATUS[k] || STATUS.waiting; return el('span', { class:'pillst ' + s.c }, [ el('i', { text:s.i }), s.w ]); }
+function trend(dir, label, good){
+  // Direction is the arrow; colour is the business effect. Falling duration is good,
+  // so the two are allowed to disagree.
+  var tone = good === undefined ? (dir === 'up' ? 'up' : dir === 'down' ? 'down' : 'flat') : (good ? 'up' : 'down');
+  return el('span', { class:'trend ' + tone }, [ el('span', { text: dir === 'up' ? '▲' : dir === 'down' ? '▼' : '–' }), label ]);
+}
+function signed(n, unit){ return (n > 0 ? '+' : n < 0 ? '−' : '') + Math.abs(n) + (unit || ''); }
+function deltaTrend(n, unit, goodWhenUp){
+  if (!n) return trend('flat', 'no change');
+  var up = n > 0;
+  return trend(up ? 'up' : 'down', signed(n, unit), goodWhenUp === false ? !up : up);
+}
+function applyTheme(){
+  var t = state.theme;
+  if (t === 'system') t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  document.documentElement.setAttribute('data-theme', t);
+  document.documentElement.setAttribute('data-accent', state.accent);
+}
+
+/* ---------- shell ---------- */
+var VIEWS;
+/* Rebuilding the tree destroys whatever had focus, so the caret is captured before and
+   restored after. Without this, typing in a search box is impossible. */
+/* Rebuilding the tree recreates every scroll container at position 0, and the live
+   tickers re-render every few seconds — so scroll offsets are captured and restored. */
+var SCROLLERS = ['.main', '.cvstage', '.scroller', '.nav', '.fullstage', '.propsb'];
+function captureScroll(){
+  var out = {};
+  SCROLLERS.forEach(function(sel){
+    var n = document.querySelector(sel);
+    if (n && (n.scrollTop || n.scrollLeft)) out[sel] = { top:n.scrollTop, left:n.scrollLeft, height:n.scrollHeight };
+  });
+  return out;
+}
+function restoreScroll(map){
+  if (!map) return;
+  Object.keys(map).forEach(function(sel){
+    var n = document.querySelector(sel);
+    if (!n) return;
+    var v = map[sel];
+    // New executions arrive at the top, so the content above the reader grows. Shifting
+    // scrollTop by that growth keeps what they were looking at exactly where it was.
+    var grew = n.scrollHeight - v.height;
+    n.scrollTop = v.top + (v.top > 0 && grew > 0 ? grew : 0);
+    n.scrollLeft = v.left;
+  });
+}
+
+function captureFocus(){
+  var a = document.activeElement;
+  if (!a || !a.matches || !a.matches('input,textarea,select')) return null;
+  var key = a.className || a.tagName;
+  var f = { key:key, start:null, end:null };
+  try { f.start = a.selectionStart; f.end = a.selectionEnd; } catch (err) {}
+  return f;
+}
+function restoreFocus(f){
+  if (!f) return;
+  var n = document.querySelector('.' + String(f.key).trim().split(/\s+/).join('.'));
+  if (!n) return;
+  n.focus();
+  if (f.start != null) { try { n.setSelectionRange(f.start, f.end); } catch (err) {} }
+}
+function typing(){
+  var a = document.activeElement;
+  return !!(a && a.matches && a.matches('input[type="search"],input[type="text"],input[type="email"],textarea'));
+}
+
+function render(){
+  applyTheme();
+  var focus = captureFocus(), scroll = captureScroll();
+  var app = document.getElementById('app');
+  app.innerHTML = '';
+  if (!state.signedIn) { app.appendChild(loginScreen()); paintToast(); paintFull(); restoreScroll(scroll); restoreFocus(focus); return; }
+  app.appendChild(sidebar());
+  var col = el('div', { class:'col' });
+  col.appendChild(topBar());
+  var main = el('div', { class:'main' });
+  main.appendChild((VIEWS[state.route] || homeScreen)());
+  col.appendChild(main);
+  app.appendChild(col);
+  paintToast(); paintFull();
+  restoreScroll(scroll);
+  restoreFocus(focus);
+  watchTop();
+  if (state.fitInline) {
+    state.fitInline = false;
+    var zf = fitZoom('.cvstage', model());
+    if (Math.abs(zf - state.zoom) > 0.01) { state.zoom = zf; render(); }
+  }
+}
+/* The "new executions" pill clears when the reader is actually at the top — which is a
+   scroll event, not something render() can know. */
+function watchTop(){
+  ['.main', '.scroller'].forEach(function(sel){
+    var n = document.querySelector(sel);
+    if (!n || n._topWatch) return;
+    n._topWatch = true;
+    n.addEventListener('scroll', function(){
+      if (!arrived) return;
+      var main = document.querySelector('.main'), scr = document.querySelector('.scroller');
+      var atTop = (!main || main.scrollTop <= 2) && (!scr || scr.scrollTop <= 2);
+      if (atTop) { arrived = 0; render(); }
+    });
+  });
+}
+
+function paintToast(){
+  var o = document.querySelector('.toast'); if (o) o.remove();
+  if (state.toast) document.body.appendChild(el('div', { class:'toast', text:state.toast }));
+}
+
+function paintFull(){
+  var o = document.querySelector('.fullwrap'); if (o) o.remove();
+  if (!state.full) { document.body.style.overflow = ''; return; }
+  document.body.style.overflow = 'hidden';
+  var m = model(), r = runFor(state.fullRun, m);
+  var wrap = el('div', { class:'fullwrap' }, [
+    el('div', { class:'fullbar' }, [
+      el('span', { class:'lab', text: state.graphOpen ? 'Graph · ' + graphName() : 'Workflow canvas' }),
+      state.fullRun && state.fullRun.state !== 'view' ? el('span', { style:'font-size:12.5px;color:var(--ink-3)', text:state.fullRun.wf + ' · ' + state.fullRun.id }) : null,
+      el('div', { class:'r' }, [
+        el('div', { class:'seg' }, [
+          el('button', { onclick:function(){ state.zoom = Math.max(0.5, state.zoom - 0.15); render(); }, text:'−' }),
+          el('button', { onclick:function(){ state.zoom = Math.min(2, state.zoom + 0.15); render(); }, text:'+' }),
+          el('button', { onclick:function(){ state.zoom = fitZoom('.fullstage', model()); render(); }, text:'Fit' }),
+          el('button', { onclick:function(){ state.zoom = 1; render(); }, text:'100%' })
+        ]),
+        el('span', { class:'z', text:Math.round(state.zoom * 100) + '%' }),
+        el('button', { class:'btn sm', onclick:function(){ state.full = false; render(); }, text:'✕  Exit full screen' })
+      ])
+    ]),
+    el('div', { class:'fullbody' }, [
+      el('div', { class:'fullstage', onclick:function(e){ if (e.target.classList.contains('fullstage') || e.target.classList.contains('stageinner')) { state.step = null; render(); } } },
+        [ stage(r, m) ]),
+      el('div', { class:'props fullprops' }, [
+        el('div', { class:'propsh' }, [ el('span', { class:'lab', text: (r && r.state !== 'view') ? 'Node execution' : 'Node view' }),
+          state.step ? el('button', { onclick:function(){ state.step = null; render(); }, title:'Close', text:'✕' }) : null ]),
+        state.step ? propsBody(r, m) : el('div', { class:'emptyprops', text: (r && r.state !== 'view') ? 'Select a node to see what happened at that step.' : 'Select a node to inspect its properties.' })
+      ])
+    ])
+  ]);
+  document.body.appendChild(wrap);
+  if (state.fitOnOpen) {           // measured only once the overlay is in the document
+    state.fitOnOpen = false;
+    var z = fitZoom('.fullstage', m);
+    if (Math.abs(z - state.zoom) > 0.01) { state.zoom = z; render(); }
+  }
+}
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape' && state.full) { state.full = false; render(); }
+});
+
+function loginScreen(){
+  return el('div', { class:'login' }, [ el('div', { class:'loginbox' }, [
+    el('div', { class:'logo', text:'WO' }),
+    el('h2', { text:'Workflow Orchestrator' }),
+    el('p', { text:'Sign in to continue' }),
+    el('button', { class:'btn pri', onclick:function(){ state.signedIn = true; go(landing()); }, text:'Continue with SSO' }),
+    el('div', { class:'loginfoot', text:'Your tenant, role and permissions are resolved after sign-in. This product never sees your password.' })
+  ]) ]);
+}
+function landing(){ if (has('monitoring') && has('authoring')) return 'home'; if (has('monitoring')) return 'runs'; return 'docs'; }
+
+function sidebar(){
+  var side = el('div', { class:'side' }, [
+    el('div', { class:'sidebrand' }, [ el('div', { class:'logo', text:'WO' }), el('span', { class:'lbl', text:'Workflow Orchestrator' }) ])
+  ]);
+  var nav = el('div', { class:'nav' });
+  var groups = [];
+  if (has('monitoring') && has('authoring')) groups.push({ items:[['home','Home','home']] });
+  if (has('authoring')) groups.push({ label:'Build', items:[['workflows','Workflows','flow'],['rules','Rules','rules']] });
+  // Workflows is readable wherever Monitoring is present — a run cannot be drawn without the
+  // definition. Authoring adds the ability to change it.
+  if (has('monitoring')) groups.push({ label:'Monitor', items: has('authoring')
+      ? [['runs','Executions','runs']] : [['runs','Executions','runs'],['workflows','Workflows','flow']] });
+  if (has('authoring')) groups.push({ label:'Work', items:[['tasks','Tasks','task']] });
+  if (has('documentation')) groups.push({ label:'Reference', items:[['docs','Documentation','docs']] });
+  var labelled = groups.filter(function(g){ return g.label; }).length;
+  groups.forEach(function(g){
+    if (g.label && labelled > 1) nav.appendChild(el('div', { class:'navg', text:g.label }));
+    g.items.forEach(function(it){
+      var on = state.route === it[0] || (it[0] === 'runs' && state.route === 'run') ||
+        (it[0] === 'workflows' && state.route === 'workflow') || (it[0] === 'tasks' && state.route === 'task');
+      nav.appendChild(el('button', { class:'navi' + (on ? ' on' : ''), onclick:function(){ go(it[0]); } },
+        [ el('span', { class:'ico', html:icon(it[2]) }), el('span', { class:'lbl', text:it[1] }) ]));
+    });
+  });
+  side.appendChild(nav);
+  return side;
+}
+
+function topBar(){
+  var bar = el('div', { class:'top' }, [
+    canSwitchTenant()
+      ? el('button', { class:'tenant', onclick:function(e){ e.stopPropagation(); state.orgOpen = !state.orgOpen; state.whoOpen = false; render(); } },
+          [ state.org, el('span', { html:icon('chev', 13) }) ])
+      : el('span', { class:'tenant static', title:'You have access to this tenant only', text:state.org }),
+    el('div', { class:'search' }, [ el('span', { html:icon('search', 15) }), 'Search workflows, executions, tasks, documentation' ]),
+    el('button', { class:'who', onclick:function(e){ e.stopPropagation(); state.whoOpen = !state.whoOpen; state.orgOpen = false; render(); } }, [
+      el('div', { class:'av', text:'JS' }),
+      el('div', { class:'whoname' }, [ el('b', { text:'Jane Smith' }), el('span', { text:ROLE_LABEL[state.role] }) ]),
+      el('span', { html:icon('chev', 13) })
+    ])
+  ]);
+  if (state.orgOpen && canSwitchTenant()) bar.appendChild(orgMenu());
+  if (state.whoOpen) bar.appendChild(whoMenu());
+  return bar;
+}
+function orgMenu(){
+  return el('div', { class:'orgmenu' }, [ el('div', { class:'menu-h', text:'Switch tenant' }) ]
+    .concat(['UK-Acquisitions','Discover Personal Loan'].map(function(o){
+      return el('button', { class: state.org === o ? 'on' : '', onclick:function(){ state.org = o; state.version = null; state.wfQuery = ''; go(landing()); toast('Now showing ' + o); } },
+        [ o, state.org === o ? el('span', { text:'✓' }) : null ]);
+    }))
+    .concat([ el('div', { class:'orgfoot', text:'Switching happens on the server. Everything reloads for the chosen tenant.' }) ]));
+}
+function whoMenu(){
+  return el('div', { class:'menu' }, [
+    el('div', { class:'menu-id' }, [ el('b', { text:'Jane Smith' }), el('span', { text:'Tenant Engineer' }) ]),
+    el('div', { class:'menu-s' }, [
+      el('div', { class:'menu-h', text:'Appearance' }),
+      el('p', { class:'menu-l', text:'Theme' }),
+      el('div', { class:'seg' }, [['system','System'],['light','Light'],['dark','Dark']].map(function(t){
+        return el('button', { class: state.theme === t[0] ? 'on' : '', onclick:function(){ state.theme = t[0]; render(); }, text:t[1] });
+      })),
+    ]),
+    el('button', { class:'menu-b', onclick:function(){ state.signedIn = false; state.route = 'login'; render(); }, text:'Sign out' })
+  ]);
+}
+
+/* ---------- cards ---------- */
+function card(kicker, value, foot, key){
+  return el('div', { class:'card' }, [
+    el('div', { class:'k', text:kicker }),
+    el('div', { class:'v' + (key && bumped[key] ? ' bump' : ''), text:value }),
+    el('div', { class:'m' }, foot)
+  ]);
+}
+
+
+/* ---------- home ---------- */
+function homeScreen(){
+  return el('div', {}, [
+    el('div', { class:'head' }, [ el('div', {}, [
+      el('div', { class:'h1', text:'Welcome back, Jane' })
+    ]) ]),
+    el('div', { class:'cards' }, [
+      card('Workflows', String(tenantWorkflows().length), [deltaTrend(DELTA.workflows, '', true), 'vs last week']),
+      card('Executions · 7d', fmt(M.executions), [deltaTrend(DELTA.executions, '%', true), 'vs last week'], 'executions'),
+      card('Success rate · 7d', M.success.toFixed(1) + '%', [deltaTrend(DELTA.success, ' pts', true), 'vs last week']),
+      card('Avg duration · 7d', M.avg, [deltaTrend(DELTA.avgMs, 'ms', false), 'vs last week'])
+    ]),
+    el('div', { class:'two' }, [
+      el('div', { class:'pan' }, [
+        el('div', { class:'panh' }, [ el('h3', { text:'My Workflows' }),
+          el('div', { class:'r' }, [ el('button', { class:'btn quiet sm', onclick:function(){ go('workflows'); }, text:'View all' }) ]) ]),
+        el('table', {}, [
+          el('thead', {}, [ el('tr', {}, [ el('th', { text:'Workflow' }), el('th', { text:'Status' }), el('th', { class:'right', text:'Updated' }) ]) ]),
+          el('tbody', {}, workflowRows().sort(function(a, b){ return b.rank - a.rank; }).slice(0, 4).map(function(row){
+            return el('tr', { onclick:function(){ go('workflow', row.w.id, row.version); } }, [
+              el('td', {}, [ el('span', { style:'font-weight:500', text:row.w.name }),
+                el('span', { class:'vtag', style:'margin-left:8px', text:'v' + row.version }) ]),
+              el('td', {}, [ el('span', { class:'pillst ' + (row.live ? 'done' : 'skip') }, [ el('i', { text:row.live ? '✓' : '·' }), row.live ? 'Published' : 'Draft' ]) ]),
+              el('td', { class:'right', style:'color:var(--ink-3)', text:row.changed })
+            ]);
+          }))
+        ])
+      ]),
+      el('div', { class:'pan' }, [
+        el('div', { class:'panh' }, [ el('h3', { text:'Recent Executions' }),
+          el('div', { class:'r' }, [ el('span', { class:'livedot' }, [ el('i', {}), 'live' ]),
+            el('button', { class:'btn quiet sm', onclick:function(){ go('runs'); }, text:'View all' }) ]) ]),
+        el('table', {}, [
+          el('thead', {}, [ el('tr', {}, [ el('th', { text:'Workflow' }), el('th', { text:'Status' }), el('th', { class:'right', text:'Started' }) ]) ]),
+          el('tbody', {}, tenantRuns().slice(0, 4).map(function(r){
+            return el('tr', { class: r.fresh ? 'new' : '', onclick:function(){ go('run', r.id); } }, [
+              el('td', { style:'font-weight:500', text:r.wf }),
+              el('td', {}, [ status(r.state) ]),
+              el('td', { class:'right', style:'color:var(--ink-3)', text:r.started })
+            ]);
+          }))
+        ])
+      ])
+    ])
+  ]);
+}
+
+/* ---------- workflows ---------- */
+function workflowRows(){
+  var rows = [];
+  tenantWorkflows().forEach(function(w){
+    var m = WFM[w.id];
+    if (w.live) {
+      rows.push({ w:w, version:w.version, live:true, deployed:true, changed:w.changed,
+        running:m.running, executions:m.executions, success:m.success, rank:w.updatedRank });
+    } else {
+      // the draft itself — never deployed, so no runs and no figures
+      rows.push({ w:w, version:w.version, live:false, deployed:false, changed:w.changed,
+        running:0, executions:null, success:null, rank:w.updatedRank, draft:true,
+        note: w.deployedVersion ? 'version ' + w.deployedVersion + ' is serving traffic' : 'never published' });
+      // an earlier version still serving traffic is its own line
+      if (w.deployedVersion) rows.push({ w:w, version:w.deployedVersion, live:true, deployed:true,
+        changed:w.deployedChanged, running:m.running, executions:m.executions, success:m.success,
+        rank:w.updatedRank - 0.5, priorOf:w.version });
+    }
+  });
+  return rows;
+}
+
+function visibleWorkflows(){
+  var q = state.wfQuery.trim().toLowerCase();
+  var rows = workflowRows().filter(function(row){
+    var w = row.w;
+    if (!q) return true;
+    if (w.code.toLowerCase().indexOf(q) > -1 || w.name.toLowerCase().indexOf(q) > -1) return true;
+    if (('v' + row.version).toLowerCase().indexOf(q) > -1) return true;
+    // an execution id resolves to the deployed version that ran it
+    return row.deployed && tenantRuns().some(function(r){ return r.wfId === w.id && r.id.toLowerCase().indexOf(q) > -1; });
+  });
+  var by = state.wfSort;
+  return rows.slice().sort(function(a, b){
+    if (by === 'name') return a.w.name.localeCompare(b.w.name) || (a.draft ? -1 : 1);
+    if (by === 'exec') return (b.executions || 0) - (a.executions || 0);
+    if (by === 'success') return (a.success == null ? 999 : a.success) - (b.success == null ? 999 : b.success);
+    if (by === 'status') return (a.live === b.live) ? a.w.name.localeCompare(b.w.name) : (a.live ? -1 : 1);
+    return b.rank - a.rank;
+  });
+}
+
+function workflowsScreen(){
+  var totalRunning = workflowRows().reduce(function(a, row){ return a + (row.deployed ? row.running : 0); }, 0);
+  return el('div', {}, [
+    el('div', { class:'head' }, [
+      el('div', {}, [ el('div', { class:'h1', text:'Workflows' }),
+        el('div', { class:'sub', text: has('authoring') ? 'Design, run and monitor your workflows' : 'View and monitor your workflows' }) ]),
+      el('div', { class:'acts' }, [ has('authoring')
+        ? el('button', { class:'btn pri', onclick:function(){ toast('Wireframe: a new draft workflow would open'); } },
+            [ el('span', { html:icon('plus', 15) }), 'Workflow' ]) : null ])
+    ]),
+    el('div', { class:'cards' }, [
+      card('Active workflows', String(tenantWorkflows().length), [deltaTrend(DELTA.workflows, '', true), 'vs last week']),
+      card('Executions · 7d', fmt(M.executions), [deltaTrend(DELTA.executions, '%', true), 'vs last week'], 'executions'),
+      card('Running now', String(totalRunning), [deltaTrend(DELTA.running, '', true), 'since last check'], 'running'),
+      card('Success rate · 7d', M.success.toFixed(1) + '%', [deltaTrend(DELTA.success, ' pts', true), 'vs last week'])
+    ]),
+    has('authoring') ? null : el('div', { class:'note', text:'This deployment does not include authoring, so there is no button to create or change a workflow — the button is absent rather than greyed out.' }),
+    el('div', { class:'pan' }, [
+      el('div', { class:'panh' }, [ el('h3', { text:'My Workflows' }),
+        el('div', { class:'r' }, [
+          el('div', { class:'sfield' }, [
+            el('span', { class:'sicon', html:icon('search', 15) }),
+            el('input', { class:'sinput', type:'search', value:state.wfQuery,
+              placeholder:'Search by workflow ID or execution ID',
+              oninput:function(e){ state.wfQuery = e.target.value; render(); } })
+          ]),
+          el('label', { class:'sortwrap' }, [
+            el('span', { class:'sortlab', text:'Sort' }),
+            el('select', { class:'sortsel', onchange:function(e){ state.wfSort = e.target.value; render(); } },
+              [['updated','Recently updated'],['name','Name A–Z'],['exec','Executions, most first'],['success','Success rate, lowest first'],['status','Status']].map(function(o){
+                return el('option', { value:o[0], selected: state.wfSort === o[0], text:o[1] });
+              }))
+          ])
+        ]) ]),
+      el('table', {}, [
+        el('thead', {}, [ el('tr', {}, [
+          el('th', { text:'Workflow' }), el('th', { text:'Description' }), el('th', { text:'Status' }),
+          el('th', { class:'right', text:'Executions · 7d' }), el('th', { class:'right', text:'Success' }), el('th', { class:'right', text:'Updated' })
+        ]) ]),
+        el('tbody', {}, visibleWorkflows().map(function(row){
+          var w = row.w;
+          return el('tr', { onclick:function(){ go('workflow', w.id, row.version); } }, [
+            el('td', {}, [
+              el('div', { style:'display:flex;align-items:center;gap:9px;flex-wrap:wrap' }, [
+                el('span', { style:'font-weight:500', text:w.name }),
+                el('span', { class:'vtag', text:'v' + row.version }),
+                row.running ? el('span', { class:'pillst run' }, [ el('i', { text:'◐' }), row.running + ' running' ]) : null
+              ]),
+              row.draft ? el('div', { style:'font-size:11px;color:var(--ink-3);margin-top:4px', text:'Draft — not deployed · ' + row.note }) : null,
+              row.priorOf ? el('div', { style:'font-size:11px;color:var(--ink-3);margin-top:4px', text:'Deployed version · v' + row.priorOf + ' is in draft' }) : null
+            ]),
+            el('td', {}, [ el('div', { style:'color:var(--ink-3)', text:w.desc }),
+              el('div', { class:'mono', style:'font-size:11px;color:var(--ink-3);margin-top:3px', text:w.code }) ]),
+            el('td', {}, [ el('span', { class:'pillst ' + (row.live ? 'done' : 'skip') },
+              [ el('i', { text:row.live ? '✓' : '·' }), row.live ? 'Published' : 'Draft' ]) ]),
+            el('td', { class:'right mono' + (row.deployed && bumped['wf-' + w.id] ? ' bumpcell' : ''),
+              style: row.executions == null ? 'color:var(--ink-3)' : '', text: row.executions == null ? '—' : fmt(row.executions) }),
+            el('td', { class:'right mono', style: row.success == null ? 'color:var(--ink-3)' : (row.success < 95 ? 'color:var(--bad);font-weight:600' : ''),
+              text: row.success == null ? '—' : row.success.toFixed(1) + '%' }),
+            el('td', { class:'right', style:'color:var(--ink-3)', text:row.changed })
+          ]);
+        }))
+      ]),
+      visibleWorkflows().length ? null : el('div', { class:'emptyrow' }, [
+        el('b', { text:'Nothing matches “' + state.wfQuery + '”' }),
+        el('div', { text:'Search accepts a workflow ID such as wkf_CRD_RT, a workflow name, or an execution ID such as exe_0JAFZ.' }),
+        el('button', { class:'btn sm', style:'margin-top:12px', onclick:function(){ state.wfQuery = ''; render(); }, text:'Clear search' })
+      ])
+    ])
+  ]);
+}
+
+function workflowScreen(){
+  var w = tenantWorkflows().filter(function(x){ return x.id === state.id; })[0] || tenantWorkflows()[0];
+  var rows = workflowRows().filter(function(r){ return r.w.id === w.id; });
+  // default to the version actually serving traffic, not to whichever is newest
+  var row = rows.filter(function(r){ return r.version === state.version; })[0]
+         || rows.filter(function(r){ return r.deployed; })[0] || rows[0];
+  var m = WFM[w.id];
+  var pseudo = { wfId:w.id, state:'view', path:[], at:null };
+  var problems = (state.checked && !row.deployed && !state.graphOpen) ? [ { step:'validate', text:'No time limit set for this step' }, { step:'risk', text:'One outcome of this decision point leads nowhere' } ] : null;
+  var acts = [];
+  // Inside a graph the page is about the graph — workflow-scoped chrome does not belong.
+  if (state.graphOpen) {
+    acts.push(el('button', { class:'btn', onclick:function(){ state.graphOpen = null; state.step = null; state.fitInline = true; render(); }, text:'←  Back to workflow view' }));
+  } else if (has('authoring') && !row.deployed) {
+    acts.push(el('button', { class:'btn', onclick:function(){ state.checked = true; render(); }, text:'Check for problems' }));
+    acts.push(el('button', { class:'btn pri', onclick:function(){ toast('Wireframe: a confirmation would explain that this becomes the next deployed version and that runs in progress keep the version they started with'); }, text:'Publish' }));
+  } else if (has('authoring') && row.deployed) {
+    acts.push(el('button', { class:'btn', onclick:function(){
+      var draft = rows.filter(function(x){ return !x.deployed; })[0];
+      if (draft) go('workflow', w.id, draft.version); else toast('Wireframe: a new draft would be created from this version');
+    }, text: rows.some(function(x){ return !x.deployed; }) ? 'Open the draft' : 'Create a draft' }));
+  }
+  var kids = [
+    el('div', { class:'crumb' }, [
+      el('button', { onclick:function(){ go('workflows'); }, text:'Workflows' }), el('span', { text:'/' }),
+      state.graphOpen
+        ? el('button', { onclick:function(){ state.graphOpen = null; state.step = null; state.fitInline = true; render(); }, text:w.name })
+        : el('span', { text:w.name }),
+      state.graphOpen ? el('span', { text:'/' }) : null,
+      state.graphOpen ? el('span', { text:graphName() }) : null
+    ]),
+    el('div', { class:'head' }, [
+      el('div', {}, [ el('div', { class:'h1', text: state.graphOpen ? graphName() : w.name }),
+        el('div', { class:'sub', text: state.graphOpen
+          ? 'Graph invoked by the “' + BPMN.nodes[state.graphOpen].name + '” step of ' + w.name
+          : w.desc + ' · workflow view · version ' + row.version + (row.deployed ? ' (deployed)' : ' (draft)') }) ]),
+      el('div', { class:'acts' }, (state.graphOpen
+        ? [ el('span', { class:'pillst skip', style:'font-family:ui-monospace,Consolas,monospace', text:'v2.4' }) ]
+        : [ el('span', { class:'pillst ' + (row.deployed ? 'done' : 'skip'), style:'font-family:ui-monospace,Consolas,monospace', text:'v' + row.version }) ]).concat(acts))
+    ]),
+    // A draft is not deployed, so it has no execution figures at all — the same rule the list applies.
+    el('div', { class:'cards' }, state.graphOpen ? [
+      card('Graph', 'v2.4', ['invoked by “' + BPMN.nodes[state.graphOpen].name + '”']),
+      card('Nodes', String(Object.keys(DAG.nodes).length), ['Java orchestrator']),
+      card('Invocations · 7d', fmt(Math.round(M.executions * 0.34)), [deltaTrend(DELTA.executions, '%', true), 'vs last week'], 'executions'),
+      card('Avg duration · 7d', '340ms', [deltaTrend(-12, 'ms', false), 'vs last week'])
+    ] : row.deployed ? [
+      card('Status', 'Published', ['version ' + row.version + (row.priorOf ? ' · v' + row.priorOf + ' in draft' : '')]),
+      card('Executions · 7d', fmt(row.executions), [deltaTrend(DELTA.executions, '%', true), 'vs last week'], 'wf-' + w.id),
+      card('Success rate · 7d', row.success.toFixed(1) + '%', row.success < 95 ? [trend('down', 'below target', false)] : [trend('up', 'on target', true)]),
+      card('Avg duration · 7d', m.avg, [deltaTrend(DELTA.avgMs, 'ms', false), 'vs last week'])
+    ] : [
+      card('Status', 'Draft', ['not deployed']),
+      card('Executions · 7d', '—', [row.note || 'never published']),
+      card('Success rate · 7d', '—', ['no runs yet']),
+      card('Avg duration · 7d', '—', ['no runs yet'])
+    ])
+  ];
+  if (rows.length > 1 && !state.graphOpen) kids.push(el('div', { class:'filters', style:'margin-top:-4px' }, [
+    el('span', { class:'sortlab', text:'Version' }),
+    el('div', { class:'seg' }, rows.map(function(x){
+      return el('button', { class: x.version === row.version ? 'on' : '',
+        onclick:function(){ go('workflow', w.id, x.version); },
+        text:'v' + x.version + (x.deployed ? ' · deployed' : ' · draft') });
+    }))
+  ]));
+  if (problems) kids.push(el('div', { class:'note warn' }, [
+    el('b', { text:problems.length + ' problems found — click one to go to it' }),
+    el('div', { style:'margin-top:10px;display:flex;gap:8px;flex-wrap:wrap' }, problems.map(function(p){
+      return el('button', { class:'btn sm', onclick:function(){ state.step = p.step; render(); }, text:p.text });
+    }))
+  ]));
+  if (!has('authoring')) kids.push(el('div', { class:'note', text:'You are viewing this workflow. This deployment does not include authoring, so the editing actions are absent rather than greyed out.' }));
+  if (state.graphOpen) kids.push(el('div', { class:'note', text:'You are looking inside the “' + BPMN.nodes[state.graphOpen].name + '” step. This graph is a separate structure from the workflow, run by the real-time orchestrator.' }));
+  kids.push(canvasArea(pseudo, w));
+  return el('div', {}, kids);
+}
+
+/* ---------- canvas ---------- */
+function canvasArea(r0, w){
+  var m = model();
+  var r = runFor(r0, m);
+  var isRun = r && r.state !== 'view';
+  var notWalked = !!(r0 && r0.state !== 'view' && state.graphOpen);
+  return el('div', { class:'cvwrap' }, [
+    el('div', { class:'cv' }, [
+      el('div', { class:'cvbar' }, [
+        state.graphOpen
+          ? el('button', { class:'btn sm', onclick:function(){ state.graphOpen = null; state.step = null; state.fitInline = true; render(); }, text:'←  Back to workflow view' })
+          : el('span', { class:'lab', text:'Workflow canvas' }),
+        state.graphOpen ? el('span', { class:'lab', text:'Graph · ' + graphName() }) : null,
+        el('div', { class:'r' }, [
+          el('div', { class:'seg' }, [
+            el('button', { onclick:function(){ state.zoom = Math.max(0.5, state.zoom - 0.15); render(); }, text:'−' }),
+            el('button', { onclick:function(){ state.zoom = Math.min(1.5, state.zoom + 0.15); render(); }, text:'+' }),
+            el('button', { onclick:function(){ state.zoom = fitZoom('.cvstage', model()); render(); }, text:'Fit' }),
+            el('button', { onclick:function(){ state.zoom = 1; render(); }, text:'100%' })
+          ]),
+          ((!r0 || r0.state === 'view') && state.graphOpen && has('authoring'))
+            ? el('button', { class:'btn sm', onclick:function(){ toast('Wireframe: validation would list any problems in this graph'); }, text:'Validate' }) : null,
+          el('button', { class:'btn sm', title:'Full screen (Esc to exit)', onclick:function(){ state.full = true; state.fullRun = r || null; state.fitOnOpen = true; render(); } }, [ el('span', { html:icon('full', 14) }) ]),
+          el('span', { class:'z', text:Math.round(state.zoom * 100) + '%' })
+        ])
+      ]),
+      notWalked ? el('div', { class:'note', style:'margin:13px 15px 0', text: (function(){
+        var skipped = Object.keys(m.nodes).filter(function(id){ return nodeState(r, id) === 'waiting'; }).length;
+        return skipped
+          ? 'The route this run took through the graph, drawn against the whole graph. ' + skipped + (skipped === 1 ? ' step it did not reach is faded.' : ' steps it did not reach are faded.')
+          : 'The route this run took through the graph. This run reached every step in the graph.';
+      })() }) : null,
+      el('div', { class:'cvstage', onclick:function(e){ if (e.target.classList.contains('cvstage') || e.target.classList.contains('stageinner')) { state.step = null; render(); } } },
+        [ stage(r, m) ])
+    ]),
+    el('div', { class:'props' }, [
+      el('div', { class:'propsh' }, [ el('span', { class:'lab', text: isRun ? 'Node execution' : 'Node view' }),
+        state.step ? el('button', { onclick:function(){ state.step = null; render(); }, title:'Close', text:'✕' }) : null ]),
+      state.step ? propsBody(r, m) : el('div', { class:'emptyprops', text: isRun ? 'Select a node in the canvas to see what happened at that step.' : 'Select a node in the canvas to inspect its properties.' })
+    ])
+  ]);
+}
+
+/* An absolutely-positioned stage: SVG edges underneath, node cards on top. */
+function stage(r, m){
+  // A transform does not change layout size, so the scaled drawing is wrapped in a sizer
+  // whose box IS the scaled size — otherwise the scroll extent never matches the zoom.
+  var sizer = el('div', { class:'stagesizer', style:'position:relative;width:' + Math.ceil(m.w * state.zoom) + 'px;height:' + Math.ceil(m.h * state.zoom) + 'px' });
+  var inner = el('div', { class:'stageinner', style:'position:absolute;left:0;top:0;width:' + m.w + 'px;height:' + m.h + 'px;transform:scale(' + state.zoom + ');transform-origin:top left' });
+  var ns = m.nodes;
+  function box(id){
+    var n = ns[id], isEvent = n.type === 'start' || n.type === 'end';
+    var gate = n.type === 'choice' || n.type === 'parallel' || n.type === 'join';
+    return { x:n.x, y:n.y, w:isEvent ? 108 : (gate ? 200 : 216), h:isEvent ? 44 : (gate ? 120 : 66) };
+  }
+  var svg = '<svg width="' + m.w + '" height="' + m.h + '" style="position:absolute;inset:0;pointer-events:none" fill="none">';
+  m.edges.forEach(function(e){
+    var a = box(e[0]), b = box(e[1]);
+    var x1 = a.x + a.w / 2, y1 = a.y + a.h, x2 = b.x + b.w / 2, y2 = b.y;
+    var taken = r && r.state !== 'view' && reached(r, e[0]) && reached(r, e[1]);
+    var col = taken ? 'var(--ok)' : 'var(--line-2)';
+    var op = (r && r.state !== 'view' && !taken) ? '0.35' : '1';
+    var mid = y1 + (y2 - y1) / 2;
+    var d = Math.abs(x1 - x2) < 3
+      ? 'M' + x1 + ' ' + y1 + ' L' + x2 + ' ' + y2
+      : 'M' + x1 + ' ' + y1 + ' L' + x1 + ' ' + mid + ' L' + x2 + ' ' + mid + ' L' + x2 + ' ' + y2;
+    svg += '<path d="' + d + '" stroke="' + col + '" stroke-width="2" opacity="' + op + '" stroke-linejoin="round"/>';
+    svg += '<path d="M' + (x2 - 5) + ' ' + (y2 - 7) + ' L' + x2 + ' ' + y2 + ' L' + (x2 + 5) + ' ' + (y2 - 7) + '" stroke="' + col + '" stroke-width="2" opacity="' + op + '" stroke-linejoin="round"/>';
+    if (e[2]) svg += '<text x="' + (x1 + (x2 - x1) / 2) + '" y="' + (mid - 7) + '" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink-3)" font-family="system-ui,sans-serif">' + e[2] + '</text>';
+  });
+  svg += '</svg>';
+  inner.appendChild(el('div', { html:svg, style:'position:absolute;inset:0' }));
+  Object.keys(ns).forEach(function(id){ inner.appendChild(nodeEl(r, id, ns[id])); });
+  sizer.appendChild(inner);
+  return sizer;
+}
+
+/* Compute a zoom that actually fits the model inside its scroll container. */
+function fitZoom(selector, m){
+  var box = document.querySelector(selector);
+  if (!box) return 0.8;
+  var pad = 56;
+  var z = Math.min((box.clientHeight - pad) / m.h, (box.clientWidth - pad) / m.w);
+  return Math.max(0.3, Math.min(1.5, Math.round(z * 100) / 100));
+}
+
+function reached(r, id){ return !!r && (r.path.indexOf(id) > -1 || r.at === id); }
+
+/* A node's state depends on the RUN's state, not only on where the run stopped.
+   Every consumer — canvas node, step strip, properties panel, input/output — uses this. */
+function nodeState(r, id){
+  if (!r || r.state === 'view') return null;
+  if (r.at === id) {
+    if (r.state === 'failed')  return 'failed';
+    if (r.state === 'stopped') return 'halted';
+    if (r.state === 'running') return 'running';
+    return 'done';                       // run finished on this node
+  }
+  return r.path.indexOf(id) > -1 ? 'done' : 'waiting';
+}
+var NODE_STATE = {
+  done:    { cls:'done', sym:'✓', label:'Success' },
+  running: { cls:'now',  sym:'◐', label:'Running' },
+  halted:  { cls:'halt', sym:'□', label:'Halted' },
+  failed:  { cls:'fail', sym:'✕', label:'Failed' },
+  waiting: { cls:'skip', sym:'○', label:'Not executed' }
+};
+
+function nodeEl(r, id, n){
+  // Two views share this renderer: a RUN view, where a node's appearance reflects what
+  // happened, and a DEFINITION view, where nothing has run and every node is readable.
+  var view = !r || r.state === 'view';
+  var isEvent = n.type === 'start' || n.type === 'end';
+  var isGate = n.type === 'choice' || n.type === 'parallel' || n.type === 'join';
+  var cls = 'bn' + (isEvent ? ' ev' : '') + (isGate ? ' ch' : '');
+  var sym = null, statusLabel = null;
+  if (!view) {
+    var ns2 = NODE_STATE[nodeState(r, id)] || NODE_STATE.waiting;
+    cls += ' ' + ns2.cls; sym = ns2.sym; statusLabel = ns2.label;
+  }
+  if (state.step === id) cls += ' sel';
+  var clickable = view || reached(r, id);
+  var kids;
+  if (isGate) {
+    // Gateways are drawn as diamonds. Two clipped layers make the outline; the label is a
+    // separate centred element so it is not clipped. A parallel gateway carries a "+".
+    var glyph = n.type === 'choice' ? '×' : '+';
+    kids = [ el('span', { class:'dm-edge' }), el('span', { class:'dm-fill' }),
+      el('span', { class:'dm-lab' }, [
+        el('span', { class:'dm-g', text:glyph }),
+        el('span', { class:'dm-n', text:n.name }),
+        statusLabel ? el('span', { class:'bn-s' }, [ el('i', { text:sym }), statusLabel ]) : null ]) ];
+  } else if (isEvent) {
+    kids = [ el('span', { class:'bn-ev', text:n.name }) ];
+  } else {
+    kids = [ el('span', { class:'bn-t', text:NODE_TYPES[n.type] || n.type }),
+      el('span', { class:'bn-n', text:n.name }),
+      statusLabel ? el('span', { class:'bn-s' }, [ el('i', { text:sym }), statusLabel ]) : null ];
+  }
+  return el('button', { class:cls, style:'position:absolute;left:' + n.x + 'px;top:' + n.y + 'px',
+    title: clickable ? 'Inspect this node' : 'This node was not executed in this run',
+    onclick: clickable ? function(e){ e.stopPropagation(); state.step = id; state.expanded = {}; render(); } : null }, kids);
+}
+
+function nodeLabel(idOrWf, maybeId){
+  var id = maybeId === undefined ? idOrWf : maybeId;
+  var n = BPMN.nodes[id] || DAG.nodes[id];
+  return n ? n.name : '—';
+}
+
+/* Input and output, loaded only when opened. */
+/* On a run, an output only exists if the step completed. A failed or still-running step
+   has no output, and showing the authored happy-path payload would contradict its status. */
+function showIO(kids, io, prefix, outcome){
+  var isRun = !!outcome;
+  var outBody = io && io.out, outNote = null;
+  if (outcome === 'failed')  { outBody = null; outNote = 'No output — the step did not complete.'; }
+  if (outcome === 'running') { outBody = null; outNote = 'Not yet available — the step is still running.'; }
+  if (outcome === 'halted')  { outBody = null; outNote = 'No output — the run was stopped at this step.'; }
+  if (outcome === 'waiting') { outBody = null; outNote = 'No output — this step was not reached in this run.'; }
+  [[isRun ? 'What went in' : 'What goes in', io && io.in, null],
+   [isRun ? 'What came out' : 'What comes out', outBody, outNote]].forEach(function(pair, i){
+    var key = prefix + i;
+    kids.push(el('button', { class:'exp', onclick:function(){ state.expanded[key] = !state.expanded[key]; render(); },
+      text:(state.expanded[key] ? '▾  ' : '▸  ') + pair[0] }));
+    if (!state.expanded[key]) return;
+    if (pair[2]) kids.push(el('div', { class:'note', style:'margin:7px 0 0', text:pair[2] }));
+    else kids.push(el('div', { class:'expbody', text: pair[1] || '{\n  "placeholder": "shape not defined yet"\n}' }));
+  });
+}
+
+function propsBody(r, m){
+  var isRun = r && r.state !== 'view';
+  var n = m.nodes[state.step] || BPMN.nodes[state.step];
+  if (!n) return el('div', { class:'emptyprops', text:'This node is not part of the current view.' });
+  var nstate = isRun ? nodeState(r, state.step) : null;
+  var failed = nstate === 'failed';
+  var actions = [];
+  var kids = [
+    el('div', { class:'bn-t', style:'color:var(--ink-3)', text:NODE_TYPES[n.type] || n.type }),
+    el('h4', { text:n.name })
+  ];
+  if (isRun) kids.push(el('div', { style:'margin:10px 0 6px' }, [
+    status({ done:'done', running:'running', halted:'stopped', failed:'failed', waiting:'waiting' }[nstate] || 'waiting') ]));
+  (n.rows || []).forEach(function(row){
+    kids.push(el('div', { class:'pr' }, [ el('span', { text:row[0] }),
+      el('span', { class: row[2] ? 'mono' : '', text:row[1] }) ]));
+  });
+  if (isRun) {
+    var t = (r.times && r.times[state.step]) || null;
+    kids.push(el('div', { class:'pr' }, [ el('span', { text:'Started' }),
+      el('span', { class:'mono', text: t ? t.started : '—' }) ]));
+    kids.push(el('div', { class:'pr' }, [ el('span', { text:'Time taken' }),
+      el('span', { class:'mono', text: (t && t.dur) ? t.dur : (nstate === 'running' ? 'still running' : '—') }) ]));
+    if (failed) kids.push(el('div', { class:'note bad', text:r.why }));
+  if (nstate === 'halted') kids.push(el('div', { class:'note', style:'border-left-color:var(--off);background:var(--off-bg);color:var(--ink-2)',
+    text:'The run was stopped while this step was in progress, so it did not finish. Nothing after it was reached.' }));
+  } else {
+    if (n.type === 'choice') {
+      kids.push(el('div', { class:'menu-h', style:'margin:16px 0 7px', text:'The rule, in plain words' }));
+      kids.push(el('div', { class:'note', style:'margin:0', text:'If the risk score reaches 70 or above, send for manual review. Otherwise approve automatically.' }));
+    }
+
+    if (has('authoring')) actions.push(el('button', { class:'btn pri pbtn', onclick:function(){ toast('Wireframe: the node editor would open'); }, text:'Edit this node' }));
+  }
+  // Every node declares what goes in and what comes out. Loaded only when opened.
+  var outcome = isRun ? nstate : null;
+  // A graph node can be opened from a definition AND from a run.
+  if (n.type === 'graph') actions.unshift(el('button', { class:'btn pri pbtn', onclick:function(){
+    state.graphOpen = state.step; state.step = null; state.fitInline = true; render();
+  }, text:'Show graph view  →' }));
+
+  showIO(kids, n.io, 'io-' + state.step + '-', outcome);
+  // Actions come last, after everything the reader needs in order to act.
+  actions.forEach(function(a){ kids.push(a); });
+  return el('div', { class:'propsb' }, kids);
+}
+
+/* ---------- executions ---------- */
+function runsScreen(){
+  var f = state.filter;
+  var rows = RUNS.filter(function(r){
+    return f === 'all' || (f === 'running' && r.state === 'running') || (f === 'failed' && r.state === 'failed') ||
+           (f === 'done' && r.state === 'done') || (f === 'stopped' && r.state === 'stopped');
+  });
+  var ranges = [['today','Today'],['7d','Last 7 days'],['30d','Last 30 days']];
+  var filters = [['all','All'],['done','Success'],['failed','Failed'],['stopped','Halted'],['running','Running']];
+  return el('div', {}, [
+    el('div', { class:'head' }, [ el('div', {}, [
+      el('div', { class:'h1', text:'Executions' }),
+      el('div', { class:'sub', text:'Most recent first · new runs appear on their own · only the rows on screen are drawn' })
+    ]) ]),
+    el('div', { class:'cards' }, [
+      card('Running now', String(M.running), [deltaTrend(DELTA.running, '', true), 'since last check'], 'running'),
+      card('Executions · 7d', fmt(M.executions), [deltaTrend(DELTA.executions, '%', true), 'vs last week'], 'executions'),
+      card('Failed today', String(M.failedToday), [deltaTrend(DELTA.failedToday, '', false), 'vs yesterday'], 'failedToday'),
+      card('Avg duration · 7d', M.avg, [deltaTrend(DELTA.avgMs, 'ms', false), 'vs last week'])
+    ]),
+    el('div', { class:'filters' }, [
+      el('div', { class:'finput' }, [ el('span', { html:icon('search', 15) }), 'Search execution, workflow or transaction…' ]),
+      el('div', { class:'seg' }, ranges.map(function(x){
+        return el('button', { class: state.range === x[0] ? 'on' : '', onclick:function(){ state.range = x[0]; render(); }, text:x[1] });
+      }))
+    ]),
+    el('div', { class:'filters' }, [
+      el('div', { class:'chips' }, filters.map(function(x){
+        return el('button', { class:'chip' + (state.filter === x[0] ? ' on' : ''), onclick:function(){ state.filter = x[0]; render(); }, text:x[1] });
+      })),
+      state.filter !== 'all' ? el('button', { class:'btn quiet sm', onclick:function(){ state.filter = 'all'; render(); }, text:'Clear' }) : null,
+      el('span', { style:'margin-left:auto;font-size:12px;color:var(--ink-3);display:flex;gap:7px;align-items:center' },
+        [ rows.length + ' shown', el('span', { class:'livedot' }, [ el('i', {}), 'live' ]) ])
+    ]),
+    arrived ? el('button', { class:'newpill', onclick:function(){
+      arrived = 0;
+      var sc = document.querySelector('.scroller'); if (sc) sc.scrollTop = 0;
+      var mn = document.querySelector('.main'); if (mn) mn.scrollTop = 0;
+      render();
+    }, text:'↑  ' + arrived + (arrived === 1 ? ' new execution' : ' new executions') + ' — jump to top' }) : null,
+    rows.length ? el('div', { class:'pan' }, [ el('div', { class:'scroller' }, [ el('table', {}, [
+      el('thead', {}, [ el('tr', {}, [
+        el('th', { text:'Execution' }), el('th', { text:'Workflow' }), el('th', { text:'Status' }),
+        el('th', { text:'Current step' }), el('th', { class:'right', text:'Duration' }), el('th', { class:'right', text:'Started' })
+      ]) ]),
+      el('tbody', {}, rows.map(function(r){
+        return el('tr', { class: r.fresh ? 'new' : '', onclick:function(){ go('run', r.id); } }, [
+          el('td', { class:'mono', text:r.id }),
+          el('td', { style:'font-weight:500', text:r.wf }),
+          el('td', {}, [ status(r.state) ]),
+          el('td', { style:'color:var(--ink-3);font-size:12.5px', text: r.at ? nodeLabel(r.wfId, r.at) : '—' }),
+          el('td', { class:'right mono', text:r.dur || '—' }),
+          el('td', { class:'right', style:'color:var(--ink-3)', text:r.started })
+        ]);
+      }))
+    ]) ]) ]) : el('div', { class:'empty' }, [ el('b', { text:'No executions match these filters' }),
+      el('div', { text:'Widen the date range or clear the status filter.' }) ])
+  ]);
+}
+
+function runScreen(){
+  var r = tenantRuns().filter(function(x){ return x.id === state.id; })[0];
+  if (!r) return el('div', { class:'empty' }, [ el('b', { text:'This execution is no longer listed' }),
+    el('div', { text:'The wireframe keeps a limited history — go back to Executions.' }) ]);
+  var kids = [
+    el('div', { class:'crumb' }, [
+      el('button', { onclick:function(){ go('runs'); }, text:'Executions' }), el('span', { text:'/' }),
+      state.graphOpen
+        ? el('button', { onclick:function(){ state.graphOpen = null; state.step = null; state.fitInline = true; render(); }, text:r.id })
+        : el('span', { text:r.id }),
+      state.graphOpen ? el('span', { text:'/' }) : null,
+      state.graphOpen ? el('span', { text:graphName() }) : null
+    ]),
+    el('div', { class:'head' }, [
+      el('div', {}, [ el('div', { class:'h1', text:r.wf }),
+        el('div', { class:'sub', text:'Execution ' + r.id + ' · started ' + r.started + (r.dur ? ' · took ' + r.dur : '') }) ]),
+      el('div', { class:'acts' }, [
+        status(r.state),
+        r.state === 'running' ? el('button', { class:'btn', onclick:function(){ r.state = 'stopped'; r.dur = null; toast('Execution halted'); }, text:'Stop this run' }) : null,
+        el('button', { class:'btn', text:'Export' })
+      ])
+    ])
+  ];
+  if (r.state === 'failed' && r.why) kids.push(el('div', { class:'note bad' }, [ el('b', { text:'Why it failed — ' }), r.why ]));
+  if (r.state === 'running') kids.push(el('div', { class:'note warn', text:'This execution is in progress. The steps below advance on their own.' }));
+  kids.push(stepStrip(state.graphOpen ? runFor(r, DAG) : r, state.graphOpen ? DAG : BPMN));
+  kids.push(el('div', { class:'tabs' }, [['diagram','Execution trace'],['history','History']].map(function(t){
+    return el('button', { class:'tab' + (state.tab === t[0] ? ' on' : ''), onclick:function(){ state.tab = t[0]; render(); }, text:t[1] });
+  })));
+  kids.push(state.tab === 'history' ? historyTable(r) : canvasArea(r));
+  return el('div', {}, kids);
+}
+function stepStrip(r, m){
+  var out = [], nodes = flatNodes(r.wfId, r, m || BPMN);
+  nodes.forEach(function(n, i){
+    var st = NODE_STATE[nodeState(r, n.id)] || NODE_STATE.waiting;
+    var cls = 'step ' + st.cls, sym = st.sym;
+    out.push(el('span', { class:cls }, [ el('i', { text:sym }), n.label ]));
+    if (i < nodes.length - 1) out.push(el('span', { class:'sep', text:'›' }));
+  });
+  return el('div', { class:'steps' }, out);
+}
+function flatNodes(wfId, r, m){
+  m = m || BPMN;
+  var out = [];
+  m.seq.forEach(function(id){
+    var alts = null;
+    Object.keys(m.branches || {}).forEach(function(g){ if (m.branches[g].indexOf(id) > -1) alts = m.branches[g]; });
+    if (!alts) { out.push({ id:id, label:m.nodes[id].name }); return; }
+    var taken = alts.filter(function(a){ return r && (r.path.indexOf(a) > -1 || r.at === a); });
+    (taken.length ? taken : [id]).forEach(function(a){ out.push({ id:a, label:m.nodes[a].name }); });
+  });
+  return out;
+}
+
+function historyTable(r){
+  var ids = r.path.concat(r.at ? [r.at] : []);
+  return el('div', { class:'pan' }, [ el('table', {}, [
+    el('thead', {}, [ el('tr', {}, [ el('th', { text:'Time' }), el('th', { text:'What happened' }), el('th', { text:'Step' }) ]) ]),
+    el('tbody', {}, ids.map(function(id, i){
+      return el('tr', {}, [ el('td', { class:'mono', text:r.started }),
+        el('td', { text: i === 0 ? 'Started by the platform' : 'Step completed' }),
+        el('td', { text:nodeLabel(r.wfId, id) }) ]);
+    }))
+  ]) ]);
+}
+
+/* ---------- rules ---------- */
+function rulesScreen(){
+  var RULES = [
+    ['credit.score.threshold','Credit score threshold','Credit Decision – Real Time','Published'],
+    ['fraud.velocity','Transaction velocity check','Fraud Review – Manual','Published'],
+    ['plan.affordability','Affordability calculation','Payment Plan Offer','Published'],
+    ['kyc.match.level','Identity match tolerance','Account Onboarding','Draft']
+  ];
+  return el('div', {}, [
+    el('div', { class:'head' }, [
+      el('div', {}, [ el('div', { class:'h1', text:'Rules' }), el('div', { class:'sub', text:'The decision logic your workflows call' }) ]),
+      el('div', { class:'acts' }, [ el('button', { class:'btn pri' }, [ el('span', { html:icon('plus', 15) }), 'Rule' ]) ])
+    ]),
+    el('div', { class:'pan' }, [ el('table', {}, [
+      el('thead', {}, [ el('tr', {}, [ el('th', { text:'Rule' }), el('th', { text:'Name' }), el('th', { text:'Used by' }), el('th', { class:'right', text:'Status' }) ]) ]),
+      el('tbody', {}, RULES.map(function(x){
+        return el('tr', { onclick:function(){ toast('Wireframe: the rule detail screen is not designed yet'); } }, [
+          el('td', { class:'mono', text:x[0] }), el('td', { style:'font-weight:500', text:x[1] }),
+          el('td', { style:'color:var(--ink-3)', text:x[2] }),
+          el('td', { class:'right' }, [ el('span', { class:'pillst ' + (x[3] === 'Published' ? 'done' : 'skip') }, [ el('i', { text:x[3] === 'Published' ? '✓' : '·' }), x[3] ]) ])
+        ]);
+      }))
+    ]) ])
+  ]);
+}
+
+/* ---------- tasks ---------- */
+function tasksScreen(){
+  return el('div', {}, [
+    el('div', { class:'head' }, [
+      el('div', {}, [ el('div', { class:'h1', text:'Tasks' }), el('div', { class:'sub', text:'Decisions the system could not make on its own' }) ]),
+      el('div', { class:'acts' }, [ el('span', { class:'chip', text:'Still being designed' }) ])
+    ]),
+    el('div', { class:'cards' }, [
+      card('Open', String(tenantTasks().length), [deltaTrend(1, '', false), 'vs yesterday']),
+      card('Overdue', String(tenantTasks().filter(function(t){ return t.due === 'Overdue'; }).length), [deltaTrend(1, '', false), 'vs yesterday']),
+      card('Completed · 7d', '412', [deltaTrend(18, '', true), 'vs last week']),
+      card('Avg time to decide', '6m', [deltaTrend(-40, 's', false), 'vs last week'])
+    ]),
+    el('div', { class:'note', text:'Tasks belongs to the Authoring module. Its place in the product is settled; the content and the actions are still being designed, so this screen is a shape rather than a proposal.' }),
+    el('div', { class:'pan' }, [ el('table', {}, [
+      el('thead', {}, [ el('tr', {}, [ el('th', { text:'Task' }), el('th', { text:'From execution' }), el('th', { text:'Status' }), el('th', { class:'right', text:'Due' }) ]) ]),
+      el('tbody', {}, tenantTasks().map(function(t){
+        return el('tr', { onclick:function(){ go('task', t.id); } }, [
+          el('td', { style:'font-weight:500', text:t.title }),
+          el('td', { class:'mono', text:t.runId }),
+          el('td', {}, [ status(t.state) ]),
+          el('td', { class:'right', style: t.due === 'Overdue' ? 'color:var(--bad);font-weight:600' : 'color:var(--ink-3)', text:t.due })
+        ]);
+      }))
+    ]) ])
+  ]);
+}
+function taskScreen(){
+  var t = tenantTasks().filter(function(x){ return x.id === state.id; })[0] || tenantTasks()[0] || TASKS[0];
+  return el('div', {}, [
+    el('div', { class:'crumb' }, [ el('button', { onclick:function(){ go('tasks'); }, text:'Tasks' }), el('span', { text:'/' }), el('span', { text:t.id }) ]),
+    el('div', { class:'head' }, [ el('div', {}, [ el('div', { class:'h1', text:t.title }),
+      el('div', { class:'sub', text:'From ' + t.runId + ' · ' + t.wf + ' · due ' + t.due }) ]) ]),
+    el('div', { class:'sect', style:'margin-top:0', text:'What is being asked' }),
+    el('div', { class:'note', style:'margin-top:0', text:t.ask }),
+    el('div', { class:'sect', text:'What you need in order to decide' }),
+    el('div', { class:'pan evi' }, t.evidence.map(function(e){
+      return el('div', {}, [ el('span', { text:e[0] }),
+        el('span', { style:'display:flex;align-items:center;gap:10px' }, [
+          el('span', { style:'color:var(--ink-3);font-size:12.5px', text:e[1] }),
+          status(e[2] === 'done' ? 'done' : (e[2] === 'fail' ? 'failed' : 'running')) ]) ]);
+    })),
+    el('div', { style:'margin-top:12px;font-size:12.5px;color:var(--ink-3);display:flex;align-items:center;gap:9px' }, [
+      'The execution this came from:', el('button', { class:'btn quiet sm', onclick:function(){ go('run', t.runId); }, text:'open ' + t.runId })
+    ]),
+    el('div', { class:'sect', text:'Your notes' }),
+    el('textarea', { class:'ta', placeholder:'A reason is required if you reject.', oninput:function(e){ state.taskNote = e.target.value; } }),
+    el('div', { style:'display:flex;justify-content:flex-end;gap:9px;margin-top:16px' }, [
+      el('button', { class:'btn', onclick:function(){
+        if (!state.taskNote) { toast('Rejecting requires a reason — add a note first'); return; }
+        toast('Wireframe: the execution would continue down the rejected path');
+      }, text:'Reject' }),
+      el('button', { class:'btn pri', onclick:function(){ toast('Wireframe: the execution would continue down the approved path'); }, text:'Approve' })
+    ]),
+    el('div', { class:'note', text:'The decision buttons sit last, after the evidence — so nobody can decide before scrolling past what they need to read.' })
+  ]);
+}
+
+/* ---------- documentation ---------- */
+function docsScreen(){
+  var open = DOCS.filter(function(d){ return d.id === state.docSec; })[0] || DOCS[0];
+  return el('div', {}, [
+    el('div', { class:'head' }, [ el('div', {}, [ el('div', { class:'h1', text:'Documentation' }),
+      el('div', { class:'sub', text:'Reference material for this product' }) ]) ]),
+    el('div', { class:'docwrap' }, [
+      el('div', { class:'doclist' }, DOCS.map(function(d){
+        return el('button', { class: d.id === state.docSec ? 'on' : '', onclick:function(){ state.docSec = d.id; render(); }, text:d.t });
+      })),
+      el('div', { class:'docbody' }, [ el('h3', { text:open.t }) ].concat(open.p.map(function(p){ return el('p', { text:p }); })))
+    ])
+  ]);
+}
+
+VIEWS = { home:homeScreen, runs:runsScreen, run:runScreen, workflows:workflowsScreen, workflow:workflowScreen,
+  rules:rulesScreen, tasks:tasksScreen, task:taskScreen, docs:docsScreen };
+
+/* ---------- controls ---------- */
+document.getElementById('role').addEventListener('change', function(e){
+  state.role = e.target.value;
+  if (!canSwitchTenant()) state.org = 'UK-Acquisitions';   // a tenant user only ever sees their own
+  state.orgOpen = false;
+  render();
+});
+document.getElementById('combo').addEventListener('change', function(e){
+  state.combo = e.target.value;
+  if (state.signedIn) go(landing()); else render();
+});
+document.addEventListener('click', function(e){
+  if ((state.orgOpen || state.whoOpen) && !e.target.closest('.top')) { state.orgOpen = false; state.whoOpen = false; render(); }
+});
+if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function(){ if (state.theme === 'system') render(); });
+
+render();
+</script>
+</body></html>

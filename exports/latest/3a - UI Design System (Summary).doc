@@ -1,0 +1,106 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>UI Design System — Summary</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+@page{size:A4;margin:1.8cm}
+body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:10.5pt;color:#1d1f23;line-height:1.45}
+h1{font-size:22pt;margin:0 0 3pt}
+h2{font-size:13.5pt;color:#3a479c;border-bottom:1pt solid #bfc6f0;padding-bottom:3pt;margin:17pt 0 6pt}
+p{margin:0 0 7pt}
+.meta{color:#5d6068;font-size:9.5pt;margin-bottom:12pt}
+.lead{font-size:11.5pt;color:#3a3a3d}
+table{border-collapse:collapse;width:100%;margin:5pt 0 9pt;font-size:9pt}
+th{background:#eef0fb;color:#3a479c;text-align:left;padding:4pt 6pt;border:1pt solid #bfc6f0;font-size:8pt;text-transform:uppercase;letter-spacing:.4pt}
+td{padding:4pt 6pt;border:1pt solid #d2d4db;vertical-align:top}
+li{margin-bottom:3pt}
+ul{margin:3pt 0 7pt;padding-left:15pt}
+.ref{font-size:8.5pt;color:#3a479c;font-style:italic;margin:-5pt 0 9pt}
+.mono{font-family:Consolas,"Courier New",monospace;font-size:8.5pt}
+.sw{height:22pt;text-align:center;font-family:Consolas,monospace;font-size:7.5pt;border:1pt solid #d2d4db}
+.note{border-left:3pt solid #4a5ac9;background:#f5f6fb;padding:6pt 9pt;margin:6pt 0}
+</style></head><body>
+
+<h1>UI Design System — Summary</h1>
+<p class="meta">Workflow Orchestrator · 31 August 2026 · Full specification: <b>3 - UI Design System.doc</b> (referenced throughout as &sect;)</p>
+
+<p class="lead">The reusable visual rules, components and behaviours that keep the application consistent. Three pages of what matters; the full document carries every value, state and usage rule.</p>
+
+<h2>1. Principles</h2>
+<p><b>Consistency</b> &mdash; the same problem is solved the same way everywhere. <b>Simplicity</b> &mdash; everything on screen helps someone do something. <b>Clear hierarchy</b> &mdash; what it is, what state it is in, and the main action are always the three most prominent things. <b>Accessibility</b> &mdash; keyboard-complete, contrast-checked, never colour alone. <b>Responsiveness</b> &mdash; desktop first, defined behaviour at smaller sizes. <b>Reuse over one-off design</b> &mdash; a new screen picks an existing pattern.</p>
+<p class="ref">Full reasoning and what each principle rules out: &sect;1</p>
+
+<h2>2. Foundations</h2>
+<table>
+<tr><td class="sw" bgcolor="#4a5ac9"><font color="#ffffff">Accent<br>4a5ac9</font></td>
+<td class="sw" bgcolor="#4f8f63"><font color="#ffffff">Success<br>4f8f63</font></td>
+<td class="sw" bgcolor="#b8892f"><font color="#ffffff">Warning<br>b8892f</font></td>
+<td class="sw" bgcolor="#b04a44"><font color="#ffffff">Failed<br>b04a44</font></td>
+<td class="sw" bgcolor="#98989b"><font color="#ffffff">Inactive<br>98989b</font></td>
+<td class="sw" bgcolor="#1d1f23"><font color="#ffffff">Text<br>1d1f23</font></td>
+<td class="sw" bgcolor="#f4f4f6">Page<br>f4f4f6</td></tr>
+</table>
+<ul>
+<li><b>Colour</b> &mdash; one accent for everything interactive, four status colours that carry meaning. Each has a nine-step ramp, so there is always a lighter or darker version without inventing a colour.</li>
+<li><b>Type</b> &mdash; six sizes: 11 / 13 / 14.5 / 16.5 / 22 / 29. Nothing between them. Monospace for anything an operator copies or compares.</li>
+<li><b>Spacing</b> &mdash; 4 / 8 / 12 / 16 / 24 / 32. No half-steps.</li>
+<li><b>Corners and elevation</b> &mdash; softly rounded (6 / 8 / 12); three elevation levels for float, not decoration.</li>
+<li><b>Fonts are OS-installed only.</b> The application downloads nothing, because it runs where there is no outbound internet.</li>
+<li><b>Theme</b> is a user choice (System / Light / Dark) and works by remapping token values. No component has a dark variant of its own.</li>
+</ul>
+<p class="ref">Full ramps, dark-theme mapping, grid measures, iconography and branding rules: &sect;2. Every named value: &sect;3</p>
+
+<h2>3. Status vocabulary</h2>
+<p>Six states, used identically everywhere. Each is a colour <b>and</b> a symbol <b>and</b> a word &mdash; so the interface is readable in greyscale and by a screen reader.</p>
+<table>
+<tr><th>Success</th><th>Running</th><th>Halted</th><th>Failed</th><th>Draft</th><th>Not executed</th></tr>
+<tr><td>&#10003; Passed, published</td><td>&#9680; In progress</td><td>&#9723; Stopped by a person</td><td>&#10005; Error</td><td>&#183; Not deployed</td><td>&#9675; Never reached</td></tr>
+</table>
+<p>These four colours never change with the theme. A user may switch to dark; a run that failed is still red.</p>
+<p class="ref">Tints, pill treatment and the do/don&rsquo;t examples: &sect;2.1, &sect;14</p>
+
+<h2>4. Components</h2>
+<table>
+<tr><th width="26%">Group</th><th>What exists</th></tr>
+<tr><td><b>Core</b></td><td>Button (4 variants), input, text area, dropdown, checkbox, radio, toggle, search, date range, segmented control, tabs, card, table, badge, tooltip, alert, dialog, toast, breadcrumbs, side navigation, top bar</td></tr>
+<tr><td><b>Domain</b></td><td>Workflow canvas, workflow node (8 types), gateway (exclusive and parallel), graph drill-in, node properties / node execution panel, execution trace, step strip, run summary, status indicator, evidence card, timeline, expandable details, version row</td></tr>
+</table>
+<p>Two deliberate absences: <b>pagination</b> (lists load as the reader scrolls) and <b>per-component dark variants</b> (theming is handled by tokens).</p>
+<p class="ref">Anatomy, variants and behaviour for each: &sect;4, &sect;5. Usage guidance with do/don&rsquo;t: &sect;14</p>
+
+<h2>5. States</h2>
+<p><b>Component states</b> &mdash; every interactive element defines default, hover, focus, selected, pressed, disabled, loading, error and success.</p>
+<p><b>Application states</b> &mdash; every screen defines all eight: loading, empty, no results, populated, partial data, error, permission denied, offline. These are the states that generate support calls when nobody designs them.</p>
+<div class="note"><b>Absent, not disabled.</b> Functionality a client did not buy, or a role cannot use, is not rendered at all. A greyed-out control advertises something the user cannot have.</div>
+<p class="ref">Treatments and wording for each state: &sect;6, &sect;7</p>
+
+<h2>6. Page and navigation patterns</h2>
+<p>Five layout patterns cover every screen: <b>Overview</b>, <b>List</b>, <b>Detail</b>, <b>Canvas</b>, <b>Approval</b>. Within any of them the bands run identity &rarr; state &rarr; summary &rarr; detail &rarr; history, and the primary action sits with the title.</p>
+<p>Navigation is a persistent left rail grouped by capability, a top bar carrying tenant context and search, and breadcrumbs showing the containment path. Every state a user might share is addressable by link &mdash; object, tab, selected node, filters, tenant.</p>
+<p class="ref">Structure of each pattern and the navigation rules: &sect;8, &sect;9</p>
+
+<h2>7. Interaction and responsive behaviour</h2>
+<ul>
+<li>A row click navigates; a node click selects and fills the panel; the background clears it.</li>
+<li>Zoom and pan are presentation only &mdash; no server call.</li>
+<li>Monitoring screens update on their own; new rows arrive at the top <b>without moving the reader&rsquo;s view</b>.</li>
+<li>Confirmation is required for anything irreversible, and the button names the verb and object.</li>
+<li>Three breakpoints: desktop 1000 px+, tablet 768&ndash;999 px, mobile below 768 px. Canvas screens are declared a desktop and tablet experience &mdash; a decision, not a gap.</li>
+</ul>
+<p class="ref">Full interaction standards and the responsive rules for what collapses, wraps, scrolls and hides: &sect;10, &sect;11</p>
+
+<h2>8. Accessibility and content</h2>
+<p><b>Accessibility:</b> WCAG 2.1 AA contrast in both themes, complete keyboard operation, a visible focus ring that is never removed, accessible names on every icon-only control, 13 px minimum interface text, and 44 px touch targets. Motion collapses to zero under reduced-motion.</p>
+<p><b>Content:</b> buttons are verb + object (&ldquo;Publish version 4&rdquo;, never &ldquo;OK&rdquo;), status words come from the fixed vocabulary, errors say what happened and what to do next, empty states offer the action that fills them, and the interface says &ldquo;tenant&rdquo; &mdash; never &ldquo;organisation&rdquo; or &ldquo;customer&rdquo;.</p>
+<p class="ref">Full requirements, date/time formats and capitalisation rules: &sect;12, &sect;13</p>
+
+<h2>Where to go next</h2>
+<table>
+<tr><th width="34%">To see</th><th>Open</th></tr>
+<tr><td>The system in use</td><td><b>2 - Interactive Wireframes.html</b> &mdash; any browser, works offline</td></tr>
+<tr><td>Every value, state and usage rule</td><td><b>3 - UI Design System.doc</b> &mdash; 14 sections</td></tr>
+<tr><td>How it is built</td><td><b>4 - UI Architecture.doc</b></td></tr>
+</table>
+
+<p style="margin-top:12pt;padding-top:7pt;border-top:1pt solid #d2d4db;font-size:9pt;color:#5d6068">Every value here is the one implemented in the wireframes and defined once in the stylesheet. Changing a rule means changing the token, not the screens. Open items: a formal contrast audit of the dark theme, and confirmation of the tenant time-zone rule.</p>
+
+</body></html>

@@ -1,0 +1,584 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>UI Architecture — Workflow Orchestrator</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+@page{size:A4;margin:1.7cm}
+body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:10pt;color:#1d1f23;line-height:1.45}
+h1{font-size:22pt;margin:0 0 3pt}
+h2{font-size:14pt;color:#3a479c;border-bottom:1pt solid #bfc6f0;padding-bottom:3pt;margin:18pt 0 6pt}
+h3{font-size:11pt;margin:12pt 0 4pt}
+h4{font-size:9.5pt;margin:9pt 0 3pt;color:#3a479c}
+p{margin:0 0 6pt}
+.meta{color:#5d6068;font-size:9.5pt;margin-bottom:12pt}
+.lead{font-size:11pt;color:#3a3a3d}
+table{border-collapse:collapse;width:100%;margin:5pt 0 9pt;font-size:8.5pt}
+th{background:#eef0fb;color:#3a479c;text-align:left;padding:4pt 5pt;border:1pt solid #bfc6f0;font-size:7.5pt;text-transform:uppercase;letter-spacing:.4pt}
+td{padding:4pt 5pt;border:1pt solid #d2d4db;vertical-align:top}
+code,.mono{font-family:Consolas,"Courier New",monospace;font-size:8pt}
+li{margin-bottom:3pt}
+ul,ol{margin:3pt 0 7pt;padding-left:15pt}
+.note{border-left:3pt solid #4a5ac9;background:#f5f6fb;padding:6pt 9pt;margin:6pt 0}
+.rule{border-left:3pt solid #4f8f63;background:#f0f7f2;padding:6pt 9pt;margin:6pt 0}
+pre.t{font-family:Consolas,"Courier New",monospace;font-size:8pt;line-height:1.4;background:#fbfbfd;border:1pt solid #d2d4db;padding:7pt 9pt;margin:4pt 0 9pt;white-space:pre}
+.cap{font-size:8.5pt;color:#5d6068;margin:-5pt 0 10pt}
+table.dg{border-collapse:collapse;width:100%;margin:6pt 0 4pt;font-size:8.5pt}
+table.dg td{border:1pt solid #9aa2d6;padding:6pt 8pt;vertical-align:middle}
+td.lyrname{background:#4a5ac9;color:#ffffff;font-weight:bold;font-size:8pt;text-align:center;letter-spacing:.4pt}
+td.band{background:#eef0fb;text-align:center;padding:7pt 10pt;border:1pt solid #9aa2d6}
+.bandt{font-size:10pt;font-weight:bold;color:#293373}
+td.arw{border:none;text-align:center;color:#4a5ac9;font-size:11pt;padding:1pt}
+td.box{background:#ffffff}
+td.boxa{background:#eef0fb}
+td.boxs{background:#f5f6fb}
+td.plain{border:none;padding:2pt 4pt}
+.dgh{font-weight:bold}
+.dgs{font-size:7.5pt;color:#5d6068}
+tr{page-break-inside:avoid}
+td,th{page-break-inside:avoid}
+table{page-break-inside:auto}
+</style></head><body>
+
+<h1>UI Architecture</h1>
+<p class="meta">Workflow Orchestrator · Document 4 of 6 · 31 August 2026 · React + TypeScript UI · Industry design system (indigo #4a5ac9, local-only fonts) · §13 capability module structure · §14 browser memory and component interaction</p>
+
+<h2>1. Purpose and scope</h2>
+<p>This document describes the UI architecture of Workflow Orchestrator and how to consume the Industry design system in a React codebase. It covers the approved scope only: SSO login, the authenticated shell, Home, Workflows (inventory and BPMN detail), Graph view, Rules (inventory and detail), Executions (inventory and trace), Alerts, Documentation, and Tasks as a scaffolded capability whose content is still in design (&sect;13.4). Workflow authoring beyond the approved screens, Intent, Decisions, Data, Connectors and Scripts are <b>hidden, not disabled</b> (FR-SHELL-010).</p>
+<p>Backend APIs, transport and persistence are out of scope. The UI runs on dummy-data adapters that deliberately do not constrain future contracts (FR-MOCK-003); the experience API those adapters will be replaced by is specified in document 5.</p>
+
+<h2>2. How to use the design system in your React code</h2>
+<h3>Step 1 &mdash; Adopt the token stylesheet</h3>
+<p>Copy <span class="mono">styles.css</span> into the app as the global stylesheet. It is the single source of truth: colour roles with 100&ndash;900 tonal ramps, fixed semantic status colours, spacing, radius, elevation, shell layout dimensions and font stacks. Fonts are <b>local-only</b> &mdash; every named family ships with the operating system and nothing downloads (ADR-019). Never hard-code a hex or pixel value the tokens already carry; theme changes happen by remapping tokens, never by per-page overrides (NFR-REACT-005).</p>
+<h3>Step 2 &mdash; Port the component primitives</h3>
+<p>Each component under <span class="mono">components/platform-*/</span> is a pair: <span class="mono">&lt;Name&gt;.jsx</span> (reference implementation) and <span class="mono">&lt;Name&gt;.d.ts</span> (typed prop contract, annotated with the requirement or ADR it satisfies). Port them one-to-one into the component library, converting to TypeScript by merging the <span class="mono">.d.ts</span> props into the function signature. Components style themselves from <span class="mono">var(--*)</span> tokens and the system classes (<span class="mono">.btn</span>, <span class="mono">.table</span>, <span class="mono">.input</span>, <span class="mono">.seg</span>, <span class="mono">.blueprint</span>), so they re-theme automatically.</p>
+<h3>Step 3 &mdash; Or start from the ready-made TypeScript project</h3>
+<p><span class="mono">templates/react-ts-handoff/</span> is a standalone Vite + React + TypeScript project with all of this already done: the 14 primitives as typed <span class="mono">.tsx</span> (each merging its <span class="mono">.d.ts</span> interface with the implementation; cross-references are real imports, no globals), every approved page, fixtures and the token sheet. <span class="mono">npm install &amp;&amp; npm run dev</span>. It ships <span class="mono">strict: false</span> to stay one-to-one with the reference implementation &mdash; enable strict and annotate incrementally.</p>
+<h3>Step 4 &mdash; Compose pages from the primitives</h3>
+<p><span class="mono">templates/platform-app/</span> is the working interactive application: <span class="mono">app.jsx</span> (shell wiring and navigation), <span class="mono">pages-build.jsx</span> and <span class="mono">pages-monitor.jsx</span> (page components for every approved screen), <span class="mono">fixtures.js</span> (dummy data). To productionise:</p>
+<ul>
+<li>Replace the internal state router in <span class="mono">app.jsx</span> with React Router routes (&sect;4, &sect;11.3) and lazy-load the page modules per NFR-REACT-006.</li>
+<li>Replace <span class="mono">fixtures.js</span> with data adapters behind hooks (for example <span class="mono">useWorkflows(tenant)</span>); keep pages unaware of transport.</li>
+<li>Wire <span class="mono">onNavigate</span> / <span class="mono">onRowClick</span> / <span class="mono">go()</span> callbacks to router navigation, and the tenant selector to the context provider &mdash; a tenant change rescopes every query and clears search (FR-SHELL-005).</li>
+</ul>
+<div class="rule"><b>Rule of thumb.</b> Pages compose primitives and tokens; they never define colours, fonts or status treatments of their own (NFR-REACT-004).</div>
+
+<h2>3. Layered architecture</h2>
+<table class="dg" style="width:92%;margin-left:4%">
+<tr><td class="band"><span class="bandt">1 &middot; Identity boundary</span><br><span class="mono">LoginPage</span> &middot; <span class="mono">UserContextProvider</span> (identity, roles, permissions, tenants, environments)<br><span class="dgs">SSO only; no persona or tenant picker at login; the UI shows only permitted resources (ADR-001/002)</span></td></tr>
+<tr><td class="arw">&#9660;</td></tr>
+<tr><td class="band"><span class="bandt">2 &middot; Persistent shell</span><br><span class="mono">AppShell</span> = Sidebar + TopBar (TenantToggle &middot; GlobalSearch &middot; ProfileMenu) + Breadcrumbs<br><span class="dgs">The same shell for every authenticated view; the profile menu is appearance-only (ADR-003/005/006)</span></td></tr>
+<tr><td class="arw">&#9660;</td></tr>
+<tr><td class="band"><span class="bandt">3 &middot; Route modules (lazy)</span><br>Home &middot; Workflows &middot; WorkflowDetail &middot; Graph &middot; Rules &middot; RuleDetail &middot; Executions &middot; Trace &middot; Alerts &middot; Tasks &middot; Documentation<br><span class="dgs">List and detail on separate routes; an inventory never shows the BPMN beside the list (ADR-007/014/015)</span></td></tr>
+<tr><td class="arw">&#9660;</td></tr>
+<tr><td class="band"><span class="bandt">4 &middot; Shared primitives</span><br>MetricCard &middot; DataTable &middot; InfiniteList &middot; StatusIndicator &middot; Canvas &middot; WorkflowNode &middot; Gateway &middot; Edge &middot; NodeInspector &hellip; (&sect;5)<br><span class="dgs">Typed props for variant, status, size and state (NFR-REACT-002). Props in, events out</span></td></tr>
+<tr><td class="arw">&#9660;</td></tr>
+<tr><td class="band"><span class="bandt">5 &middot; Tokens &amp; theming</span><br>CSS custom properties plus typed token definitions &mdash; remapped on <span class="mono">:root</span>, never overridden per page<br><span class="dgs">Semantic status colours are fixed across every theme (ADR-006/018)</span></td></tr>
+<tr><td class="arw">&#9660;</td></tr>
+<tr><td class="band"><span class="bandt">6 &middot; Data boundary</span><br>Dummy-data adapters &middot; tenant-scoped queries &middot; no secrets in the UI<br><span class="dgs">Mock shapes do not define API contracts (FR-MOCK-003); secrets never reach the interface (NFR-SEC-003)</span></td></tr>
+</table>
+<p class="cap">Figure 1 &mdash; Layered architecture. Each layer depends only on the layers below it; the arrow is the only permitted direction.</p>
+<table>
+<tr><th width="24%">Layer</th><th width="26%">May depend on</th><th>Must never</th></tr>
+<tr><td>1 &nbsp;Identity boundary</td><td>Data boundary only</td><td>Render product screens, or hold a token</td></tr>
+<tr><td>2 &nbsp;Persistent shell</td><td>Identity, primitives, tokens, data</td><td>Import or name an individual route module</td></tr>
+<tr><td>3 &nbsp;Route modules</td><td>Primitives, tokens, data, identity (read-only)</td><td>Import another route module, or reach into the shell</td></tr>
+<tr><td>4 &nbsp;Shared primitives</td><td>Tokens only</td><td>Fetch data, read identity, or know a domain concept</td></tr>
+<tr><td>5 &nbsp;Tokens &amp; theming</td><td>Nothing</td><td>Be overridden by a page or component stylesheet</td></tr>
+<tr><td>6 &nbsp;Data boundary</td><td>Nothing in the UI</td><td>Render anything, or trust a client-supplied tenant</td></tr>
+</table>
+<div class="rule"><b>The load-bearing rule.</b> A primitive that reads the session or fetches data cannot be reused, cannot be tested in isolation, and cannot be rendered in a bundle that lacks that service. Data enters through props, always.</div>
+
+<h2>4. Routes</h2>
+<table>
+<tr><th width="26%">Route</th><th width="16%">Page</th><th width="10%">Capability</th><th>Notes</th></tr>
+<tr><td class="mono">/login</td><td>SSO login</td><td>&mdash;</td><td>A single <b>Continue with SSO</b> action &mdash; no email field, no credentials. Carries <span class="mono">?next=</span> so the requested URL survives the round trip</td></tr>
+<tr><td class="mono">/home</td><td>Home dashboard</td><td>any</td><td>Welcome, four metric cards, My Workflows, Recent Executions. Composed from whichever capabilities the deployment contains</td></tr>
+<tr><td class="mono">/workflows</td><td>Workflows inventory</td><td>monitor / build</td><td>Tenant metrics, <b>+ Workflow</b> (permission-gated), search and filters, infinite scroll. Read-only under monitor alone</td></tr>
+<tr><td class="mono">/workflows/{workflowId}</td><td>BPMN view</td><td>monitor / build</td><td>Status / Version / Executions / Avg-duration metrics, workflow canvas plus node inspector</td></tr>
+<tr><td class="mono">/workflows/{workflowId}/graphs/{graphId}</td><td>Graph (DAG) view</td><td>monitor / build</td><td>No workflow metric cards; zoom / fit / center / validate; breadcrumbs preserve the workflow context</td></tr>
+<tr><td class="mono">/rules &middot; /rules/{ruleId}</td><td>Rules inventory / detail</td><td>build</td><td>Detail: definition in monospace in the main pane, properties in the right pane</td></tr>
+<tr><td class="mono">/executions</td><td>Executions inventory</td><td>monitor</td><td>Default last 7 days, start-date descending; filters reset scroll position; virtualised with live updates</td></tr>
+<tr><td class="mono">/executions/{executionId}</td><td>Execution trace</td><td>monitor</td><td>Historical BPMN with path overlay, Stop / Restart. A separate route, never a panel over the list</td></tr>
+<tr><td class="mono">/alerts</td><td>Alerts inventory</td><td>monitor</td><td>Status and range filters; acknowledgement is permission-gated</td></tr>
+<tr><td class="mono">/tasks &middot; /tasks/{taskId}</td><td>Worklist / task decision</td><td>tasks</td><td>Detail follows the Approval pattern: request, evidence, notes, decision last. <i>In design &mdash; &sect;13.4</i></td></tr>
+<tr><td class="mono">/docs/{slug}</td><td>Documentation</td><td>docs</td><td>Prose measure capped; no metric cards</td></tr>
+<tr><td class="mono">/unavailable</td><td>Not in this deployment</td><td>&mdash;</td><td>Where a route absent from this build lands, carrying <span class="mono">?path=</span></td></tr>
+</table>
+<table>
+<tr><th width="26%">URL state, per route</th><th>Held in the address bar</th></tr>
+<tr><td>Inventories</td><td><span class="mono">q</span>, <span class="mono">status</span>, <span class="mono">range</span>, <span class="mono">sort</span>, and <span class="mono">workflowId</span> where the list is scoped</td></tr>
+<tr><td>Workflow detail</td><td><span class="mono">tab</span>, <span class="mono">version</span>, <span class="mono">node</span></td></tr>
+<tr><td>Canvas and trace</td><td><span class="mono">node</span> &mdash; zoom and pan are deliberately <b>not</b> in the URL; they are viewport, not state worth sharing</td></tr>
+</table>
+
+<h3>4.1 Shell anatomy</h3>
+<table class="dg">
+<tr><td class="boxa" colspan="3" align="center"><span class="dgh">TopBar</span> &mdash; tenant &middot; global search &middot; profile (appearance menu) &nbsp;<span class="dgs">56 px</span></td></tr>
+<tr>
+<td class="boxa" width="22%" rowspan="2" align="center" style="vertical-align:top"><span class="dgh">Sidebar</span><br><span class="dgs">232 px / 64 px collapsed</span><br><br>Home<br><br><span class="dgh">Build</span><br>Workflows<br>Rules<br><br><span class="dgh">Monitor</span><br>Executions<br>Alerts<br><br><span class="dgh">Work</span><br>Tasks<br><br><span class="dgh">Reference</span><br>Documentation</td>
+<td class="box" colspan="2"><span class="dgs">Breadcrumbs (hierarchical pages)</span></td>
+</tr>
+<tr>
+<td class="box" width="45%" align="center" height="130" style="vertical-align:top"><span class="dgh">Route content</span><br><span class="dgs">(scrolls &mdash; the only scrolling area)</span><br><br><span class="dgs">metrics &middot; toolbars &middot; tables &middot; canvas</span></td>
+<td class="boxs" width="33%" align="center" style="vertical-align:top"><span class="dgh">NodeInspector</span><br><span class="dgs">300 px</span><br><br><span class="dgs">canvas pages only &mdash; docked beside the canvas, never over it</span></td>
+</tr>
+</table>
+<p class="cap">Figure 2 &mdash; Shell anatomy. Frame maximum 1340 px, centred; the sidebar collapses to a 64 px icon rail below 1000 px. Nav groups render only if they have visible children, and the group header is dropped when only one group survives &mdash; so a monitoring bundle reads as a deliberate product rather than a stripped one.</p>
+
+<h3>4.2 Navigation flow</h3>
+<table class="dg" style="font-size:8pt">
+<tr>
+<td class="boxa" width="17%" align="center"><span class="dgh">Login</span><br><span class="dgs">SSO</span></td>
+<td class="arw" width="4%">&#9654;</td>
+<td class="boxa" width="17%" align="center"><span class="dgh">Home</span><br><span class="dgs">dashboard</span></td>
+<td class="arw" width="4%">&#9654;</td>
+<td class="box" width="17%" align="center"><span class="dgh">Workflows</span><br><span class="dgs">inventory</span></td>
+<td class="arw" width="4%">&#9654;</td>
+<td class="box" width="18%" align="center"><span class="dgh">BPMN view</span><br><span class="dgs">canvas + inspector</span></td>
+<td class="arw" width="4%">&#9654;</td>
+<td class="box" width="15%" align="center"><span class="dgh">Graph view</span><br><span class="dgs">DAG + validate</span></td>
+</tr>
+</table>
+<table class="dg" style="font-size:8pt">
+<tr>
+<td class="box" width="17%" align="center"><span class="dgh">Executions</span><br><span class="dgs">filters &middot; infinite scroll</span></td>
+<td class="arw" width="4%">&#9654;</td>
+<td class="box" width="24%" align="center"><span class="dgh">Execution trace</span><br><span class="dgs">path overlay on the canvas &middot; Stop / Restart</span></td>
+<td class="plain" width="6%"></td>
+<td class="box" width="15%" align="center"><span class="dgh">Rules</span><br><span class="dgs">inventory</span></td>
+<td class="arw" width="4%">&#9654;</td>
+<td class="box" width="18%" align="center"><span class="dgh">Rule detail</span><br><span class="dgs">definition + properties</span></td>
+</tr>
+</table>
+<table class="dg" style="font-size:8pt">
+<tr>
+<td class="box" width="17%" align="center"><span class="dgh">Tasks</span><br><span class="dgs">worklist</span></td>
+<td class="arw" width="4%">&#9654;</td>
+<td class="box" width="24%" align="center"><span class="dgh">Task decision</span><br><span class="dgs">evidence &middot; notes &middot; decision</span></td>
+<td class="plain" width="6%"></td>
+<td class="box" width="15%" align="center"><span class="dgh">Alerts</span><br><span class="dgs">inventory</span></td>
+<td class="plain" width="4%"></td>
+<td class="box" width="18%" align="center"><span class="dgh">Documentation</span><br><span class="dgs">reference</span></td>
+</tr>
+</table>
+<p class="cap">Figure 3 &mdash; Navigation flow. Home, Workflows, Executions, Rules, Tasks, Alerts and Documentation are reachable from the sidebar at any time; breadcrumbs walk every detail page back to its inventory. Sign-in is the only gate, and the URL a user arrived on is restored after it.</p>
+
+<h2>5. Component inventory</h2>
+<p>The column that matters is the last data column. A component either receives its data or fetches it &mdash; never both, and never sometimes.</p>
+<div class="note"><b>Build status.</b> <span class="mono">InfiniteList</span> is built: virtualised windowed rows, a load-more sentinel and a 1,000-row cap. Named contracts still to implement from the approved inventory: <span class="mono">SearchInput</span>, <span class="mono">FilterBar</span>, <span class="mono">DateRangeFilter</span>, <span class="mono">SortControl</span>, <span class="mono">Chart</span>, <span class="mono">EmptyState</span>, <span class="mono">LoadingState</span>, <span class="mono">ErrorState</span>, <span class="mono">ConfirmationDialog</span>, <span class="mono">Drawer</span>, <span class="mono">Sheet</span>, <span class="mono">GraphNode</span>. <span class="mono">GraphNode</span> is currently <span class="mono">WorkflowNode</span> with <span class="mono">type="java"</span>; dialogs use the system <span class="mono">.dialog</span> classes.</div>
+
+<h3>5.1 Primitives — receive data, own nothing</h3>
+<table>
+<tr><th width="16%">Component</th><th width="27%">Contract (props in / events out)</th><th width="22%">Local state it owns</th><th width="20%">Data it fetches</th><th width="12%">Status</th></tr>
+<tr><td>Button</td><td class="mono">variant, size, disabled, loading, iconLeft, onClick</td><td>None</td><td>None</td><td>Built</td></tr>
+<tr><td>IconButton</td><td class="mono">icon, label (required), onClick</td><td>None</td><td>None</td><td>Built</td></tr>
+<tr><td>Input / TextArea</td><td class="mono">label, value, onChange, error, hint</td><td>None &mdash; controlled</td><td>None</td><td>Built</td></tr>
+<tr><td>Select</td><td class="mono">label, options, value, onChange</td><td>Open state (native)</td><td>None</td><td>Built</td></tr>
+<tr><td>Checkbox / Radio / Toggle</td><td class="mono">label, checked, onChange, indeterminate</td><td>None</td><td>None</td><td>Built</td></tr>
+<tr><td>SearchInput</td><td class="mono">placeholder, value, onChange, onClear</td><td>Debounce timer (250 ms)</td><td>None</td><td><b>To build</b></td></tr>
+<tr><td>FilterBar</td><td class="mono">filters, values, onChange, onClear</td><td>None &mdash; values live in the URL</td><td>None</td><td><b>To build</b></td></tr>
+<tr><td>DateRangeFilter</td><td class="mono">presets, value, onChange</td><td>Custom-range popover open</td><td>None</td><td><b>To build</b></td></tr>
+<tr><td>SortControl</td><td class="mono">options, value, onChange</td><td>None</td><td>None</td><td><b>To build</b></td></tr>
+<tr><td>Tabs</td><td class="mono">tabs, active, onChange</td><td>None &mdash; active tab is in the URL</td><td>None</td><td>Built</td></tr>
+<tr><td>Card / Panel</td><td class="mono">title, actions, children</td><td>None</td><td>None</td><td>Built</td></tr>
+<tr><td>MetricCard</td><td class="mono">kicker, period, value, trend, direction, goodDirection</td><td>None</td><td>None</td><td>Built</td></tr>
+<tr><td>DataTable</td><td class="mono">columns, rows, sort, onSort, onRowClick, density</td><td>Column widths</td><td>None</td><td>Built</td></tr>
+<tr><td>InfiniteList</td><td>Table props + <span class="mono">totalCount, onNeedRange, rowHeight, cap</span></td><td>Scroll offset, rendered window</td><td>None &mdash; it <i>requests</i> ranges; the page fetches</td><td>Built</td></tr>
+<tr><td>Chart</td><td class="mono">series, type, period, formatter</td><td>Hover point</td><td>None</td><td><b>To build</b></td></tr>
+<tr><td>Badge / StatusIndicator</td><td class="mono">status, variant (inline | pill)</td><td>None</td><td>None</td><td>Built</td></tr>
+<tr><td>Tooltip</td><td class="mono">content, children</td><td>Visible, position</td><td>None</td><td>Built</td></tr>
+<tr><td>Alert</td><td class="mono">severity, title, children, action</td><td>Dismissed</td><td>None</td><td>Built</td></tr>
+<tr><td>ConfirmationDialog</td><td class="mono">open, title, consequence, confirmLabel, onConfirm, onClose</td><td>Focus trap, restore target</td><td>None</td><td><b>To build</b></td></tr>
+<tr><td>Drawer / Sheet</td><td class="mono">open, side, title, onClose</td><td>Focus trap, transition</td><td>None</td><td><b>To build</b></td></tr>
+<tr><td>Toast (host)</td><td class="mono">toast(message, severity)</td><td>Queue, timers</td><td>None</td><td>Built</td></tr>
+<tr><td>Breadcrumbs</td><td class="mono">trail: [{label, href}]</td><td>Collapsed middle</td><td>None</td><td>Built</td></tr>
+<tr><td>Disclosure</td><td class="mono">summary, onFirstExpand, children</td><td>Open state</td><td>None &mdash; calls back on first expand</td><td>Built</td></tr>
+<tr><td>LoadingState / EmptyState / ErrorState</td><td class="mono">shape</span> / <span class="mono">title, body, action</span> / <span class="mono">title, onRetry</td><td>None</td><td>None</td><td><b>To build</b></td></tr>
+</table>
+
+<h3>5.2 Domain components</h3>
+<table>
+<tr><th width="17%">Component</th><th width="30%">Contract</th><th width="26%">Local state it owns</th><th>Data it fetches</th></tr>
+<tr><td>Canvas</td><td class="mono">model, overlay?, selectedId, onSelect, onNeedRegion, allowFullscreen</td><td>Zoom, pan offset, full screen, rendered tile set</td><td>Tiles, via <span class="mono">onNeedRegion</span> raised to the page</td></tr>
+<tr><td>WorkflowNode</td><td class="mono">type, name, status?, selected, faded, onClick</td><td>None</td><td>None</td></tr>
+<tr><td>GraphNode</td><td class="mono">type, name, status?, onClick</td><td>None</td><td>None &mdash; today <span class="mono">WorkflowNode type="java"</span></td></tr>
+<tr><td>Gateway</td><td class="mono">kind (exclusive | parallel), label, status?</td><td>None</td><td>None</td></tr>
+<tr><td>Edge</td><td class="mono">points, label?, taken?</td><td>None</td><td>None</td></tr>
+<tr><td>NodeInspector</td><td class="mono">node, mode (view | execution), actions</td><td>Which sections are expanded</td><td>Input/output payload on first expand only</td></tr>
+<tr><td>StepStrip</td><td class="mono">steps, activeId</td><td>Horizontal scroll</td><td>None</td></tr>
+<tr><td>RunSummary</td><td class="mono">execution, actions</td><td>None</td><td>None</td></tr>
+<tr><td>Timeline</td><td class="mono">entries</td><td>Expanded entry</td><td>Older pages on demand</td></tr>
+<tr><td>EvidenceCard</td><td class="mono">items, onDecision</td><td>None</td><td>None</td></tr>
+<tr><td>VersionRow</td><td class="mono">version, status, metrics?, onOpen</td><td>None</td><td>None</td></tr>
+</table>
+
+<h3>5.3 Pages — the only layer that fetches</h3>
+<table>
+<tr><th width="20%">Page</th><th width="18%">Pattern</th><th width="30%">Fetches</th><th>Owns</th></tr>
+<tr><td>LoginPage</td><td>Centred card</td><td>Nothing &mdash; hands off to the identity provider</td><td>In-flight state</td></tr>
+<tr><td>HomePage</td><td>Overview</td><td>Summary, recent workflows, recent executions</td><td>Nothing &mdash; read-only screen</td></tr>
+<tr><td>WorkflowsPage</td><td>List</td><td>Workflow inventory (cursor), tenant metrics</td><td>Query, filters, sort &mdash; mirrored to the URL</td></tr>
+<tr><td>WorkflowDetailPage</td><td>Detail + Canvas</td><td>Workflow, diagram, node detail</td><td>Active tab, selected node, version</td></tr>
+<tr><td>GraphPage</td><td>Canvas</td><td>Graph model, validation result</td><td>Selected node, drill-in depth</td></tr>
+<tr><td>RulesPage / RuleDetailPage</td><td>List / Detail</td><td>Rule inventory, rule definition</td><td>Query; active tab</td></tr>
+<tr><td>ExecutionsPage</td><td>List (virtualised)</td><td>Executions by range, metrics, live increments</td><td>Filters, date range, loaded window</td></tr>
+<tr><td>TracePage</td><td>Canvas</td><td>Trace with overlay, node execution on demand</td><td>Selected node, expanded payloads</td></tr>
+<tr><td>AlertsPage</td><td>List</td><td>Alerts (cursor)</td><td>Filters, acknowledgement in flight</td></tr>
+<tr><td>TasksPage / TaskDetailPage</td><td>List / Approval</td><td>Task inventory, task detail</td><td>Filters; decision form state <i>(in design)</i></td></tr>
+<tr><td>DocsPage</td><td>Detail</td><td>Document by slug</td><td>Scroll position</td></tr>
+</table>
+<div class="note"><b>Why fetching lives only in pages.</b> A component that fetches its own data fetches again everywhere it appears, cannot be tested without a network stub, and produces a screen whose request count nobody can predict. A page issues a known set of requests, and every component below it is a pure function of what came back.</div>
+
+<h2>6. Design tokens and the theming pipeline</h2>
+<table>
+<tr><th width="26%">Token group</th><th>Contents</th></tr>
+<tr><td>Colour roles</td><td>Accent and neutral with 100&ndash;900 ramps; surface, raised, line, text, text-muted</td></tr>
+<tr><td>Semantic status</td><td>success, warning, danger, inactive &mdash; each with a tint. <b>Fixed through every theme</b> (ADR-018)</td></tr>
+<tr><td>Type</td><td>Six sizes (11 / 13 / 14.5 / 16.5 / 22 / 29), weights, tracking, local-only font stacks</td></tr>
+<tr><td>Spacing / radius / elevation</td><td>4 / 8 / 12 / 16 / 24 / 32 &middot; 6 / 8 / 12 / pill &middot; three elevation levels</td></tr>
+<tr><td>Shell layout</td><td>topbar 56, sidebar 232, collapsed 64, inspector 300, frame max 1340</td></tr>
+<tr><td>Motion</td><td>90 / 160 / 240 ms; all collapse to 0 under reduced-motion</td></tr>
+</table>
+<table class="dg">
+<tr><td class="lyrname" width="24%">1 &nbsp; PREFERENCE</td><td class="lyr">User picks System / Light / Dark in the profile menu; stored per device</td></tr>
+<tr><td class="arw" colspan="2">&#9660;</td></tr>
+<tr><td class="lyrname">2 &nbsp; REMAP</td><td class="lyr">The theme sets a data attribute on <span class="mono">:root</span>; token <i>values</i> change &mdash; surface, raised, line, text</td></tr>
+<tr><td class="arw" colspan="2">&#9660;</td></tr>
+<tr><td class="lyrname">3 &nbsp; INHERIT</td><td class="lyr">Every component reads <span class="mono">var(--*)</span>, so nothing has a dark variant of its own and no React render occurs</td></tr>
+<tr><td class="arw" colspan="2">&#9660;</td></tr>
+<tr><td class="lyrname">4 &nbsp; FIXED</td><td class="lyr">Semantic status colours are excluded from the remap &mdash; a failed run is red in every theme</td></tr>
+</table>
+<p class="cap">Figure 4 &mdash; Theming pipeline. A theme change is a CSS custom-property swap, not a component concern.</p>
+
+<h2>7. Interaction and colour language</h2>
+<ul>
+<li><b>The accent (indigo #4a5ac9) is the interactive colour</b>: primary buttons, links, breadcrumbs, selection, the 2 px <span class="mono">focus-visible</span> ring, and active navigation (accent-700 label on accent-100 background).</li>
+<li><b>Trends</b>: colour shows business effect (green positive, red negative); the arrow shows only direction &mdash; a lower duration is a green down-arrow.</li>
+<li><b>Charts</b>: single series in accent blue; multi-series uses an accessible categorical palette with labels and legends, never colour alone.</li>
+<li><b>Trace overlay</b>: traversed edges black, non-traversed light grey; nodes green / amber / red with glyph and label; non-executed nodes grey, dimmed and non-interactive.</li>
+<li><b>Selection</b> is an outline plus a tint, never a fill change that would compete with status colour.</li>
+</ul>
+
+<h2>8. Responsive behaviour</h2>
+<table>
+<tr><th width="18%">Breakpoint</th><th width="24%">Layout</th><th>Behaviour</th></tr>
+<tr><td>Desktop, 1000 px +</td><td>Sidebar + content + inspector</td><td>The designed experience</td></tr>
+<tr><td>Tablet, 768&ndash;999 px</td><td>64 px icon rail + content</td><td>Metric cards to two columns; the inspector moves below the canvas</td></tr>
+<tr><td>Mobile, under 768 px</td><td>Menu + single column</td><td>Navigation behind a menu; tables scroll horizontally with the first column pinned</td></tr>
+</table>
+<div class="rule"><b>NFR-RESP-006.</b> BPMN and DAG canvases always stay scrollable and zoomable; nodes are never compressed to fit. Canvas-heavy screens are a declared desktop and tablet experience &mdash; on a phone they open read-only with a note pointing to a larger screen.</div>
+
+<h2>9. Accessibility</h2>
+<p>Target WCAG 2.2 AA (NFR-A11Y-001&hellip;007): semantic HTML controls; complete keyboard operation with a visible focus ring that is never removed; status never by colour alone &mdash; glyph plus text everywhere; accessible names on every icon-only control; interactive canvas nodes represented as real <span class="mono">&lt;button&gt;</span> elements in a navigable DOM order; focus trapped in dialogs and the full-screen canvas and returned to the invoking control on close; 13 px minimum interface text; 44 px touch targets; and all motion collapsing to zero under reduced-motion.</p>
+
+<h2>10. Application states, per region</h2>
+<p>Each region resolves its own state independently, so one slow or failing source never blanks a screen.</p>
+<table>
+<tr><th width="20%">Region</th><th width="20%">Loading</th><th width="20%">Empty</th><th>Error</th></tr>
+<tr><td>Metric cards</td><td>Skeleton in card shape</td><td>Dash with the period label</td><td>&ldquo;Figures unavailable&rdquo; in place; the rest of the page renders</td></tr>
+<tr><td>Table</td><td>8 skeleton rows</td><td>Empty state with the creating action</td><td>Inline error with Try again; filters stay usable</td></tr>
+<tr><td>Filtered table</td><td>Rows dim, header stays</td><td>&ldquo;Nothing matches&hellip;&rdquo; with what search accepts</td><td>As above</td></tr>
+<tr><td>Canvas</td><td>Skeleton stage at the right height</td><td>&ldquo;This version has no diagram&rdquo;</td><td>Contained to the canvas; header and cards survive</td></tr>
+<tr><td>NodeInspector</td><td>Skeleton rows</td><td>&ldquo;Select a step to see its details&rdquo;</td><td>Inline, with retry</td></tr>
+<tr><td>Whole page</td><td>Page skeleton</td><td>&mdash;</td><td>Route error boundary with Try again; shell stays alive</td></tr>
+<tr><td>Whole app</td><td>Sign-in or splash</td><td>&mdash;</td><td>Shell boundary offering reload</td></tr>
+</table>
+<p><b>Permission denied</b> and <b>offline</b> are handled at the shell: the first as a full-region message naming who to ask, the second as a persistent banner that pauses live updates while leaving loaded content readable.</p>
+
+<h2>11. React implementation blueprint</h2>
+<p>This section names the concrete React artefacts the build creates &mdash; components, hooks, routes, contexts and state transitions &mdash; so estimates and pull requests can reference them directly. Paths follow the handoff project (<span class="mono">templates/react-ts-handoff/</span>).</p>
+
+<h3>11.1 Component tree</h3>
+<pre class="t">&lt;App&gt;
+  &lt;QueryClientProvider&gt;
+    &lt;UserProvider&gt;                identity, roles, permissions, tenants
+      &lt;TenantProvider&gt;            active tenant — in every query key
+        &lt;AppearanceProvider&gt;      theme → CSS custom properties on :root
+          &lt;CapabilityProvider&gt;    what this build contains (§13)
+            &lt;BrowserRouter&gt;
+              &lt;ProtectedRoute&gt;    401 → LoginPage, remembering ?next=
+                &lt;AppShell&gt;        Sidebar · TopBar · Breadcrumbs — never remounts
+                  &lt;ErrorBoundary&gt;      one per route module
+                    &lt;Suspense fallback={&lt;LoadingState/&gt;}&gt;
+                      &lt;Outlet /&gt;   the lazy page module</pre>
+<div class="rule"><b>Rule.</b> Pages import primitives and hooks only &mdash; they never fetch directly and never define visual styles (NFR-REACT-004).</div>
+
+<h3>11.2 Hooks</h3>
+<table>
+<tr><th width="26%">Hook</th><th width="30%">Returns</th><th>Notes</th></tr>
+<tr><td class="mono">useUser()</td><td><span class="mono">{ user, roles, can(action) }</span></td><td>Permission checks are declarative &mdash; never role names in a component</td></tr>
+<tr><td class="mono">useTenant()</td><td><span class="mono">{ tenant, tenants, setTenant }</span></td><td>Switching clears the query cache; a tenant user gets a static label, not a switcher</td></tr>
+<tr><td class="mono">useCapability(id)</td><td><span class="mono">boolean</span></td><td>Is this capability present in the build (&sect;13.3)</td></tr>
+<tr><td class="mono">useWorkflows(params)</td><td>Paged inventory</td><td>Cursor pagination; tenant in the key</td></tr>
+<tr><td class="mono">useWorkflow(id) / useDiagram(id, version, bbox?)</td><td>Detail, drawable model</td><td>Diagram key is the immutable (workflow, version) pair</td></tr>
+<tr><td class="mono">useExecutions(filters)</td><td>Infinite query</td><td>1,000-row cap; filter change resets pages</td></tr>
+<tr><td class="mono">useTrace(id) / useNode(nodeId)</td><td>Run + overlay, node rows</td><td>I/O bodies fetched only on expand</td></tr>
+<tr><td class="mono">useCanvasViewport()</td><td><span class="mono">{ zoom, setZoom, fit, center, fullscreen }</span></td><td>Local to one canvas instance; never lifted, never in context</td></tr>
+<tr><td class="mono">useStopExecution() / useRestartFrom()</td><td>Mutations</td><td>Confirmation first; optimistic status, then navigate</td></tr>
+</table>
+<p>Data hooks wrap a query layer (TanStack Query recommended: caching, invalidation, retries). Today they resolve from <span class="mono">fixtures.ts</span> adapters; swapping in real APIs changes only the adapter (FR-MOCK-003).</p>
+
+<h3>11.3 Routes (React Router v6, all lazy)</h3>
+<p>The route table in &sect;4 maps one-to-one onto lazy route modules. Every page module sits behind <span class="mono">React.lazy</span> with a route-level <span class="mono">&lt;Suspense&gt;</span>; the canvas bundle splits separately so it loads only for BPMN, graph and trace routes.</p>
+
+<h3>11.4 State — what lives where, and what changes it</h3>
+<table>
+<tr><th width="18%">Location</th><th width="34%">Holds</th><th>Changed by</th></tr>
+<tr><td><b>URL</b></td><td>Route, object id, tab, selected node, filters, range, sort, tenant</td><td>Navigation and <span class="mono">setSearchParams</span> &mdash; the single source of truth for anything shareable</td></tr>
+<tr><td><b>Server cache</b></td><td>Responses keyed by resource + tenant</td><td>Fetches, mutations, tenant switch (clears wholesale)</td></tr>
+<tr><td><b>UserProvider</b></td><td>Identity, roles, permissions, tenants</td><td>Sign-in, session refresh</td></tr>
+<tr><td><b>TenantProvider</b></td><td>Active tenant</td><td>TenantToggle &mdash; a server call, not a client filter</td></tr>
+<tr><td><b>AppearanceProvider</b></td><td>Theme preference</td><td>Profile menu; applied as CSS custom properties</td></tr>
+<tr><td><b>Page state</b></td><td>In-flight requests, loaded window, pending mutations</td><td>Dies with the page &mdash; nothing to clean up on navigation</td></tr>
+<tr><td><b>Component state</b></td><td>Zoom, pan, full screen, expanded sections, popover open</td><td>The component itself; lifting it would re-render half the screen</td></tr>
+<tr><td><b>Local storage</b></td><td>Theme, sidebar collapsed, table density</td><td>Preferences only &mdash; <b>never</b> tokens, identity or business data</td></tr>
+</table>
+<div class="note"><b>Deliberate choice: no Redux or Zustand at baseline.</b> Server cache, three contexts and URL parameters cover the approved scope. A global store is added only if a future feature demonstrates the need.</div>
+<div class="rule"><b>Nothing sensitive is stored in the browser.</b> The session is an httpOnly cookie the page cannot read; no token, user record or business payload is written to storage. Signing out clears nothing client-side because nothing client-side is worth clearing (NFR-SEC-003).</div>
+
+<h3>11.5 Key state flows</h3>
+<table>
+<tr><th width="20%">Flow</th><th>Sequence</th></tr>
+<tr><td><b>Tenant switch</b></td><td>TenantToggle &rarr; <span class="mono">setTenant</span> &rarr; provider updates &rarr; every query key (all include tenant) goes stale &rarr; active page shows LoadingState &rarr; fresh tenant data renders. The search box clears</td></tr>
+<tr><td><b>Node inspection</b></td><td>Node click &rarr; <span class="mono">setSearchParams({node: id})</span> &rarr; NodeInspector reads the param &rarr; renders config or execution rows &rarr; background click removes the param &rarr; inspector empty state</td></tr>
+<tr><td><b>Restart from node</b></td><td>Inspector Restart &rarr; ConfirmationDialog &rarr; <span class="mono">restartFrom(nodeId)</span> mutation &rarr; optimistic &ldquo;running&rdquo; badge &rarr; on success navigate to the <b>new</b> execution id (linked to the old one) &rarr; trace re-renders</td></tr>
+<tr><td><b>Infinite scroll</b></td><td>Sentinel enters the viewport &rarr; <span class="mono">fetchNextPage</span> &rarr; rows append into the virtualised InfiniteList &mdash; only the visible window (~15 rows plus overscan) exists in the DOM at any scroll depth. A 1,000-row cap shows &ldquo;refine your filters&rdquo; rather than loading forever; changing any filter resets pagination and scrolls to top (FR-EXEC-007)</td></tr>
+<tr><td><b>Session expiry</b></td><td>Any 401 &rarr; unsaved form state warned about &rarr; LoginPage with <span class="mono">?next=</span> the current URL &rarr; after SSO, back to exactly that screen</td></tr>
+</table>
+
+<h3>11.6 Additional React concerns</h3>
+<ul>
+<li><b>Code splitting</b>: every page module behind <span class="mono">React.lazy</span> with a route-level <span class="mono">&lt;Suspense fallback={&lt;LoadingState/&gt;}&gt;</span> (NFR-REACT-006); the canvas bundle splits separately.</li>
+<li><b>Error boundaries</b>: one per route module rendering ErrorState &mdash; the shell stays alive when a page crashes.</li>
+<li><b>Memoisation</b>: node and edge arrays and DataTable rows are memoised; a canvas viewport change must not re-create node components (<span class="mono">React.memo</span> on WorkflowNode and Edge).</li>
+<li><b>Accessibility hooks</b>: focus trap in dialogs and the full-screen canvas; focus returns to the invoking control on close; canvas nodes are real buttons in DOM order.</li>
+<li><b>Testing seams</b>: primitives get RTL component tests against their <span class="mono">.d.ts</span> contracts; pages get interaction tests with mocked hooks; the fixtures layer doubles as MSW seed data later.</li>
+<li><b>Definition of done for a primitive</b>: typed props matching the contract &middot; tokens only &middot; keyboard and focus states &middot; empty / loading / error variants where applicable &middot; RTL tests &middot; a specimen card.</li>
+</ul>
+
+<h2>12. Identity, session and role-based data control</h2>
+<table class="dg">
+<tr><th width="8%">Step</th><th width="30%">Front end (browser)</th><th width="31%">Experience API</th><th>Identity provider</th></tr>
+<tr><td class="boxa" align="center"><b>1</b></td><td class="box">User opens any URL &mdash; the deep link is remembered</td><td class="boxs">&mdash;</td><td class="boxs">&mdash;</td></tr>
+<tr><td class="boxa" align="center"><b>2</b></td><td class="box">Asks who it is &rarr;</td><td class="boxs">&larr; <b>401</b> not signed in</td><td class="boxs">&mdash;</td></tr>
+<tr><td class="boxa" align="center"><b>3</b></td><td class="box">Renders the sign-in card &mdash; one action, <b>Continue with SSO</b><br><span class="dgs">no email field, no password, no token handling</span></td><td class="boxs">&mdash;</td><td class="boxs">&mdash;</td></tr>
+<tr><td class="boxa" align="center"><b>4</b></td><td class="box">Hands off &rarr;</td><td class="box">Builds state and PKCE challenge, redirects &rarr;</td><td class="box">User authenticates (with MFA)</td></tr>
+<tr><td class="boxa" align="center"><b>5</b></td><td class="boxs">&mdash;</td><td class="box">&larr; code, exchanged for tokens &rarr; <span class="dgs">tokens stay server-side, always</span></td><td class="box">&larr; tokens</td></tr>
+<tr><td class="boxa" align="center"><b>6</b></td><td class="box">&larr; redirected to the URL originally requested</td><td class="box">Session created server-side; <b>httpOnly cookie set</b></td><td class="boxs">&mdash;</td></tr>
+<tr><td class="boxa" align="center"><b>7</b></td><td class="box">Reads identity &rarr; shell renders</td><td class="box">&larr; user, roles, permissions, capabilities, tenants</td><td class="boxs">&mdash;</td></tr>
+</table>
+<p class="cap">Figure 5 &mdash; No token ever reaches JavaScript. The front end learns whether it is signed in only by asking, and the deep link survives the round trip.</p>
+<h3>12.1 Three orthogonal gates</h3>
+<table>
+<tr><th width="16%">Gate</th><th width="28%">Question</th><th width="26%">Enforced by</th><th>Effect in the UI</th></tr>
+<tr><td><b>Capability</b></td><td>Is this feature part of this build?</td><td>The build itself &mdash; the package is absent (&sect;13)</td><td>No route exists; the nav group is not rendered</td></tr>
+<tr><td><b>Permission</b></td><td>May this user do this?</td><td>Server, on every request; the UI mirrors it</td><td>Action not rendered; the read stays available</td></tr>
+<tr><td><b>Tenant</b></td><td>Whose data is this?</td><td>Server, from the session &mdash; never a client parameter</td><td>The user cannot express a request for another tenant</td></tr>
+</table>
+<pre class="t">// Pages ask; primitives never do.
+const { can } = useUser();
+const hasBuild = useCapability('build');
+
+&lt;PageHeader title={workflow.name} actions={[
+  hasBuild &amp;&amp; can('workflow.publish') &amp;&amp; &lt;Button&gt;Publish version {v}&lt;/Button&gt;,
+  can('workflow.validate') &amp;&amp; &lt;Button variant="secondary"&gt;Check for problems&lt;/Button&gt;,
+]} /&gt;
+
+&lt;Canvas model={diagram} readOnly={!hasBuild} /&gt;   // told its mode, never asks who the user is</pre>
+<table>
+<tr><th width="26%">Rule</th><th>Reason</th></tr>
+<tr><td>The server filters; the UI mirrors</td><td>The list a user receives already excludes what they may not see. The UI is a view of an already-correct response, not a filter</td></tr>
+<tr><td>Redaction before serialisation</td><td>A field a role may not see is never sent, so it cannot leak through a developer tool or a cached response</td></tr>
+<tr><td>Absent, not disabled</td><td>An action the user cannot perform is not rendered. Greyed-out controls advertise what is unavailable</td></tr>
+<tr><td>Tenant in every cache key</td><td>A cached response cannot be served across a tenant switch, even by mistake</td></tr>
+</table>
+
+<h2>13. Capability module structure</h2>
+<p>The UI is one repository whose routes are partitioned into capability packages, so a deployment can be built containing only the capabilities it is entitled to (ADR-033/035). <b>Capability is decided at build time; tenant identity is applied at deploy time. Those two must never swap places.</b></p>
+
+<h3>13.1 Folder structure</h3>
+<pre class="t">visualization-ui/
+  packages/
+    core/                        # always shipped — the only package that knows about "the app"
+      src/app/                   # App · AppRoutes · ProtectedRoute · CapabilityGate
+      src/shell/                 # AppShell · Sidebar · TopBar · Breadcrumbs · PageHeader
+      src/primitives/            # the design-system components (§5)
+      src/context/               # UserProvider · TenantProvider · AppearanceProvider
+                                 #   · CapabilityProvider
+      src/registry/              # RouteRegistry · NavRegistry — capabilities register INTO these
+      src/query/                 # query client, cache policy, error normalisation
+      src/styles/styles.css      # the token stylesheet
+                                 # core MUST NOT import from any capability package
+    capability-monitor/          # executions, trace, alerts, monitoring overview,
+                                 #   read-only workflow + graph views
+    capability-build/            # workflow authoring, rules, validate, publish
+    capability-tasks/            # task inventory and task detail (in design — §13.4)
+    capability-docs/             # documentation surfaces
+    capability-operate/          # stop / restart / intervene actions inside trace
+  apps/
+    app-monitor/ app-build/ app-tasks/ app-docs/ app-full/
+                                 # composition roots — imports and a Vite config, no UI code
+  tenants/
+    &lt;tenant&gt;/deployment.json     # bundle, domain, region, idp — written by onboarding
+    &lt;tenant&gt;/branding.json       # accent token, product name, logo asset ref
+    &lt;tenant&gt;/overrides.json      # labels, column defaults, in-capability toggles
+    &lt;tenant&gt;/infra/              # CDK parameters for their account
+  ds-base/                       # design-system loader shared by all apps</pre>
+<p>A capability package owns its routes, its pages, its hooks and its API client. It may import from core; it may <b>not</b> import from another capability package. Cross-capability needs are expressed as a contribution to a core registry, never as a direct dependency &mdash; which is what lets any subset compile.</p>
+
+<h3>13.2 How a capability registers</h3>
+<p>Each package exports one manifest. The composition root imports the manifests it wants; nothing else in the app enumerates capabilities.</p>
+<pre class="t">// packages/capability-monitor/src/manifest.ts
+export const monitorCapability: CapabilityManifest = {
+  id: 'monitor',
+  nav: [{ group: 'Monitor', items: [
+    { to: '/executions', label: 'Executions', icon: 'activity' },
+    { to: '/alerts',     label: 'Alerts',     icon: 'bell', badge: 'alertCount' },
+  ]}],
+  routes: [
+    { path: '/executions',     element: lazy(() =&gt; import('./pages/ExecutionsPage')) },
+    { path: '/executions/:id', element: lazy(() =&gt; import('./pages/TracePage')) },
+    { path: '/alerts',         element: lazy(() =&gt; import('./pages/AlertsPage')) },
+  ],
+  landing: '/executions',        // candidate landing route, priority-ordered in core
+};
+
+// apps/app-monitor/src/main.tsx — the ENTIRE difference between bundles
+bootstrap([coreCapability, monitorCapability, operateCapability]);</pre>
+<p>Three consequences follow, and they are the point of the design. The bundler tree-shakes every capability not imported by the composition root, so <b>authoring code is absent from the build output, not merely lazy</b> (ADR-038). Core contains no list of capability ids, so reading core discloses nothing about what else exists. And nav, routes and landing route all derive from the same manifests, so they cannot drift out of step.</p>
+
+<h3>13.3 CapabilityGate — and what it is not</h3>
+<p><span class="mono">useCapability('build')</span> answers whether a capability is present in this build, and <span class="mono">&lt;CapabilityGate cap="build"&gt;</span> renders children only if it is. Its legitimate use is <b>cross-capability links</b>: a trace page in the full bundle links to the workflow editor, and in a monitoring bundle renders the workflow name as plain text.</p>
+<p>It is <b>not</b> an authorisation mechanism and not a way to hide routes &mdash; an absent capability has no route to hide, and permission checks remain <span class="mono">useUser().can(action)</span> as before. Two orthogonal questions: capability asks &ldquo;is this feature in this deployment&rdquo;, permission asks &ldquo;may this person use it&rdquo;.</p>
+
+<h3>13.4 Tasks (in design)</h3>
+<p>Tasks is a first-class capability package within the Experience UI, not a section of another capability. It is scaffolded now &mdash; package, manifest, nav group, inventory route and detail route &mdash; against the Inventory page pattern, so the shape is fixed while the content is designed. It ships in the <span class="mono">tasks</span> and <span class="mono">full</span> bundles only; the monitoring bundle does not contain it. <b>Nothing else in the codebase changes when its design lands, which is the test that the module boundary is correct.</b></p>
+
+<h2>14. Browser memory and component interaction</h2>
+<p>This section is the part of the architecture that keeps a long-lived internal tool from degrading over a working day: what is allowed to accumulate in the tab, what evicts it, and how components exchange state without re-rendering each other unnecessarily.</p>
+
+<h3>14.1 The four memory pools</h3>
+<table>
+<tr><th width="20%">Pool</th><th width="20%">Bound</th><th width="26%">Evicted by</th><th>Notes</th></tr>
+<tr><td>Rendered DOM</td><td>~30 rows &middot; visible tiles</td><td>Continuously, as the window moves</td><td>Constant at any scroll depth</td></tr>
+<tr><td>Server cache</td><td>Page window &middot; 2 diagrams</td><td>Window trim, LRU, tenant switch</td><td>Keyed by resource + tenant</td></tr>
+<tr><td>Canvas tiles</td><td>2&times; viewport</td><td>LRU on crossing a boundary</td><td>Nodes in dropped tiles go with them</td></tr>
+<tr><td>Subscriptions</td><td>One set per mounted page</td><td>Unmount cleanup, tab hidden</td><td>Observers, listeners, timers, live streams</td></tr>
+</table>
+<div class="rule"><b>The invariant behind all four:</b> memory is a function of what is on screen, not of how long the tab has been open or how deep the user has scrolled. Anything that violates that is a defect, not a tuning opportunity.</div>
+
+<h3>14.2 Virtualised inventory — memory over a long scroll</h3>
+<table class="dg">
+<tr><th width="28%">Scroll depth</th><th width="14%">0 rows</th><th width="14%">200 rows</th><th width="14%">800 rows</th><th>1,000 rows (cap)</th></tr>
+<tr><td class="boxa">DOM rows</td><td class="box" align="center">30</td><td class="box" align="center">30</td><td class="box" align="center">30</td><td class="box" align="center">30 &nbsp;<span class="dgs">constant</span></td></tr>
+<tr><td class="boxa">Cached pages</td><td class="box" align="center">1</td><td class="box" align="center">4</td><td class="box" align="center">10</td><td class="box" align="center">10 &nbsp;<span class="dgs">window trims oldest</span></td></tr>
+<tr><td class="boxa">Detached listeners</td><td class="box" align="center">0</td><td class="box" align="center">0</td><td class="box" align="center">0</td><td class="box" align="center">0 &nbsp;<span class="dgs">observers unbind on unmount</span></td></tr>
+</table>
+<table class="dg">
+<tr><td class="lyrname" width="24%">FIRST PAGE</td><td class="lyr">Page one plus skeletons</td></tr>
+<tr><td class="arw" colspan="2">&#9660;</td></tr>
+<tr><td class="lyrname">SENTINEL</td><td class="lyr">Sentinel enters the viewport &rarr; <span class="mono">fetchNextPage(cursor)</span></td></tr>
+<tr><td class="arw" colspan="2">&#9660;</td></tr>
+<tr><td class="lyrname">TRIM</td><td class="lyr">Pages older than the window are dropped; scrolling back re-fetches from the cursor</td></tr>
+<tr><td class="arw" colspan="2">&#9660;</td></tr>
+<tr><td class="lyrname">CAP</td><td class="lyr">A cap notice replaces the sentinel: &ldquo;1,000 rows loaded &mdash; narrow your filter&rdquo;</td></tr>
+<tr><td class="arw" colspan="2">&#9660;</td></tr>
+<tr><td class="lyrname">FILTER CHANGE</td><td class="lyr">Pages reset to one, scroll to top, cursor discarded, in-flight request aborted</td></tr>
+</table>
+<p class="cap">Figure 6 &mdash; The list is bounded in three independent ways: DOM by windowing, cache by page trimming, and total load by the 1,000-row cap. A filter change is a reset, never a merge.</p>
+
+<h3>14.3 Canvas viewport and tile lifecycle</h3>
+<table class="dg">
+<tr><td class="boxs" colspan="5" align="center"><span class="dgh">Stage (logical)</span> &mdash; <span class="dgs">loaded tiles = viewport &times; 2</span></td></tr>
+<tr>
+<td class="box" width="20%" align="center"><span class="dgs">dropped (LRU)</span></td>
+<td class="boxa" width="20%" align="center">tile [2,1]</td>
+<td class="boxa" width="20%" align="center">tile [3,1]</td>
+<td class="boxa" width="20%" align="center">tile [4,1]</td>
+<td class="box" width="20%" align="center"><span class="dgs">dropped (LRU)</span></td>
+</tr>
+<tr>
+<td class="box" align="center"><span class="dgs">dropped</span></td>
+<td class="boxa" align="center">tile [2,2]</td>
+<td class="box" align="center" bgcolor="#4a5ac9"><font color="#ffffff"><b>VIEWPORT</b><br><span style="font-size:7.5pt">CSS transform: translate + scale<br>zoom and pan cost <b>zero</b> requests<br>and zero node re-renders</span></font></td>
+<td class="boxa" align="center">tile [4,2]</td>
+<td class="box" align="center"><span class="dgs">dropped</span></td>
+</tr>
+<tr>
+<td class="box" align="center"><span class="dgs">dropped</span></td>
+<td class="boxa" align="center">tile [2,3]</td>
+<td class="boxa" align="center">tile [3,3]</td>
+<td class="boxa" align="center">tile [4,3]</td>
+<td class="box" align="center"><span class="dgs">dropped</span></td>
+</tr>
+</table>
+<table>
+<tr><th width="34%">Event</th><th>Behaviour</th></tr>
+<tr><td>Pan crosses a tile boundary</td><td>Request the bbox tile &rarr; append nodes and edges to the diagram store &rarr; drop tiles outside 2&times; viewport (LRU)</td></tr>
+<tr><td>Zoom below 60%</td><td>Hide labels, keep shapes and status &mdash; no data change, no request</td></tr>
+<tr><td>More than ~2,000 nodes</td><td>The experience API returns <span class="mono">lod:"summary"</span>; detail arrives on zoom-in</td></tr>
+<tr><td>Navigate away</td><td>The diagram store keeps the 2 most-recent (workflow, version) entries</td></tr>
+<tr><td>Version changes</td><td>A new key, not an invalidation &mdash; the (workflow, version) key is immutable</td></tr>
+</table>
+<p class="cap">Figure 7 &mdash; Zoom and pan are presentation-only. Only crossing into unloaded space is a network event, which is why a 4,000-node diagram stays interactive.</p>
+
+<h3>14.4 Component interaction — shell, page, canvas, inspector</h3>
+<pre class="t">AppShell  (never remounts on navigation)
+ │  context: user · tenant · appearance · capabilities
+ │
+ ├─ Sidebar ────── nav click ──────▶ router.navigate(path)
+ ├─ TopBar ─────── tenant switch ──▶ TenantProvider.set() ──▶ queryClient.clear()
+ │                                                        └─▶ current route refetches
+ │                 appearance ─────▶ tokens remapped on :root  (NO React re-render)
+ │
+ └─ &lt;Outlet /&gt; ──▶ Page  (lazy, own error boundary)
+                    │
+                    ├─ PageHeader ← props only
+                    ├─ FilterBar ── change ──▶ setSearchParams()  ← URL is the source of truth
+                    │                        └─▶ query key changes → refetch
+                    └─ Canvas  (memoised on { nodes, edges })
+                        │  local: zoom, pan, fullscreen — never lifted, never in context
+                        ├─ WorkflowNode ×N  (memoised per node id)
+                        │   └─ click ──▶ setSearchParams({ node: id })  ← selection in the URL
+                        └─ NodeInspector
+                            └─ reads ?node= ──▶ useNode(id) ──▶ lazy I/O fetch on expand</pre>
+<table>
+<tr><th width="30%">Change</th><th>What re-renders</th></tr>
+<tr><td>Zoom or pan</td><td>One CSS transform on the stage element &mdash; no node re-renders</td></tr>
+<tr><td>Node selection</td><td>The previously and newly selected node only; siblings are memoised by id</td></tr>
+<tr><td>Theme change</td><td>Zero React renders &mdash; CSS custom properties do the work</td></tr>
+<tr><td>Tenant change</td><td>Full data refetch; shell intact; scroll position reset</td></tr>
+</table>
+<p class="cap">Figure 8 &mdash; State flows down through props and context; changes flow up through the router. The URL carries anything a user might bookmark, share or reach with the Back button &mdash; filters, search text and selected node &mdash; which also keeps it out of component state.</p>
+
+<h3>14.5 Leak rules</h3>
+<ul>
+<li><b>Every subscription unbinds on unmount</b> &mdash; IntersectionObserver, ResizeObserver, window listeners, timers. The canvas registers pointer listeners on the stage element, never on <span class="mono">document</span>, so a route change cannot orphan them.</li>
+<li><b>In-flight requests abort</b> on unmount and on filter change (AbortController through the query layer), so a fast-typing user cannot stack ten pending searches.</li>
+<li><b>No unbounded arrays in state.</b> Anything that grows with user activity &mdash; loaded pages, tiles, toasts, recent searches &mdash; has an explicit cap written next to its declaration.</li>
+<li><b>Detached DOM is a bug.</b> Node references held after unmount (a cached ref in a closure, a memo keyed on an element) retain their subtree; refs are cleared in cleanup.</li>
+<li><b>Long-session budget:</b> a tab left open for an eight-hour shift, navigating freely, must stay under ~250 MB heap. Verified by a scripted soak &mdash; navigate, scroll to cap, open three traces, switch tenant, repeat &mdash; comparing heap after forced GC at start and end.</li>
+</ul>
+
+<h3>14.6 Performance budgets</h3>
+<table>
+<tr><th width="34%">Measure</th><th width="18%">Budget</th><th>How it is met</th></tr>
+<tr><td>Shell interactive</td><td>&lt; 1.5 s</td><td>Static delivery from a content network; no fonts to download</td></tr>
+<tr><td>First screen usable</td><td>&lt; 2.5 s</td><td>Capability chunk only; skeletons while data arrives</td></tr>
+<tr><td>Navigation to skeleton</td><td>&lt; 200 ms</td><td>Chunk already loaded or prefetched on hover</td></tr>
+<tr><td>List scroll</td><td>60 fps</td><td>Fixed DOM window, arithmetic offsets, memoised rows</td></tr>
+<tr><td>Canvas zoom and pan</td><td>60 fps</td><td>CSS transform on a single stage; no per-node re-render</td></tr>
+<tr><td>Heap after an eight-hour session</td><td>&lt; ~250 MB, flat</td><td>Bounded pools and eviction throughout; verified by soak</td></tr>
+</table>
+
+<h2>15. Deliverables map</h2>
+<table>
+<tr><th width="34%">Artefact</th><th>Contents</th></tr>
+<tr><td><span class="mono">templates/react-ts-handoff/</span></td><td>Standalone Vite + React + TypeScript project: typed primitives, every approved page, fixtures, token sheet. <span class="mono">npm install &amp;&amp; npm run dev</span></td></tr>
+<tr><td><span class="mono">templates/platform-app/</span></td><td>The working interactive application &mdash; shell wiring, page components, dummy data</td></tr>
+<tr><td><span class="mono">components/platform-*/</span></td><td>Reference implementation plus <span class="mono">.d.ts</span> contract per component, each annotated with the requirement or ADR it satisfies</td></tr>
+<tr><td><span class="mono">styles.css</span></td><td>Every token from the design system; the only file where a raw visual value appears</td></tr>
+<tr><td>Interactive wireframes</td><td>A single self-contained page for reference and stakeholder review (document 2)</td></tr>
+</table>
+<p style="margin-top:12pt;padding-top:7pt;border-top:1pt solid #d2d4db;font-size:8.5pt;color:#5d6068">Companion documents: <b>3 &mdash; UI Design System</b> (every visual value and component usage rule), <b>5 &mdash; Visualization UI &amp; BFF Architecture on AWS</b> (the experience API these pages call, its module structure, and both deployment models), <b>1 &mdash; Architecture Decision Records</b> (the reasoning behind each decision above). Open items: the Tasks module contract (&sect;13.4); whether step-level results are recorded inside an invoked sub-graph; and whether accent is user-selectable in addition to theme &mdash; the design system currently specifies a single fixed accent.</p>
+
+</body></html>

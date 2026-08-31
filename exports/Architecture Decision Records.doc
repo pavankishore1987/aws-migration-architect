@@ -1,0 +1,115 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Decisioning Platform UI — Architecture Decision Records</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:11pt;color:#1d1f20;line-height:1.5}
+h1{font-size:22pt;margin:0 0 4pt}
+h2{font-size:15pt;color:#293373;border-bottom:1pt solid #bfc6f0;padding-bottom:3pt;margin:22pt 0 8pt}
+h3{font-size:12pt;margin:14pt 0 4pt;color:#3a479c}
+p{margin:0 0 8pt}
+.meta{color:#5d5d60;font-size:10pt;margin-bottom:16pt}
+table{border-collapse:collapse;width:100%;margin:6pt 0 12pt;font-size:10pt}
+th{background:#eef0fb;color:#293373;text-align:left;padding:5pt 7pt;border:1pt solid #bfc6f0;font-size:9pt;text-transform:uppercase;letter-spacing:.5pt}
+td{padding:5pt 7pt;border:1pt solid #d4d4d7;vertical-align:top}
+code,.mono{font-family:Consolas,"Courier New",monospace;font-size:9.5pt}
+li{margin-bottom:4pt}
+.callout{border-left:3pt solid #4a5ac9;background:#f5f5f8;padding:8pt 10pt;margin:8pt 0}
+</style></head><body>
+
+<h1>Architecture Decision Records</h1>
+<p class="meta">Decisioning Platform UI · Accepted baseline 2026-08-29 (ADR-001…020) + build-phase decisions (ADR-021…030) + deployment and modularity decisions (ADR-031…038, 2026-08-30) · Status column: A = accepted baseline, B = accepted during build</p>
+
+<h2>Baseline decisions (ADR-001 – 020)</h2>
+<table>
+<tr><th style="width:14%">ADR</th><th style="width:30%">Decision</th><th>Substance</th></tr>
+<tr><td class="mono">001 (A)</td><td>Authenticate through enterprise SSO</td><td>Minimal login, no persona/tenant picker; after auth the app resolves identity, tenants, roles, permissions; UI shows only permitted resources.</td></tr>
+<tr><td class="mono">002 (A)</td><td>Role-based personas</td><td>Tenant business user, tenant engineer, platform engineer, (super-)administrator; users may hold multiple roles; authorization drives navigation, data, actions.</td></tr>
+<tr><td class="mono">003 (A)</td><td>Persistent authenticated shell</td><td>One shell for all views: left nav, top bar, breadcrumbs where hierarchical, content area.</td></tr>
+<tr><td class="mono">004 (A)</td><td>Left navigation by capability</td><td>Build (Workflows, Decisions/graphs, Rules, Data, Connectors, Scripts) · Monitor (Executions, Monitoring, Tasks, Alerts) · Learn (Docs, Examples) · Collapse at bottom; items shown only when permitted.</td></tr>
+<tr><td class="mono">005 (A)</td><td>Persistent top bar</td><td>Tenant context/toggle (label when single, selector when multi, platform context for super-admins), global search scoped to context, compact profile card.</td></tr>
+<tr><td class="mono">006 (A)</td><td>Minimal profile menu</td><td>Appearance only: theme System/Light/Dark + accent Indigo/Blue/Teal/Purple. Semantic colors fixed: green success, amber warning/running, red failure, gray inactive.</td></tr>
+<tr><td class="mono">007 (A)</td><td>Separate workflow inventory/detail</td><td class="mono">/workflows · /workflows/{id} — inventory never shows the BPMN beside the list.</td></tr>
+<tr><td class="mono">008 (A)</td><td>Workflow inventory view</td><td>Tenant metrics (active, executions 7d, success rate 7d, avg duration 7d), Add Workflow, search/filter, cards, infinite scrolling.</td></tr>
+<tr><td class="mono">009 (A)</td><td>Selected workflow view</td><td>Four workflow metrics; BPMN canvas with zoom/fit/center; right node inspector; node click selects, background clears, inspector collapsible.</td></tr>
+<tr><td class="mono">010 (A)</td><td>Explicit workflow step types</td><td>11 types (start/end, choice, DB, API, Java orchestrator, script, rule, human, wait, sub-workflow, graph invocation); type-specific properties; secrets never exposed.</td></tr>
+<tr><td class="mono">011 (A)</td><td>Invoked graph is a separate view</td><td class="mono">Go to Graph → /workflows/{id}/graphs/{graphId} — Java Spring Boot real-time orchestrator DAG.</td></tr>
+<tr><td class="mono">012 (A)</td><td>No workflow metrics on graph view</td><td>Space goes to canvas, controls (+ validate), inspector.</td></tr>
+<tr><td class="mono">013 (A)</td><td>Breadcrumbs for hierarchy</td><td>Clickable trail; last crumb not clickable; browser Back consistent.</td></tr>
+<tr><td class="mono">014 (A)</td><td>List/detail for Rules</td><td class="mono">/rules · /rules/{id} — inventory metrics + search + infinite scroll; detail: definition main pane, properties right pane.</td></tr>
+<tr><td class="mono">015 (A)</td><td>Separate execution inventory/trace</td><td class="mono">/executions · /executions/{id} — default last 7 days, start-date descending; date/status/workflow filters.</td></tr>
+<tr><td class="mono">016 (A)</td><td>Trace overlays historical workflow</td><td>Exact historical version + traversed path: black traversed edges, gray non-traversed; green/amber/red nodes with icon+label; non-executed gray non-interactive; Stop/Restart permission-controlled; restart creates linked execution.</td></tr>
+<tr><td class="mono">017 (A)</td><td>Defer Tasks and Alerts</td><td>Hidden, not disabled; designed later.</td></tr>
+<tr><td class="mono">018 (A)</td><td>Interaction &amp; semantic color language</td><td>One interactive accent for buttons/links/selection/active nav; body text neutral; semantic colors stable across themes; trends colored by business effect, not arrow direction; charts single-series accent, categorical palette with legends for multi-series.</td></tr>
+<tr><td class="mono">019 (A)</td><td>Native system fonts, no downloads</td><td>OS-shipped stacks only (system-ui body, ui-monospace/Consolas mono); no network font calls, no bundled font files.</td></tr>
+<tr><td class="mono">020 (A)</td><td>Design system as React-compatible primitives</td><td>Tokens as CSS custom properties (+ typed access); named primitive inventory; typed props for variants/states; pages compose, never redefine; keyboard + a11y built in.</td></tr>
+</table>
+
+<h2>Build-phase decisions (ADR-021 – 030)</h2>
+
+<h3>ADR-021 (B) — Industry design system carries the platform UI</h3>
+<p>The Industry design system (indigo #4a5ac9 accent, light technical ground, square-cornered blueprint grammar, 100–900 tonal ramps, 0.85× density) is the visual system. Where ADR-018/019 named generic "blue" and font stacks, Industry's tokens are the concrete values. Accent options per ADR-006 map to Indigo #4a5ac9 (default), Blue #4a7ab5, Teal #3f8f8f, Purple #7f5fb5.</p>
+
+<h3>ADR-022 (B) — Vertical diagram orientation with scrollable, full-screen canvas</h3>
+<p>BPMN and DAG flows lay out top-to-bottom. The canvas is a fixed-height scroll container over a larger stage (drag-to-pan, zoom 40–250%); a full-screen mode expands it to the viewport (Esc exits). Nodes are never compressed to fit (NFR-RESP-006).</p>
+
+<h3>ADR-023 (B) — Theme and accent apply by token remap on :root</h3>
+<p>Appearance changes rewrite CSS custom properties on the document root — never per-page overrides. Dark mode swaps ground/ink and every tonal ramp re-derives; accent changes rebuild the accent ramp; semantic bases stay fixed. Preference persists in localStorage — the only data web storage may hold (no tokens, no tenant data).</p>
+
+<h3>ADR-024 (B) — Backend-for-Frontend (experience API)</h3>
+<p>The SPA talks only to a same-origin BFF under <code>/api/v1</code>. The BFF owns the OIDC flow (httpOnly session cookie; tokens never in the browser), aggregates domain services into screen-shaped responses, enforces tenancy server-side, redacts fields by role, and uses cursor pagination (<code>{ items, cursor }</code>) with RFC 7807 errors. One BFF per frontend.</p>
+
+<h3>ADR-025 (B) — BPMN XML parsed server-side</h3>
+<p>Domain services store BPMN 2.0 XML as the versioned source of truth. The BFF parses XML → experience JSON (node types, edges, BPMNDI positions), cached per immutable (workflow, version). Raw XML is available only as a download/export endpoint. Definitions lacking DI layout are auto-laid-out server-side at publish time. The browser never parses XML.</p>
+
+<h3>ADR-026 (B) — Virtualized infinite scroll for inventories</h3>
+<p>Inventories use the InfiniteList primitive: only the visible row window (+overscan) exists in the DOM (constant memory at any depth); a sentinel triggers cursor-based fetchNextPage; loading caps at 1,000 rows with a "refine your filters" prompt; filter changes reset pagination and scroll (FR-EXEC-007). Large diagrams follow the same principle via viewport-tiled fetching and level-of-detail rendering above ~2k nodes.</p>
+
+<h3>ADR-027 (B) — Static cloud deployment</h3>
+<p>The SPA builds to static hashed assets served from CDN/static hosting: immutable 1-year caching for hashed files, no-cache index.html, SPA fallback rewrite, /api/* edge-routed to the BFF (same origin, no CORS). CSP <code>default-src 'self'</code> — no CDN scripts, no font-src needed. One bundle for all environments; version-skew guard prompts reload when a stale client meets a new deploy.</p>
+
+<h3>ADR-028 (B) — Client state placement, no global store at baseline</h3>
+<p>Session/tenant/appearance in React context; server data in a bounded query cache (invalidated on tenant switch); filters, search and selected node in URL search params (deep-linkable, Back-consistent, per ADR-013); canvas viewport and dialogs in local state. No Redux/Zustand until a feature demonstrates the need.</p>
+
+<h3>ADR-029 (B) — Route-level error boundaries and lazy modules</h3>
+<p>Every route module loads via React.lazy behind Suspense; each is wrapped in an error boundary rendering the system ErrorState so a page crash never takes down the shell; the app root has a top-level boundary as last resort. Canvas code splits into its own chunk, loaded only on diagram routes.</p>
+
+<h3>ADR-030 (B) — AWS as the static-cloud target (S3 + CloudFront)</h3>
+<p>Concretizes ADR-027 on AWS: private S3 bucket behind CloudFront with Origin Access Control; <code>/api/*</code> behavior routes to the BFF (API Gateway + Lambda or internal ALB) on the same origin so the httpOnly SSO cookie flows without CORS; custom error responses map S3 403/404 to /index.html (200) for SPA deep links; hashed assets upload with 1-year immutable caching, index.html and config.json with no-cache (pipeline invalidates only those two); environment values live in a runtime config.json, one build artifact for all environments; security headers (CSP default-src 'self', nosniff, frame-ancestors 'none', HSTS) apply via a Response Headers Policy; cookies are forwarded only on the /api/* behavior to keep static cache hit rates full. Setup steps are in the react-ts-handoff README ("Deploy (AWS)").</p>
+
+<h2>Deployment and modularity decisions (ADR-031 – 038)</h2>
+
+<h3>ADR-031 (B) — Two hosting topologies: centralized by default, federated by exception</h3>
+<p>Centralized (one deployment in our account serving many tenants, tenant resolved from the session) is the default and the reference deployment. Federated (the stack cloned into the tenant's own AWS account) is granted per client only on evidence of a hard requirement — data residency, contractual isolation, or a network model that cannot reach our VPC — never as a preference and never as an answer to capacity or performance. A federated deployment has <b>no runtime dependency on us</b>: it pulls a versioned artifact at deploy time and then runs standalone; no license call-home, no telemetry beacon, no remote config fetch. Consequences accepted: federated tenants lag on version, and we are blind during their incidents (diagnosis by log bundle and version report), so the runbook must be self-serve and the API support window contractual.</p>
+
+<h3>ADR-032 (B) — UI and BFF are always co-located in one AWS account</h3>
+<p>The UI (S3 + CloudFront) and the BFF (ALB + Fargate) deploy together into the same account — ours when centralized, the tenant's when federated — and are never split across accounts. They are same-origin by design (one distribution, <code>/*</code> → S3, <code>/api/*</code> → BFF), which is what lets the httpOnly session cookie flow with no CORS and no third-party-cookie exposure. A federated UI calling our centrally hosted BFF would require cross-account CORS and third-party cookies, and would route tenant user traffic through our infrastructure at runtime — defeating the residency and isolation requirements that justified federating. Source repository, CI and the signed artifact registry always remain in our account; they are build-time only.</p>
+
+<h3>ADR-033 (B) — Capability scoping is resolved at build time, not runtime</h3>
+<p>The product is a set of named capabilities (<code>monitor</code>, <code>build</code>, <code>tasks</code>, <code>docs</code>, <code>operate</code>). Every UI route and every BFF controller belongs to exactly one capability module, and a deployment receives an artifact containing only the modules it is entitled to. A runtime switch (<code>BFF_PROFILE</code>, a Spring profile, a <code>capabilities</code> array read at startup) was the earlier design and is <b>rejected</b>: in a federated deployment the tenant owns the host, the environment and the image, so a runtime flag is a configuration convenience and never a control. Configuration continues to describe what is enabled, for the UI's benefit and for auditability; the artifact boundary is the enforcement. Supersedes the runtime-profile portion of ADR-030's deployment notes.</p>
+
+<h3>ADR-034 (B) — Java/Spring Boot BFF as a Gradle multi-module project</h3>
+<p>The BFF is Java + Spring Boot, mirroring the platform backend. Structure: <code>bff-core</code> (session, OIDC resource-server config, tenant scoping, problem+json error model, cache, HTTP clients) plus one jar per capability module (<code>bff-module-monitor</code>, <code>-build</code>, <code>-tasks</code>, <code>-docs</code>, <code>-operate</code>), plus code-free assembly modules (<code>bff-app-*</code>) that declare dependencies and produce boot images. Each module jar carries its own <code>@AutoConfiguration</code> registered in its own <code>AutoConfiguration.imports</code>, so modules register <i>into</i> core and <b>core never imports, names or enumerates a module</b>. <code>@ConditionalOnProperty</code> and <code>@Profile</code> are banned for capability gating (they require the code to be present in order to disable it) and reserved for genuine environment differences. Gradle fails a core→module dependency and an ArchUnit test asserts the import direction. Deployed on ECS Fargate behind an ALB; Lambda is rejected for a JVM with a warm parse cache.</p>
+
+<h3>ADR-035 (B) — A fixed bundle catalogue; onboarding selects, never composes</h3>
+<p>CI builds a fixed matrix of bundles — <code>monitor</code>, <code>build</code>, <code>tasks</code>, <code>docs</code>, <code>full</code> — each producing a UI artifact and a BFF image (<code>ui-monitor</code>/<code>bff-monitor</code>, …) signed, SBOM-published and pinned by immutable digest. Tenant onboarding writes <code>"bundle": "monitor"</code> into <code>deployment.json</code>; it cannot pass an arbitrary module list, because free-form composition yields 2<sup>n</sup> configurations of which only the ordered ones are ever tested. Adding a bundle is a deliberate catalogue change reviewed like any other release artifact. Both the UI manifest and the BFF derive from the same <code>bundle</code> value, so their capability sets cannot disagree.</p>
+
+<h3>ADR-036 (B) — One bundle is one deployed service; split only on traffic evidence</h3>
+<p>Independently buildable does not mean independently deployed. A deployment runs a single BFF service and <code>/api/*</code> routes to it wholesale. Running modules as separate services is possible later but is not free: CloudFront would need a behaviour per path prefix (coupling CDN config to API URL structure), session state would have to move out of process to a signed cookie or shared ElastiCache, and the parsed-diagram cache would be duplicated or externalised — reintroducing the cost the single-service model avoids. Revisit only against real traffic showing divergent scaling or release cadence between modules.</p>
+
+<h3>ADR-037 (B) — Tenant folders are declarative; no tenant-authored frontend code</h3>
+<p>The UI repository mirrors the platform monorepo's tenant-folder model with one deliberate divergence: a tenant folder holds <b>configuration only</b> (<code>deployment.json</code>, <code>branding.json</code>, <code>overrides.json</code>, infra parameters) — never tenant-authored JSX or TSX. Tenant Java runs server-side in an isolated container; tenant frontend code would run in the user's browser inside our origin with the session cookie, which is an XSS vector against the platform and defeats CSP <code>default-src 'self'</code>. Tenant-specific behaviour reaches the UI through registered extension points in core; anything that cannot be expressed declaratively is a product gap closed in <code>packages/</code> behind a flag, not a fork. Corollary: no tenant forks — a federated deployment is a tagged release of <code>main</code> — and nothing tenant-specific is baked at build time, so N tenants collapse to the bundle catalogue's artifacts.</p>
+
+<h3>ADR-038 (B) — Anti-disclosure obligations for federated artifacts</h3>
+<p>Because a federated tenant can read whatever we ship, an artifact must not disclose capabilities it does not carry. Obligations, all CI-enforced: no master capability enum or central registry in core; DTOs live in their owning module (no shared <code>bff-api-dto</code> carrying authoring records); OpenAPI generated per-artifact from present controllers and never checked in whole; Spring Actuator limited to <code>health</code> and <code>info</code> on an unrouted management port (<code>/actuator/mappings</code>, <code>/beans</code>, <code>/env</code>, <code>/conditions</code> otherwise enumerate the whole app); UI authoring chunks excluded from the build output rather than merely lazy-loaded; source maps retained in our registry, not published to tenant buckets; no capability names in error bodies and no "upgrade to unlock" strings. Reach-back is bounded separately: a federated deployment holds exactly one credential — a short-lived, OIDC-federated, ARN-scoped registry pull role covering only its entitled repositories — with no VPC peering, service account or database credential into our plane. Signed images, digest pinning and a startup entitlement check provide detection and contractual evidence, explicitly not prevention.</p>
+
+<h2>Open decisions (unchanged)</h2>
+<ul>
+<li>Business-process inventory and workflow-chain representation</li>
+<li>Workflow and graph authoring / edit-mode behavior</li>
+<li>Decisions, Data, Connectors, Scripts and general Monitoring page structures</li>
+<li>Tasks and Alerts design (future release)</li>
+<li>Live-update strategy for Executions (recommendation on record: "N new executions" refresh pill, not silent prepend)</li>
+<li>Final responsive/mobile behavior beyond the documented breakpoint rules</li>
+</ul>
+
+</body></html>

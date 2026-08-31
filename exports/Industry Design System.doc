@@ -1,0 +1,205 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Industry Design System — Guide</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:11pt;color:#1d1f20;line-height:1.5}
+h1{font-size:22pt;margin:0 0 4pt}
+h2{font-size:15pt;color:#293373;border-bottom:1pt solid #bfc6f0;padding-bottom:3pt;margin:22pt 0 8pt}
+h3{font-size:12pt;margin:14pt 0 4pt}
+p{margin:0 0 8pt}
+.meta{color:#5d5d60;font-size:10pt;margin-bottom:16pt}
+table{border-collapse:collapse;width:100%;margin:6pt 0 12pt;font-size:10pt}
+th{background:#eef0fb;color:#293373;text-align:left;padding:5pt 7pt;border:1pt solid #bfc6f0;font-size:9pt;text-transform:uppercase;letter-spacing:.5pt}
+td{padding:5pt 7pt;border:1pt solid #d4d4d7;vertical-align:top}
+code,.mono{font-family:Consolas,"Courier New",monospace;font-size:9.5pt}
+li{margin-bottom:4pt}
+.callout{border-left:3pt solid #4a5ac9;background:#f5f5f8;padding:8pt 10pt;margin:8pt 0}
+.sw{width:24pt}
+</style></head><body>
+
+<h1>Industry Design System</h1>
+<p class="meta">Guide · Updated August 30, 2026 · Indigo #4a5ac9 on a light technical ground · local-only fonts · framework-agnostic core · §7–13 carry the UI specification layer</p>
+
+<h2>1. What Industry is</h2>
+<p>Industry is a wireframe-styled design system: an indigo accent on a light technical ground, tight condensed-weight headings over a system body face, a modular grid, and cards, figures and buttons framed as blueprint objects — square-cornered, hairline-bordered, with "+" registration marks at the corners. Cards and figures stay transparent line drawings; the primary button is the one solid object on the board. Icons are thin-stroke (Lucide at stroke 1.5). It carries the Decisioning Platform UI: a fixed semantic status vocabulary, canvas primitives for BPMN/DAG views, and a user-selectable theme (System/Light/Dark) and accent (Indigo/Blue/Teal/Purple).</p>
+
+<h2>2. How to consume it</h2>
+<ul>
+<li><b>One stylesheet.</b> Link <code>styles.css</code> from every page. Take every color, font, spacing, radius and shadow from its custom properties (<code>var(--color-*)</code>, <code>var(--font-*)</code>, <code>var(--space-*)</code>, <code>var(--radius-*)</code>, <code>var(--shadow-*)</code>). Never hard-code a hex, font name or px value the tokens already carry.</li>
+<li><b>Plain CSS classes.</b> The component layer (<code>.btn</code>, <code>.input</code>, <code>.table</code>, <code>.card</code>, <code>.tag</code>, <code>.seg</code>, <code>.dialog</code>, <code>.blueprint</code>) is plain CSS on plain HTML — no JavaScript, no build step, usable from any framework or server-rendered page.</li>
+<li><b>Component implementations.</b> React reference components live under <code>components/platform-*/</code> (typed via sibling <code>.d.ts</code> contracts); framework-free custom elements live under <code>vanilla/</code> (light-DOM web components styled by the same classes); a standalone React + TypeScript project ready to run lives at <code>templates/react-ts-handoff/</code>.</li>
+<li><b>Theming.</b> Theme and accent changes remap tokens on <code>:root</code> — never page-level overrides. The remap function ships in both the React TopBar and <code>window.IndustryTheme.apply(theme, accent)</code> in the vanilla layer, and persists the preference.</li>
+</ul>
+<div class="callout"><b>Fonts are local-only.</b> Every named family in the stacks ships with the operating system; the stylesheet downloads nothing and bundles no font files (internal-application constraint). Headings: Helvetica Neue → system-ui at weight 600; body: system-ui stack; mono: ui-monospace → Consolas for rules, JSON, IDs, inputs/outputs.</div>
+
+<h2>3. Color</h2>
+<p>A light ground <code>--color-bg</code> #f2f2f3 with ink <code>--color-text</code> #1d1f20 and one interactive accent <code>--color-accent</code> #4a5ac9. Every role carries a 100–900 tonal ramp on a shared perceptual lightness scale: light steps (100–300) for tinted fills, hovers and subtle borders; 500 as the role's base; deep steps (700–900) for text on tinted fills and pressed states.</p>
+<table>
+<tr><th>Role</th><th>Base</th><th>Usage</th></tr>
+<tr><td>Accent (interactive)</td><td class="mono">#4a5ac9 + 100–900 ramp</td><td>Primary buttons, links, breadcrumbs, selection, focus ring, active nav (700 label on 100 background). User-selectable: Indigo · Blue #4a7ab5 · Teal #3f8f8f · Purple #7f5fb5</td></tr>
+<tr><td>Neutral</td><td class="mono">--color-neutral-100…900</td><td>Chrome, secondary text, borders, table rules</td></tr>
+<tr><td>Success (fixed)</td><td class="mono">#4f8f63 (+100/+800)</td><td>Success, active; green across all themes and accents</td></tr>
+<tr><td>Warning (fixed)</td><td class="mono">#b8892f (+100/+800)</td><td>Running, halted, warning; amber</td></tr>
+<tr><td>Danger (fixed)</td><td class="mono">#b04a44 (+100/+800)</td><td>Failed, error; red</td></tr>
+<tr><td>Inactive (fixed)</td><td class="mono">#98989b (+100/+800)</td><td>Draft, inactive, not-executed; gray</td></tr>
+</table>
+<p>Status is never communicated by color alone — every status pairs its color with a glyph and a text label. Trends color by business effect (green positive, red negative), not by arrow direction. In dark mode the ground/ink swap and every ramp re-derives from them; semantic bases stay fixed.</p>
+
+<h2>4. Type, spacing, elevation</h2>
+<table>
+<tr><th>Token group</th><th>Values</th></tr>
+<tr><td class="mono">--font-heading / --font-body / --font-mono</td><td>OS-shipped stacks only (see §2); headings at weight 600 with tight tracking; body 15px/1.55</td></tr>
+<tr><td class="mono">--space-1…8</td><td>3.4 · 6.8 · 10.2 · 13.6 · 20.4 · 27.2 px (0.85× density baked in)</td></tr>
+<tr><td class="mono">--radius-sm/md/lg</td><td>2 · 4 · 7 px — but framed objects (cards, buttons, inputs, dialogs) render square per the blueprint grammar</td></tr>
+<tr><td class="mono">--shadow-sm/md/lg</td><td>Ink-tinted elevation tuned to the ground; use instead of ad-hoc box-shadows</td></tr>
+<tr><td class="mono">--layout-sidebar/-sidebar-collapsed/-topbar/-inspector</td><td>232 · 64 · 56 · 300 px shell dimensions</td></tr>
+</table>
+
+<h2>5. The blueprint grammar</h2>
+<ul>
+<li>Cards, figures and major sections are wireframe objects: square corners, hairline borders, and four "+" registration marks (<code>.blueprint</code> + four <code>&lt;i class="corner tl/tr/bl/br"&gt;</code> children).</li>
+<li>Cards and figures are transparent line drawings — no surface fill. The solid accent primary button is the one deliberate exception.</li>
+<li>Photographs run through the <code>.duotone</code> wrapper (desaturated, washed in the accent). Icons are Lucide at stroke 1.5 — never thick strokes.</li>
+<li>No decorative color beyond the accent; the deep step may carry a full field (section dividers).</li>
+</ul>
+
+<h2>6. Interaction states</h2>
+<p>All states are themed, never browser defaults: every interactive element gets a hover tint and a pressed state one ramp step past its base; keyboard focus is a 2px accent <code>:focus-visible</code> ring at 2px offset; <code>::selection</code> is an accent tint; disabled controls drop to 45% opacity. These are built into the classes — do not restyle per page.</p>
+
+<h2>7. Type ramp</h2>
+<p>Six sizes, no others. Headings use <code>--font-heading</code> at 600 with tight tracking; body and UI text use <code>--font-body</code>. Line-height tightens as size grows.</p>
+<table>
+<tr><th>Role</th><th>Size / line-height</th><th>Weight, tracking</th><th>Used for</th></tr>
+<tr><td>Display</td><td>28 / 1.2</td><td>600, −0.02em</td><td>Login, empty-state hero — one per screen at most</td></tr>
+<tr><td>Page title</td><td>21 / 1.25</td><td>600, −0.015em</td><td>PageHeader title</td></tr>
+<tr><td>Section</td><td>16 / 1.35</td><td>600, −0.01em</td><td>Card titles, panel headings, tab labels</td></tr>
+<tr><td>Body</td><td>15 / 1.55</td><td>400</td><td>Paragraphs, descriptions, inspector values</td></tr>
+<tr><td>UI / dense</td><td>13 / 1.4</td><td>400–500</td><td>Table cells, nav items, buttons, form labels</td></tr>
+<tr><td>Caption / kicker</td><td>11 / 1.35</td><td>500, +0.08em, uppercase for kickers</td><td>Card kickers, table headers, metadata, timestamps</td></tr>
+</table>
+<p>Numeric columns, IDs, durations and any BPMN identifier use <code>--font-mono</code> with <code>font-variant-numeric: tabular-nums</code> so digits align down a column. Never set a size between ramp steps; if something feels wrong at 13 and 15, the problem is the density or the container, not the type.</p>
+
+<h2>8. Layout and density specification</h2>
+<table>
+<tr><th>Measure</th><th>Value</th><th>Note</th></tr>
+<tr><td>Top bar height</td><td>56 (<span class="mono">--layout-topbar</span>)</td><td>Fixed; never grows with content</td></tr>
+<tr><td>Sidebar width</td><td>232 / 64 collapsed (<span class="mono">--layout-sidebar</span>, <span class="mono">--layout-sidebar-collapsed</span>)</td><td>Collapsed shows icons with tooltips; state persists per user</td></tr>
+<tr><td>Inspector width</td><td>300 (<span class="mono">--layout-inspector</span>)</td><td>Canvas pages only; docked right, not an overlay</td></tr>
+<tr><td>Content padding</td><td><span class="mono">--space-5</span> (20.4) desktop · <span class="mono">--space-4</span> (13.6) below 1024</td><td>The content region is the only scroll container</td></tr>
+<tr><td>PageHeader → toolbar → body</td><td><span class="mono">--space-4</span> between bands</td><td>Consistent across every page pattern</td></tr>
+<tr><td>Card grid gap</td><td><span class="mono">--space-4</span></td><td>Equal cells; the modular grid stays visible</td></tr>
+<tr><td>Table row height</td><td>36 comfortable · 30 compact</td><td>Compact is a user toggle on inventories, persisted; not a per-page decision</td></tr>
+<tr><td>Control height</td><td>32 default · 28 compact · 40 touch</td><td>Buttons, inputs and selects share one height per density</td></tr>
+<tr><td>Minimum hit target</td><td>32×32 pointer · 44×44 touch</td><td>Icon buttons pad to target even when the glyph is 16</td></tr>
+<tr><td>Icon sizes</td><td>16 inline · 20 nav and toolbar · 24 empty states</td><td>Lucide at stroke 1.5 only</td></tr>
+<tr><td>Max text measure</td><td>72ch</td><td>Applies to prose blocks (docs, descriptions), never to tables or canvases</td></tr>
+</table>
+<p>There is no fixed maximum content width: inventories, canvases and traces use the full region. The 0.85× density is already baked into <span class="mono">--space-*</span> — do not apply a second density multiplier on top of it.</p>
+
+<h2>9. Motion</h2>
+<table>
+<tr><th>Duration token</th><th>Value</th><th>Applies to</th></tr>
+<tr><td class="mono">--motion-fast</td><td>90ms, ease-out</td><td>Hover and pressed tints, focus ring, tooltip show</td></tr>
+<tr><td class="mono">--motion-base</td><td>160ms, ease-out</td><td>Menus, inspector dock, sidebar collapse, tab change</td></tr>
+<tr><td class="mono">--motion-slow</td><td>240ms, cubic-bezier(.2,0,0,1)</td><td>Dialog entry, full-screen canvas transition</td></tr>
+</table>
+<p>Three rules. Motion never blocks input — a control is clickable the moment it is visible. Nothing loops or pulses except a determinate progress affordance and the running-node indicator on a trace. All of it collapses to 0ms under <code>prefers-reduced-motion: reduce</code>, including the canvas zoom transition, which then snaps.</p>
+
+<h2>10. Component specifications</h2>
+<p>Each entry fixes anatomy, sizing and states so two teams building the same component land in the same place. States listed are in addition to the universal set in §6.</p>
+<table>
+<tr><th>Component</th><th>Anatomy</th><th>Specification</th></tr>
+<tr><td><b>AppShell</b></td><td>TopBar + Sidebar + content region</td><td>Only the content region scrolls. Shell never remounts on navigation. Skip-to-content link is the first focusable element</td></tr>
+<tr><td><b>Sidebar</b></td><td>Capability groups → nav items → optional badge</td><td>Item 32 high, 13px label, 20px icon, <span class="mono">--space-3</span> gap. Active = accent-700 label on accent-100 with a 2px accent left indicator. Groups with no visible children are not rendered (§12)</td></tr>
+<tr><td><b>TopBar</b></td><td>Product mark · tenant toggle · global search · profile menu</td><td>Search is 320 wide, expands to 480 on focus. Tenant toggle hidden for single-tenant sessions. Profile menu carries appearance only — theme, accent, density, sign out</td></tr>
+<tr><td><b>PageHeader</b></td><td>Breadcrumbs · title · subtitle · action cluster</td><td>Actions right-aligned, at most one primary. Title truncates with a tooltip; breadcrumbs collapse to “…” from the middle</td></tr>
+<tr><td><b>MetricCard</b></td><td>Kicker · value · trend · optional sparkline</td><td>Value in mono tabular at 28. Trend colors by business effect, never by arrow direction. Blueprint frame with all four registration marks</td></tr>
+<tr><td><b>StatusIndicator</b></td><td>Glyph + label</td><td>Six states: success, running, failed, skipped, pending, unknown. Glyph and label are both mandatory — there is no icon-only variant</td></tr>
+<tr><td><b>DataTable</b></td><td>Sticky header · rows · empty/error/loading states</td><td>Header is caption-scale uppercase. Numeric and timestamp columns right-align in mono tabular. Row click navigates; interactive cell controls stop propagation. Sort indicator lives in the header cell, one active sort at a time</td></tr>
+<tr><td><b>InfiniteList</b></td><td>Windowed rows · sentinel · cap notice</td><td>Renders the visible window plus overscan only. Sentinel fetches the next cursor page; at the 1,000-row cap it renders a “refine your filters” notice rather than loading further (§13)</td></tr>
+<tr><td><b>Canvas</b></td><td>Stage · toolbar · optional inspector dock</td><td>Vertical flow. Toolbar: zoom −/+ (40–250%), Fit, Center, Validate (build only), full-screen. Esc exits full-screen and focus returns to the invoking control. Drag-to-pan anywhere on the stage; nodes are never scaled to fit</td></tr>
+<tr><td><b>WorkflowNode</b></td><td>Type glyph · name · status · selection ring</td><td>11 BPMN types. Trace states tint the border and glyph, never the fill. Skipped nodes render at 45% and are non-interactive. Minimum 160×48 so labels stay legible at 40% zoom</td></tr>
+<tr><td><b>NodeInspector</b></td><td>Header · property rows · lazy I/O section</td><td>Docked 300 wide. Property rows are label/value pairs at UI scale. Input/output bodies load on demand and render in mono with a copy affordance</td></tr>
+<tr><td><b>Dialog</b></td><td>Backdrop · panel · title · body · action row</td><td>Focus trapped, Esc closes, focus returns to the opener. Destructive confirmations put the destructive action right and require an explicit verb (“Stop execution”, not “OK”)</td></tr>
+<tr><td><b>EmptyState / ErrorState</b></td><td>24px glyph · sentence · one action</td><td>Empty says what would appear here and offers the action that creates it. Error names what failed and offers Retry — never a raw stack or status code in the body</td></tr>
+</table>
+
+<h2>11. Page patterns</h2>
+<p>Three body patterns cover every screen; a new page picks one rather than inventing a fourth.</p>
+<table>
+<tr><th>Pattern</th><th>Structure</th><th>Used by</th></tr>
+<tr><td><b>Inventory</b></td><td>PageHeader → filter toolbar → virtualized table filling the region; row click drills in</td><td>Executions, Workflows, Tasks, Alerts</td></tr>
+<tr><td><b>Canvas</b></td><td>PageHeader → view tabs → edge-to-edge stage with toolbar, inspector docks right on selection</td><td>Workflow detail, dependency graph, execution trace</td></tr>
+<tr><td><b>Overview</b></td><td>PageHeader → metric card grid → one or two compact lists</td><td>Home, Monitoring overview</td></tr>
+</table>
+<p>Detail views navigate to their own route; they are not slide-over panels. The single docked panel in the system is the NodeInspector, and it belongs to the canvas pattern.</p>
+
+<h2>12. Capability-aware chrome</h2>
+<p>A deployment may not contain every capability (§ADR-033), so the chrome has to look deliberate at any bundle rather than gutted. Rules:</p>
+<ul>
+<li><b>Absent means invisible, not disabled.</b> A capability that is not in the artifact contributes no nav group, no tab, no toolbar button and no empty placeholder. A greyed-out “Build” item advertising something the tenant cannot have is a disclosure leak and a support ticket.</li>
+<li><b>Groups collapse.</b> Sidebar groups render only if they have children; a single-group sidebar drops group headers entirely and shows a flat list.</li>
+<li><b>The landing route is computed</b> from the enabled set, never hard-coded — a monitoring bundle lands on Monitoring, not on a Home page built for the full product.</li>
+<li><b>Read-only is a first-class treatment, not a disabled one.</b> In a monitoring bundle the canvas is a viewer: no edit affordances render at all, and the toolbar is Fit/Center/zoom/full-screen without Validate. Nothing appears greyed.</li>
+<li><b>Cross-capability links degrade to text.</b> A trace referencing its workflow links to the workflow view when <code>build</code> is present and renders the name as plain text when it is not.</li>
+</ul>
+
+<h2>13. Data density and large-collection behaviour</h2>
+<p>The system is used against collections that do not fit in memory, so the presentation rules are part of the design spec rather than an implementation detail.</p>
+<ul>
+<li>Inventories virtualize: the DOM holds the visible window plus overscan, so scroll depth does not change memory or frame rate.</li>
+<li>Paging is cursor-based and appended by a sentinel — there are no page-number controls anywhere in the product.</li>
+<li>At 1,000 loaded rows the list stops and asks for a narrower filter. This is a designed limit with copy attached, not a silent truncation.</li>
+<li>Canvases above roughly 2,000 nodes render a level-of-detail summary until zoomed in; node labels hide below 60% zoom while shapes and status remain.</li>
+<li>Every list has all four states specified — loading skeleton, empty, error, and cap-reached — and a page is not complete until all four are built.</li>
+</ul>
+
+<h2>14. Component catalog</h2>
+<h3>CSS classes (framework-free)</h3>
+<table>
+<tr><th>Class</th><th>What it is</th></tr>
+<tr><td class="mono">.btn (+ -primary/-secondary/-ghost/-icon/-block)</td><td>Actions; primary is the solid accent fill</td></tr>
+<tr><td class="mono">.tag (+ -accent/-neutral/-outline)</td><td>Small tinted labels</td></tr>
+<tr><td class="mono">.field, .input, .radio, .seg</td><td>Form controls on native elements — no script</td></tr>
+<tr><td class="mono">.card (+ .card-kicker/-title/-body/-meta), .elev-*</td><td>Transparent hairline cards with corner marks</td></tr>
+<tr><td class="mono">.table</td><td>Data table with themed header and row rules</td></tr>
+<tr><td class="mono">.dialog-backdrop + .dialog</td><td>Modal at top elevation</td></tr>
+<tr><td class="mono">.blueprint + .corner, .duotone</td><td>The wireframe frame and the image treatment</td></tr>
+</table>
+<h3>Platform components (React reference + typed contracts)</h3>
+<table>
+<tr><th>Group</th><th>Components</th></tr>
+<tr><td>Shell</td><td>AppShell · Sidebar · TopBar (tenant toggle, global search, appearance-only profile menu) · Breadcrumbs · PageHeader</td></tr>
+<tr><td>Data &amp; status</td><td>MetricCard · StatusIndicator · TrendIndicator · Badge · DataTable</td></tr>
+<tr><td>Canvas</td><td>Canvas (vertical flow, scroll + zoom + full-screen) · WorkflowNode (11 BPMN types + trace states) · Edge · NodeInspector</td></tr>
+<tr><td>Feedback</td><td>EmptyState · ErrorState · LoadingSkeleton · Dialog · Toast</td></tr>
+<tr><td>Collection</td><td>InfiniteList · FilterBar · SearchInput · DateRangePicker</td></tr>
+</table>
+<p>Each React component's <code>.d.ts</code> is a framework-neutral interface — the same prop contract ports to Angular inputs, Vue props, or web-component attributes.</p>
+
+<h2>15. Do / Don't</h2>
+<table>
+<tr><th>Do</th><th>Don't</th></tr>
+<tr><td>Frame cards, figures and primary buttons as blueprint objects with all four registration marks</td><td>Round corners or give cards/figures a surface fill</td></tr>
+<tr><td>Keep the modular grid visible — equal cells, strong rhythm</td><td>Drop registration marks from a framed element</td></tr>
+<tr><td>Use ramp steps for tints, hovers, pressed states and text-on-tint</td><td>Invent ad-hoc colors or restyle built-in states per page</td></tr>
+<tr><td>Pair every status color with a glyph and text label</td><td>Communicate status by color alone</td></tr>
+<tr><td>Use tokens for every color/font/size value</td><td>Download fonts or bundle font files</td></tr>
+</table>
+
+<h2>16. File map</h2>
+<table>
+<tr><th>Path</th><th>Contents</th></tr>
+<tr><td class="mono">styles.css</td><td>The one stylesheet: tokens + component classes</td></tr>
+<tr><td class="mono">theme.json · readme.md</td><td>Machine-readable theme record · usage guide</td></tr>
+<tr><td class="mono">foundations/ · components/*.html</td><td>Live specimen pages: type, color, layout, icons, imagery; buttons, forms, cards, navigation, table, dialog</td></tr>
+<tr><td class="mono">components/platform-shell/ · platform-data/ · platform-canvas/</td><td>Platform React components (.jsx + .d.ts) with live demo cards</td></tr>
+<tr><td class="mono">vanilla/</td><td>Framework-free custom elements (pf-sidebar, pf-top-bar, pf-breadcrumbs, pf-page-header, pf-app-shell) + IndustryTheme token-remap utility</td></tr>
+<tr><td class="mono">templates/react-ts-handoff/</td><td>Standalone React + TypeScript Vite project: 14 typed .tsx components, pages, fixtures, README (npm install · npm run dev)</td></tr>
+<tr><td class="mono">templates/platform-app/</td><td>Interactive Decisioning Platform application (React reference)</td></tr>
+<tr><td class="mono">exports/Platform Wireframes.html</td><td>Self-contained interactive wireframes — single offline file for stakeholders</td></tr>
+<tr><td class="mono">templates/deck/ · templates/landing/</td><td>Presentation and landing-page starting points</td></tr>
+<tr><td class="mono">UI Architecture.html · exports/UI Architecture.doc</td><td>The companion UI architecture document (separate deliverable)</td></tr>
+</table>
+
+</body></html>

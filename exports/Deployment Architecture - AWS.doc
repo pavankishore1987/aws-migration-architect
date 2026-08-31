@@ -1,0 +1,192 @@
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word"><head><meta charset="utf-8"><title>Deployment Architecture — AWS</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+@page{size:A4;margin:2cm}
+body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:11pt;color:#1d1f20;line-height:1.5}
+h1{font-size:22pt;color:#1d1f20;margin:0 0 4pt}
+h2{font-size:15pt;color:#293373;border-bottom:1pt solid #bfc6f0;padding-bottom:3pt;margin:22pt 0 8pt}
+h3{font-size:12pt;color:#1d1f20;margin:14pt 0 4pt}
+p{margin:0 0 8pt}
+.meta{color:#5d5d60;font-size:10pt;margin-bottom:16pt}
+table{border-collapse:collapse;width:100%;margin:6pt 0 12pt;font-size:10pt}
+th{background:#eef0fb;color:#293373;text-align:left;padding:5pt 7pt;border:1pt solid #bfc6f0;font-size:9pt;text-transform:uppercase;letter-spacing:.5pt}
+td{padding:5pt 7pt;border:1pt solid #d4d4d7;vertical-align:top}
+code,.mono{font-family:Consolas,"Courier New",monospace;font-size:9.5pt}
+li{margin-bottom:4pt}
+.callout{border-left:3pt solid #4a5ac9;background:#f5f5f8;padding:8pt 10pt;margin:8pt 0}
+.seq{font-family:Consolas,"Courier New",monospace;font-size:9pt;line-height:1.45;background:#f5f5f8;border:1pt solid #bfc6f0;padding:9pt 11pt;margin:6pt 0 12pt;white-space:pre}
+.note{font-size:9pt;color:#5d5d60;margin:-6pt 0 12pt}
+</style></head><body>
+
+<h1>Deployment Architecture — AWS</h1>
+<p class="meta">Decisioning Platform · UI on S3 + CloudFront, BFF on Fargate or Lambda · Companion to ADR-027/030/031 and System Architecture — BFF</p>
+
+<h2>1. The decision, stated plainly</h2>
+<p>The question that settles frontend hosting on AWS is not which service is most capable, it is whether the frontend can be fully generated at build time and served as files, or whether it needs behaviour at request time. Our UI is a Vite SPA: after <code>npm run build</code> it is hashed static assets with no server rendering, no request-time templating, no runtime secrets in the page. It is on the static side of that line, so <b>CloudFront + S3</b> is correct for the UI and a container for it would be pure overhead — a task running 24/7 whose only job is returning files an edge cache already holds.</p>
+<p>The dynamic behaviour in this system lives in the BFF, not the frontend: session handling, BPMN XML parsing into experience JSON, aggregation, caching, tenant scoping. That is a service, and it needs compute. So the architecture is not "static <i>or</i> container" — it is static UI <b>plus</b> containerised (or serverless) BFF behind one CloudFront distribution.</p>
+<div class="callout"><b>Rule we are adopting:</b> the hosting model must match what the app actually does at request time. The UI stays static until it genuinely needs server rendering; the moment it would need SSR, runtime secrets in the page, or per-request personalisation, that is the signal to revisit — not before.</div>
+
+<h2>2. Target architecture</h2>
+<table style="width:100%;border:1.5pt solid #4a5ac9">
+<tr><td colspan="2" style="background:#eef0fb;text-align:center;padding:6pt;border:1pt solid #9aa2d6"><b>Browser</b> (corporate network) — SPA, httpOnly session cookie</td></tr>
+<tr><td colspan="2" style="border:none;text-align:center;padding:2pt;color:#4a5ac9">▼ HTTPS (single domain)</td></tr>
+<tr><td colspan="2" style="background:#eef0fb;text-align:center;padding:6pt;border:1.5pt solid #4a5ac9"><b>CloudFront distribution</b> — TLS · WAF · Response Headers Policy (CSP) · custom error responses (403/404 → /index.html 200)</td></tr>
+<tr>
+<td style="width:50%;text-align:center;padding:3pt;border:none;color:#4a5ac9">▼ default behaviour <span class="mono">/*</span></td>
+<td style="width:50%;text-align:center;padding:3pt;border:none;color:#4a5ac9">▼ behaviour <span class="mono">/api/*</span> (cache disabled, cookies+auth forwarded)</td>
+</tr>
+<tr>
+<td style="background:#fff;text-align:center;padding:9pt;border:1pt solid #9aa2d6"><b>S3 bucket (private)</b><br><span class="mono">Origin Access Control</span><br>index.html · config.json · assets/*<br><span class="mono">no public access, no website endpoint</span></td>
+<td style="background:#f5f5f8;text-align:center;padding:9pt;border:1pt solid #9aa2d6"><b>BFF</b><br><span class="mono">Option A: ALB → ECS Fargate (private subnets)</span><br><span class="mono">Option B: API Gateway → Lambda</span></td>
+</tr>
+<tr>
+<td style="border:none"></td>
+<td style="border:none;text-align:center;padding:3pt;color:#4a5ac9">▼ VPC / PrivateLink</td>
+</tr>
+<tr>
+<td style="border:none"></td>
+<td style="background:#fff;text-align:center;padding:8pt;border:1pt solid #d4d4d7"><b>Domain services</b> (workflow, rules, execution) · <b>ElastiCache</b> (parsed-BPMN cache) · <b>IdP</b> (SSO / OIDC)</td>
+</tr>
+</table>
+<p class="note">One domain, one distribution, two behaviours. Because <code>/api/*</code> is same-origin, the httpOnly session cookie is sent automatically and there is no CORS configuration anywhere in the system.</p>
+
+<h3>Why the S3 origin is private (and not a website endpoint)</h3>
+<p>S3 static-website endpoints speak HTTP only, and using one as a CloudFront origin makes it a <i>custom</i> origin — which disqualifies Origin Access Control. We therefore use the REST endpoint with OAC and keep the bucket fully private; index-document and deep-link behaviour is supplied by CloudFront instead (§4). This is the security-review-friendly configuration: the bucket is never publicly reachable.</p>
+
+<h2>3. BFF compute: Fargate vs Lambda</h2>
+<table>
+<tr><th>Consideration</th><th>ECS Fargate (behind ALB)</th><th>Lambda (behind API Gateway)</th></tr>
+<tr><td>Fit for BPMN parsing</td><td><b>Strong.</b> Long-lived process; parsed diagrams stay warm in process memory; large definitions unconstrained by a 15-min/10-GB envelope</td><td>Workable, but cold starts re-parse; large XML pushes memory/time; needs ElastiCache to be effective</td></tr>
+<tr><td>Cold starts</td><td>None (tasks always warm)</td><td>Real, and felt on the first interaction of an idle internal app</td></tr>
+<tr><td>Timeouts</td><td>ALB idle timeout configurable (up to 4,000 s)</td><td>API Gateway REST caps at 29 s</td></tr>
+<tr><td>Live execution updates (SSE/WebSocket)</td><td>Native</td><td>Requires API Gateway WebSocket API — a separate, more complex path</td></tr>
+<tr><td>Traffic shape fit</td><td><b>Internal app, steady business-hours load</b> — utilisation is high enough that always-on is efficient</td><td>Best for spiky or very low traffic</td></tr>
+<tr><td>Ops model</td><td>Owns an image: base-image patching, health checks, rollout control (deployment circuit breaker), target-tracking autoscaling</td><td>Least infrastructure to own; scaling is automatic</td></tr>
+<tr><td>Firewalled/VPC networking</td><td>Natural — tasks run in private subnets alongside domain services</td><td>Needs VPC attachment; adds ENI cold-start cost</td></tr>
+</table>
+<div class="callout"><b>Recommendation: ECS Fargate for the BFF.</b> The deciding factors are the warm in-memory cache of parsed BPMN, the absence of cold starts for an internal tool with predictable business-hours traffic, headroom for large diagram payloads past the 29-s API Gateway ceiling, and a clear path to SSE/WebSocket live execution updates. Lambda remains a reasonable fallback if the BFF stays thin and the team wants zero idle cost — the UI is unaffected either way, since it only ever calls <code>/api/*</code> on its own origin.</div>
+
+<h2>4. Sequence — first load and deep link</h2>
+<p>A user pastes <code>https://platform.internal/executions/exec-8842</code> into the address bar. No such object exists in the bucket; CloudFront turns the miss into the SPA shell.</p>
+<div class="seq">Browser        CloudFront        S3 (private, OAC)      BFF (Fargate)
+   │                │                    │                    │
+   │─ GET /executions/exec-8842 ─────────▶│                    │
+   │                │─ origin request ───▶│                    │
+   │                │◀── 403 (no such key)│                    │
+   │                │  custom error response: 403/404 → /index.html, status 200
+   │                │─ GET /index.html ──▶│                    │
+   │                │◀── 200 index.html ──│                    │
+   │◀ 200 index.html (Cache-Control: no-cache) ─────────────────
+   │                │                    │                    │
+   │─ GET /assets/app.[hash].js ─────────▶│  (edge HIT after first user)
+   │◀ 200, max-age=31536000, immutable ───│                    │
+   │                │                    │                    │
+   │─ GET /config.json (no-cache) ───────▶│                    │
+   │◀ 200 { apiBaseUrl:"/api", env:"prod" } ───────────────────
+   │                │                    │                    │
+   │  React Router resolves /executions/exec-8842 client-side
+   │─ GET /api/executions/exec-8842  (cookie sent, same origin) ▶
+   │                │─ /api/* behaviour, caching disabled ─────▶│
+   │                │                    │       validate session, scope to tenant
+   │◀ 200 execution trace JSON ────────────────────────────────│
+</div>
+<p class="note">Both 403 and 404 must be mapped: with OAC on a private bucket S3 answers 403 for a missing key, not 404. Alternatively a CloudFront Function rewrites non-asset paths to /index.html, which keeps genuine <code>/api/*</code> 404s intact — preferred if the API and the SPA ever share a behaviour.</p>
+
+<h2>5. Sequence — SSO sign-in</h2>
+<p>No token ever reaches JavaScript; the BFF holds the session and hands the browser an httpOnly cookie.</p>
+<div class="seq">Browser        CloudFront        BFF (Fargate)         Corporate IdP
+   │                │                    │                    │
+   │─ GET /api/session ──────────────────▶│                    │
+   │◀ 401 unauthenticated ────────────────│                    │
+   │  SPA renders LoginPage → user clicks "Sign in"
+   │─ GET /api/auth/login ───────────────▶│                    │
+   │                │      build state+PKCE, 302               │
+   │◀ 302 → IdP /authorize ───────────────│                    │
+   │──────────────── redirect ─────────────────────────────────▶│
+   │                │                    │      user authenticates (MFA)
+   │◀──────────── 302 → /api/auth/callback?code=… ─────────────│
+   │─ GET /api/auth/callback?code=… ─────▶│                    │
+   │                │                    │─ exchange code ────▶│
+   │                │                    │◀─ id/access token ──│
+   │                │   create server-side session; resolve
+   │                │   identity, roles, permissions, tenants
+   │◀ 302 → /home  +  Set-Cookie: sid=…; HttpOnly; Secure; SameSite=Lax ─
+   │                │                    │                    │
+   │─ GET /api/session (cookie) ─────────▶│                    │
+   │◀ 200 { user, roles, permissions, tenants } ───────────────│
+   │  UserContextProvider gates nav and actions by permission
+</div>
+<p class="note">CloudFront forwards cookies and the Authorization header only on the <code>/api/*</code> behaviour. The static behaviour forwards neither, so every asset stays cacheable at the edge for all users.</p>
+
+<h2>6. Sequence — opening a workflow diagram (the BFF earning its place)</h2>
+<div class="seq">Browser        CloudFront      BFF (Fargate)     ElastiCache      Workflow service
+   │              │                 │                 │                 │
+   │─ GET /api/workflows/wf-201/diagram?version=7 ────▶│                 │
+   │              │                 │─ get(wf-201:v7) ▶│                 │
+   │              │                 │◀── MISS ─────────│                 │
+   │              │                 │─ fetch BPMN 2.0 XML ───────────────▶│
+   │              │                 │◀── XML (source of truth) ──────────│
+   │              │   parse XML → nodes, edges, BPMNDI positions;
+   │              │   auto-layout if DI missing; build spatial index
+   │              │                 │─ set(wf-201:v7, json) ▶│            │
+   │◀ 200 experience JSON (nodes+edges for viewport, LOD summary) ───────│
+   │                                                                     │
+   │  user pans the canvas past the loaded region
+   │─ GET /api/workflows/wf-201/diagram?version=7&bbox=… ─▶│             │
+   │              │                 │─ get(wf-201:v7) ▶│                 │
+   │              │                 │◀── HIT (warm) ───│                 │
+   │◀ 200 tile of nodes/edges ───────────────────────────────────────────│
+   │                                                                     │
+   │  user clicks a node → inspector
+   │─ GET /api/executions/exec-8842/nodes/n-14?include=io ─▶│            │
+   │◀ 200 input/output bodies (loaded only on inspection) ───────────────│
+</div>
+<p class="note">The browser never parses BPMN XML (ADR-025). Caching is keyed on the immutable (workflow, version) pair, so entries never need invalidation — a new publish is a new key. This is the workload that makes a warm, long-lived process valuable, and the strongest argument for Fargate over Lambda.</p>
+
+<h2>7. Sequence — deployment and version skew</h2>
+<div class="seq">Pipeline         S3            CloudFront        ECR / ECS         Browser (open tab)
+   │              │                 │                 │                 │
+   │─ npm ci && npm run build (one artifact, all envs) │                 │
+   │─ sync dist/assets/* ──▶│  Cache-Control: max-age=31536000, immutable
+   │─ put index.html, config.json ──▶│  Cache-Control: no-cache
+   │─ create-invalidation /index.html /config.json ───▶│                 │
+   │                                                                     │
+   │─ docker build && push BFF image ───────────────▶│                   │
+   │─ update-service (rolling, circuit breaker on) ─▶│                   │
+   │              │                 │      new tasks pass ALB health checks
+   │              │                 │      old tasks drain; rollback automatic on failure
+   │                                                                     │
+   │  meanwhile, a tab opened before the deploy:
+   │              │                 │◀─ GET /api/… with X-App-Version: 41 ─│
+   │              │                 │── 409 / version-skew header (current 42) ▶
+   │              │                 │                 │   SPA shows "A new version
+   │              │                 │                 │   is available — reload"
+   │              │                 │◀─ reload: GET /index.html (no-cache) ─│
+   │              │                 │── fresh index.html → new hashed assets ▶
+</div>
+<p class="note">Hashed asset names mean a deploy never needs a wide invalidation — only the two no-cache files. Old assets stay in place, so tabs mid-session keep working until the user reloads.</p>
+
+<h2>8. Configuration checklist</h2>
+<table>
+<tr><th>Area</th><th>Setting</th></tr>
+<tr><td>S3</td><td>Private bucket, Block Public Access on, REST endpoint (not website endpoint), OAC-only bucket policy, versioning on, SSE-S3 or KMS</td></tr>
+<tr><td>CloudFront — default behaviour</td><td>Origin: S3 + OAC · viewer protocol: redirect-to-HTTPS · compress: yes · cache policy: CachingOptimized · no cookies/headers forwarded</td></tr>
+<tr><td>CloudFront — <span class="mono">/api/*</span></td><td>Origin: ALB (Fargate) or API Gateway · cache policy: CachingDisabled · origin request policy: AllViewerExceptHostHeader (cookies + Authorization forwarded) · precedence above default</td></tr>
+<tr><td>Error responses</td><td>403 → /index.html (200) and 404 → /index.html (200); or a CloudFront Function rewrite that leaves /api/* alone</td></tr>
+<tr><td>Response headers policy</td><td>CSP <span class="mono">default-src 'self'</span> (no CDN scripts, no font-src needed) · X-Content-Type-Options: nosniff · frame-ancestors 'none' · Referrer-Policy · HSTS</td></tr>
+<tr><td>Runtime config</td><td><span class="mono">config.json</span> beside index.html, fetched at boot: apiBaseUrl, environment, feature flags. No <span class="mono">import.meta.env</span> baking — one artifact promotes dev → stage → prod</td></tr>
+<tr><td>Fargate service</td><td>Private subnets · ALB internal or CloudFront-origin-facing with a shared-secret header · 2+ tasks across AZs · target-tracking autoscaling · deployment circuit breaker · secrets from Secrets Manager, never in the image</td></tr>
+<tr><td>Access restriction</td><td>Internal-only app: restrict CloudFront by WAF IP set (corporate ranges) or front it with an internal-facing distribution/VPC origin per your network standard</td></tr>
+<tr><td>Observability</td><td>CloudFront + ALB access logs to S3 · BFF structured logs to CloudWatch · X-Ray on the BFF · alarms on 5xx rate, ALB target health, task restarts</td></tr>
+<tr><td>Vite</td><td>No change unless served from a sub-path, then set <span class="mono">base</span> in vite.config.ts</td></tr>
+</table>
+
+<h2>9. What would change the decision</h2>
+<ul>
+<li><b>The UI needs server rendering</b> (SEO, first-paint mandates, per-request personalisation) — then it has become an application service and belongs on Fargate with the rest of the platform, not on S3 with workarounds bolted on.</li>
+<li><b>The UI needs runtime secrets in the page</b> — same conclusion; today it needs none, because all privileged calls go through the BFF.</li>
+<li><b>Routing workarounds start multiplying</b> — a couple of error-response mappings is a healthy static SPA; a growing pile of CloudFront Functions doing request-time logic is the app telling you it wants a runtime.</li>
+<li><b>Managed middle ground</b> — AWS Amplify Hosting sits between the two (Git-based deploys, managed SSR) but adds a managed-service boundary and less control than an internal, firewalled platform typically wants; not recommended here, noted for completeness.</li>
+</ul>
+
+</body></html>
