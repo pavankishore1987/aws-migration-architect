@@ -1,0 +1,451 @@
+<html xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>Visualization UI &amp; BFF — System Architecture</title>
+<!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]-->
+<style>
+v\:* {behavior:url(#default#VML)}
+o\:* {behavior:url(#default#VML)}
+@page{size:A4;margin:1.9cm}
+body{font-family:"Segoe UI",Helvetica,Arial,sans-serif;font-size:10.5pt;color:#000;line-height:1.45}
+h1{font-size:23pt;margin:0 0 3pt;color:#000}
+h2{font-size:15pt;color:#000;border-bottom:1pt solid #000;padding-bottom:3pt;margin:20pt 0 7pt}
+h3{font-size:11.5pt;margin:13pt 0 4pt;color:#000}
+h4{font-size:10pt;margin:11pt 0 3pt;color:#000}
+p{margin:0 0 7pt;color:#000}
+.meta{font-size:9.5pt;margin-bottom:10pt;color:#000}
+.lead{font-size:11.5pt;color:#000}
+.aud{font-size:8pt;letter-spacing:.08em;text-transform:uppercase;border:1pt solid #000;padding:2pt 5pt;color:#000}
+table{border-collapse:collapse;width:100%;margin:5pt 0 10pt;font-size:9pt}
+th{background:#f2f2f2;color:#000;text-align:left;padding:4pt 6pt;border:1pt solid #000;font-size:8pt;text-transform:uppercase;letter-spacing:.4pt}
+td{padding:4pt 6pt;border:1pt solid #9a9a9a;vertical-align:top;color:#000}
+code,.mono{font-family:Consolas,"Courier New",monospace;font-size:8.5pt;color:#000}
+li{margin-bottom:3pt;color:#000}
+ul,ol{margin:3pt 0 8pt;padding-left:16pt}
+.note{border-left:3pt solid #000;background:#f4f4f4;padding:6pt 9pt;margin:6pt 0;color:#000}
+.pull{border-left:3pt solid #000;padding:3pt 0 3pt 11pt;margin:9pt 0;font-size:11pt;color:#000}
+pre.api{font-family:Consolas,"Courier New",monospace;font-size:8.5pt;line-height:1.5;background:#fafafa;border:1pt solid #9a9a9a;padding:7pt 9pt;margin:4pt 0 9pt;white-space:pre-wrap;color:#000}
+.cap{font-size:8.5pt;margin:-4pt 0 14pt;color:#000}
+/* Block-diagram primitives — Word-safe tables, black rules only */
+.fig{border:1.5pt solid #000;border-collapse:collapse;width:100%;margin:8pt 0 4pt}
+.fig td{border:none;padding:5pt 6pt;text-align:center;vertical-align:middle;color:#000}
+.box{border:1.25pt solid #000 !important;background:#ffffff;padding:6pt 7pt !important;text-align:center}
+.boxf{border:2pt solid #000 !important;background:#e8e8e8;padding:7pt !important;text-align:center}
+.bt{font-size:9.5pt;font-weight:bold;color:#000}
+.bs{font-size:8pt;color:#000}
+.arw{font-size:9pt;font-weight:bold;color:#000;padding:2pt !important}
+.arl{font-size:7.5pt;color:#000;padding:0 !important}
+.band{font-size:7.5pt;letter-spacing:.12em;text-transform:uppercase;text-align:left !important;color:#000;padding:4pt 6pt 1pt !important}
+.seqhdr th{background:#e8e8e8;border:1.25pt solid #000;text-align:center;font-size:8.5pt;text-transform:none;letter-spacing:0}
+.seq td{border:1pt solid #9a9a9a;font-size:8.5pt}
+.seq .n{text-align:center;font-weight:bold;width:5%}
+.seq .fromto{width:24%;font-family:Consolas,monospace;font-size:8pt}
+.seq .msg{width:71%}
+.seq tr.inner td{background:#f2f2f2;font-style:italic}
+/* Block-diagram primitives — single-level tables, black rules only */
+table.fig{border:1.5pt solid #000;border-collapse:collapse;width:100%;margin:9pt 0 4pt;font-size:9pt}
+table.fig td{border:none;padding:5pt 6pt;text-align:center;vertical-align:middle;color:#000}
+.nbox,.gbox,.dbox{border:1.25pt solid #000 !important;padding:7pt 8pt !important;text-align:center}
+.gbox{background:#e8e8e8;border-width:2pt !important}
+.dbox{border-style:dashed !important;text-align:left}
+.pad{border:none !important}
+.bt{font-weight:bold;color:#000;white-space:nowrap}
+.bs{font-size:7.5pt;color:#000}
+.ar{font-size:11pt;font-weight:bold;color:#000;padding:3pt !important;line-height:1.1}
+.arl{font-size:7pt;font-weight:normal;color:#000}
+.band{font-size:7pt;letter-spacing:.1em;text-transform:uppercase;text-align:left !important;color:#000;padding:5pt 6pt 1pt !important;font-weight:bold}
+.cap2{font-size:7.5pt;text-align:left !important;padding:0 6pt 5pt !important;color:#000}
+.uiwrap,.stack{border:none !important;padding:4pt !important}
+.uiwrap{border:1.25pt dashed #000 !important}
+.wraplab{font-size:7pt;font-weight:bold;text-transform:uppercase;letter-spacing:.08em;margin-bottom:4pt}
+.inbox{border:1.75pt solid #000;background:#e8e8e8;padding:6pt 7pt;margin:0 0 5pt;text-align:center}
+.stack .inbox{background:#fff;border-width:1.25pt}
+.inar{font-size:9pt;font-weight:bold;margin:0 0 5pt}
+/* Sequence figures */
+table.seqfig td.actor{border:1.75pt solid #000 !important;background:#e8e8e8;font-weight:bold;font-size:8.5pt;padding:6pt 4pt !important}
+table.seqfig td.life{border-left:none;border-right:1pt dotted #808080 !important;padding:2pt !important}
+table.seqfig td.msg{border:1pt solid #000 !important;text-align:left;font-size:8pt;padding:4pt 6pt !important;background:#fff}
+table.seqfig td.dashm{border-style:dashed !important}
+table.seqfig td.selfbox{border:1pt dashed #000 !important;text-align:left;font-size:8pt;padding:4pt 6pt !important;background:#f4f4f4}
+.sn{font-weight:bold;font-family:Consolas,monospace}
+</style></head><body>
+
+<h1>Visualization UI &amp; BFF</h1>
+<p class="meta">System Architecture &middot; Workflow Orchestrator &middot; Version 2.1 &middot; 31 August 2026</p>
+<p class="lead">How the visualization experience is built, deployed and operated &mdash; the React application, the backend-for-frontend that serves it, and the two deployment models we support. This is the high-level architecture; the detailed design documents carry the contracts.</p>
+
+<h2>Contents</h2>
+<table>
+<tr><td width="50%">1. Executive summary and the approval ask<br>2. System context<br>3. Container view<br>4. Why a static UI and a modular BFF<br>5. Inside the BFF<br>6. The Experience API, by module<br>7. Runtime flows<br>8. Deployment A &mdash; multi-tenant SaaS</td>
+<td>9. Deployment B &mdash; customer-managed<br>10. Build and release pipeline<br>11. Editions<br>12. Security view<br>13. Operations view<br>14. Non-functional requirements<br>15. Risks and open items<br>16. Glossary and detailed design map</td></tr>
+</table>
+
+<h2>1. Executive summary and the approval ask</h2>
+<p><span class="aud">For leadership and enterprise architecture</span></p>
+<p>The platform lets business teams author decision workflows and watch them run. The <b>Visualization UI</b> is the part users see: the workflow canvas, the dependency graph, the execution trace, and the inventories of workflows, executions, tasks and alerts. This document covers how that UI is built and delivered, and the service that feeds it.</p>
+
+<h3>What we are proposing</h3>
+<table>
+<tr><th width="22%">Decision</th><th width="39%">What it means</th><th>Why</th></tr>
+<tr><td><b>The UI ships as static files</b></td><td>Built once, served from S3 behind CloudFront. No web server to run, patch or scale.</td><td>The UI needs no work at request time. A container serving files would be pure cost and operational surface.</td></tr>
+<tr><td><b>One BFF layer feeds it</b></td><td>A Java / Spring Boot service that turns platform data into screen-shaped responses.</td><td>The browser makes one call per screen instead of joining three services itself, never parses BPMN XML, and never holds a token.</td></tr>
+<tr><td><b>The BFF is internally modular</b></td><td>A shared core plus one module per capability: Monitor, Build, Tasks, Docs, Operate.</td><td>Lets us ship a client only the capabilities they bought, from one codebase.</td></tr>
+<tr><td><b>Two deployment models</b></td><td>Multi-tenant SaaS by default; a customer-managed deployment in the client's own AWS account by exception.</td><td>Some regulated clients cannot accept shared infrastructure. Both run identical code.</td></tr>
+<tr><td><b>Entitlement is enforced by the artifact</b></td><td>A client who bought Monitoring receives a build in which authoring does not exist.</td><td>In a customer-managed deployment the client controls the runtime, so a configuration flag is not a control.</td></tr>
+</table>
+
+<h3>What this buys, and what it costs</h3>
+<table>
+<tr><th width="50%">Benefit</th><th>Cost we are accepting</th></tr>
+<tr><td>No frontend servers to run &mdash; hosting is a CDN and a bucket</td><td>Deep links need one CloudFront rule to work (&sect;8)</td></tr>
+<tr><td>One codebase serves every client and every edition</td><td>A fixed catalogue of editions to build and test, rather than one artifact</td></tr>
+<tr><td>Customer-managed deployments are possible without forking</td><td>Each one is a permanent operating cost: a pipeline to run and a version to keep in step</td></tr>
+<tr><td>A 4,000-node workflow diagram stays interactive in the browser</td><td>The BFF must parse and cache diagrams server-side; it is not a thin proxy</td></tr>
+<tr><td>No token ever reaches JavaScript</td><td>The BFF owns the session, so it cannot be stateless by default</td></tr>
+</table>
+<div class="note"><b>What we are asking you to approve.</b> The architecture in &sect;2&ndash;&sect;14: static UI on S3 + CloudFront, one modular Spring Boot BFF on Fargate, two deployment models, and build-time entitlement. Approval unblocks the BFF implementation and the deployment pipeline. Open items that do <i>not</i> block approval are listed in &sect;15.</p></div>
+
+<h2>2. System context</h2>
+<p><span class="aud">For everyone</span></p>
+<p>Before any internal structure, the outside view: who uses the Visualization UI, and what it depends on.</p>
+
+<p style="margin:10pt 0 4pt;text-align:center"><p style="margin:10pt 0 4pt;text-align:center"><img src="img/fig-1.png" style="width:470pt" alt=""></p></p>
+<p class="cap"><b>Figure 1 &mdash; System context.</b> Two deployables inside one boundary: the React application in the browser, and the BFF it calls on <span class="mono">/api/*</span>. Every downstream arrow leaves the BFF &mdash; the browser has no path to identity, the persistent data store, AWS Step Functions, the BPMN data store, or the Platform APIs.</p>
+
+<h2>3. Container view</h2>
+<p><span class="aud">For enterprise architects and engineers</span></p>
+<p>One level in: the deployable pieces and the traffic between them. The important structural claim of this document is visible here &mdash; <b>the BFF is a single layer</b> between the browser and the existing domain services. It is not a facade in front of a second experience-layer service.</p>
+
+<p style="margin:10pt 0 4pt;text-align:center"><p style="margin:10pt 0 4pt;text-align:center"><img src="img/fig-2.png" style="width:470pt" alt=""></p></p>
+<p class="cap"><b>Figure 2 &mdash; Container view.</b> One CloudFront distribution serves both halves from a single domain: the React application as static web content from S3 (<span class="mono">/*</span>), and the BFF on Fargate (<span class="mono">/api/*</span>). Same origin, so the session cookie flows with no CORS. The BFF is the only component that reaches the platform: the persistent data store (execution history), AWS Step Functions (live run state), the BPMN data store (definitions), the Platform APIs, and the cache holding parsed diagrams.</p>
+
+<h4>Why the browser stops at the BFF</h4>
+<ul>
+<li>One call per screen instead of three fanned out from the client</li>
+<li>Megabyte BPMN XML is parsed once server-side, never shipped</li>
+<li>Tenant comes from the session, never from a client parameter</li>
+<li>Role-based redaction happens before serialization</li>
+<li>Tokens stay server-side; the browser holds only a cookie</li>
+<li>Same origin throughout, so no CORS and no third-party cookies</li>
+</ul>
+
+<h3>Reading the layers</h3>
+<table>
+<tr><th width="20%">Layer</th><th width="40%">Responsibility</th><th>Explicitly not responsible for</th></tr>
+<tr><td>React SPA</td><td>Rendering, navigation, zoom and pan, theming, deep links</td><td>Joining data across services; parsing BPMN; holding credentials</td></tr>
+<tr><td>CloudFront</td><td>TLS, caching, security headers, routing the two behaviours</td><td>Any request-time application logic</td></tr>
+<tr><td>BFF</td><td>Session, tenancy, aggregation, redaction, BPMN parsing and caching</td><td>Owning workflow data; executing workflows; business rules</td></tr>
+<tr><td>Domain services</td><td>The system of record for definitions, runs and rules</td><td>Knowing anything about screens</td></tr>
+</table>
+<p>Read top to bottom, each layer depends only on the one beneath it. There is no path from the browser to a domain service, and no path from a domain service back up into the UI.</p>
+
+<h2>4. Why a static UI and a modular BFF</h2>
+<p><span class="aud">For enterprise architects and leadership</span></p>
+<p>The question that settles frontend hosting is not which AWS service is most capable. It is whether the frontend can be fully generated at build time and served as files, or whether it needs to do work at request time. Answer that honestly and the platform picks itself.</p>
+
+<h3>What is actually dynamic</h3>
+<table>
+<tr><th width="44%">Behaviour</th><th width="20%">Where it happens</th><th>Implication</th></tr>
+<tr><td>Shell, nav, tables, cards</td><td>Browser</td><td>Static</td></tr>
+<tr><td>Zoom, pan, fit, full-screen, selection</td><td>Browser (a CSS transform)</td><td>Static &mdash; no server involved at all</td></tr>
+<tr><td>Theme and accent switching</td><td>Browser (token remap)</td><td>Static</td></tr>
+<tr><td>Routing, deep links, filters in the URL</td><td>Browser</td><td>Static, plus one CDN rule</td></tr>
+<tr><td><b>Parsing BPMN XML into a drawable graph</b></td><td><b>Server</b></td><td>Dynamic &mdash; belongs to the BFF</td></tr>
+<tr><td><b>Fetching only the nodes in the viewport</b></td><td><b>Server</b></td><td>Dynamic &mdash; belongs to the BFF</td></tr>
+<tr><td><b>Session, tenancy, role redaction</b></td><td><b>Server</b></td><td>Dynamic &mdash; belongs to the BFF</td></tr>
+<tr><td><b>Aggregating services into screen payloads</b></td><td><b>Server</b></td><td>Dynamic &mdash; belongs to the BFF</td></tr>
+</table>
+<p class="pull">The visualization is compute-heavy. The <i>hosting</i> of the visualization is not. Conflating those two is what puts static frontends into containers they do not need.</p>
+
+<h3>Options considered</h3>
+<table>
+<tr><th width="20%">Option</th><th width="34%">Best when</th><th>Decision</th></tr>
+<tr><td><b>CloudFront + S3</b></td><td>The app is fully generated at build time</td><td><b>Chosen for the UI.</b> Lowest operational surface, no fleet, no patching, edge-cached, no public bucket</td></tr>
+<tr><td><b>Amplify Hosting</b></td><td>You want managed Git-based delivery and managed server rendering</td><td>Rejected. We have no server rendering to manage, and an internal regulated platform wants its own pipeline and network controls</td></tr>
+<tr><td><b>ECS Fargate for the UI</b></td><td>The frontend has become an application service</td><td>Rejected. A task whose only job is returning files an edge cache already holds</td></tr>
+<tr><td><b>ECS Fargate for the BFF</b></td><td>Long-lived process, warm cache, no cold starts</td><td><b>Chosen.</b> See &sect;5</td></tr>
+<tr><td><b>Lambda for the BFF</b></td><td>Spiky or very low traffic, zero idle cost</td><td>Rejected as the default. Cold starts re-parse diagrams, a 29-second API Gateway ceiling constrains large payloads, and a JVM is a poor cold-start fit</td></tr>
+</table>
+<div class="note"><b>The failure mode to watch for is not choosing CloudFront + S3 &mdash; it is keeping it after the frontend starts needing request-time behaviour.</b> &sect;15 lists the signals that would mean the UI has crossed that line. Until one appears, static is not a compromise; it is the correct shape.</div>
+
+<h2>5. Inside the BFF</h2>
+<p><span class="aud">For backend engineers and architects</span></p>
+<p>The BFF is one layer and one deployable, structured internally as a shared core plus one module per product capability. Modules register themselves into the core; the core never names a module. That direction is the whole design, because it is what lets us compile any subset.</p>
+
+<p style="margin:10pt 0 4pt;text-align:center">
+
+<h3>How Spring Boot makes this a dependency decision</h3>
+<table>
+<tr><th width="30%">Mechanism</th><th>Effect</th></tr>
+<tr><td>Each module jar ships its own <span class="mono">@AutoConfiguration</span>, listed in its own <span class="mono">AutoConfiguration.imports</span></td><td>On the classpath its controllers exist; absent, they do not. Core needs no knowledge of it</td></tr>
+<tr><td>Core injects <span class="mono">List&lt;CapabilityContribution&gt;</span> rather than reading a catalogue</td><td>The capability list on <span class="mono">/api/v1/me</span> is derived from what is actually present, so it cannot over-claim</td></tr>
+<tr><td><span class="mono">@ConditionalOnProperty</span> and <span class="mono">@Profile</span> are banned for capability gating</td><td>They require the code to be present in order to switch it off &mdash; the opposite of what &sect;12 needs</td></tr>
+<tr><td>Gradle fails a <span class="mono">bff-core</span> &rarr; <span class="mono">bff-module-*</span> dependency; ArchUnit asserts the package direction</td><td>The boundary is machine-checked, not a convention that erodes</td></tr>
+<tr><td>DTOs live in their owning module</td><td>A shared DTO jar carrying authoring records would leak the full contract into every image</td></tr>
+</table>
+
+<h2>6. The Experience API, by module</h2>
+<p><span class="aud">For frontend and backend engineers</span></p>
+<p>The BFF <i>is</i> the experience API &mdash; there is no separate experience-layer service. Contracts are screen-shaped: one call per screen, geometry included, no client-side joins.</p>
+
+<h3>Conventions, owned by the core</h3>
+<table>
+<tr><th width="22%">Convention</th><th>Rule</th></tr>
+<tr><td>Versioning</td><td><span class="mono">/api/v1</span>, additive change only within a version &mdash; required because customer-managed deployments lag (&sect;9)</td></tr>
+<tr><td>Lists</td><td><span class="mono">{ items, cursor, total? }</span>. Cursor paging only; no page numbers anywhere in the product</td></tr>
+<tr><td>Errors</td><td>RFC 7807 problem+json, and never naming a capability the artifact does not carry</td></tr>
+<tr><td>Mutations</td><td>Idempotency-keyed; return the changed resource or an accepted-status envelope</td></tr>
+<tr><td>Scoping</td><td>Tenant from the session and redaction before serialization &mdash; both in core, so a module cannot forget them</td></tr>
+</table>
+
+<h4>bff-core &mdash; present in every edition</h4>
+<pre class="api">GET  /api/v1/me                       &rarr; { user, roles, permissions, tenants, activeTenantId,
+                                          capabilities[] }   // derived from the classpath
+POST /api/v1/me/tenant  { tenantId }  &rarr; 204   server-side switch; all later data follows
+GET  /api/v1/search?q=                &rarr; { results[] }        // fans out to present modules only</pre>
+
+<h4>bff-module-monitor</h4>
+<pre class="api">GET  /api/v1/executions?from=&amp;to=&amp;status=&amp;workflowId=&amp;cursor=   &rarr; { items[], cursor }
+GET  /api/v1/executions/{id}/trace
+   &rarr; { execution, diagram:{ nodes, edges },
+       overlay:{ nodeStates:{ id:"success|running|failed|skipped" }, traversedEdges[] } }
+GET  /api/v1/executions/{id}/nodes/{nodeId}?include=io   &rarr; I/O bodies, on demand only
+GET  /api/v1/alerts?severity=&amp;status=&amp;cursor=            &rarr; { items[], cursor }
+POST /api/v1/alerts/{id}/acknowledge                     &rarr; 200 { id, status }
+
+// READ-ONLY slice of workflow — monitoring must still DRAW workflows
+GET  /api/v1/workflows?cursor=&amp;q=&amp;status=                &rarr; { items[], cursor }
+GET  /api/v1/workflows/{id}/diagram?version=7&amp;bbox=x,y,w,h&amp;lod=auto
+   &rarr; { version, bounds, lod:"full"|"summary", nodes[], edges[], tiles:{ loaded[], pending[] } }
+GET  /api/v1/workflows/{id}/graphs/{graphId}             &rarr; DAG in the same node/edge shape</pre>
+<div class="note"><b>The split between editions is by verb, not by entity.</b> A Monitoring deployment owns the <i>read</i> half of the workflow surface, because a trace and a graph view have to draw a diagram. Writes live in the Build module and are absent from the Monitoring artifact. The consequence to raise with clients early: a Monitoring deployment still needs read access to workflow definitions, so its backend footprint includes the workflow service in read mode or a replicated read model.</div>
+
+<h4>bff-module-build</h4>
+<pre class="api">POST    /api/v1/workflows                          &rarr; 201 { id, version:"draft" }
+PUT     /api/v1/workflows/{id}/definition          &rarr; 200 { version, bounds }   // BPMN XML in
+POST    /api/v1/workflows/{id}/validate            &rarr; { valid, issues[] }
+POST    /api/v1/workflows/{id}/publish             &rarr; 201 { version, publishedAt }
+GET/PUT /api/v1/rules &middot; /api/v1/rules/{id}</pre>
+<p>Publishing writes a new immutable version, which is why the parse cache never needs invalidation: a publish produces a new key rather than dirtying an old one.</p>
+
+<h4>bff-module-operate, bff-module-docs, bff-module-tasks</h4>
+<pre class="api">// operate
+POST /api/v1/executions/{id}/stop                    &rarr; 202 { id, status:"stopping" }
+POST /api/v1/executions/{id}/restart { fromNodeId }  &rarr; 201 { newExecutionId, linkedTo }
+
+// docs
+GET  /api/v1/docs?section=&amp;cursor=                   &rarr; { items[], cursor }
+GET  /api/v1/docs/{id}                               &rarr; { title, bodyHtml, relatedIds[] }
+
+// tasks — IN DESIGN, shape recorded to fix the contract style, not the semantics
+GET  /api/v1/tasks?status=&amp;assignee=&amp;cursor=         &rarr; { items[], cursor }
+GET  /api/v1/tasks/{id}                              &rarr; { task, context:{ workflow?, execution? } }</pre>
+<p><b>Operate is separate from Monitor deliberately:</b> some clients may observe without intervening, and that is an edition decision rather than a permission toggle.</p>
+
+<h2>7. Runtime flows</h2>
+<p><span class="aud">For engineers and security review</span></p>
+<p>Three flows carry most of the design: how a user gets signed in, how a large diagram reaches the screen, and how a trace is assembled.</p>
+
+<h3>7.1 Sign-in &mdash; no token ever reaches the browser</h3>
+<p style="margin:10pt 0 4pt;text-align:center"><p style="margin:10pt 0 4pt;text-align:center"><img src="img/fig-3.png" style="width:470pt" alt=""></p></p>
+<p class="cap"><b>Figure 3 &mdash; SSO sign-in.</b> The authorization code is exchanged server to server; access and ID tokens never leave the BFF. The browser receives an opaque httpOnly cookie, which is why nothing in the JavaScript bundle is a secret &mdash; and in turn why the content security policy can stay at <span class="mono">default-src 'self'</span>.</p>
+
+<h3>7.2 Opening a large workflow diagram</h3>
+<p style="margin:10pt 0 4pt;text-align:center"><p style="margin:10pt 0 4pt;text-align:center"><img src="img/fig-4.png" style="width:470pt" alt=""></p></p>
+<p class="cap"><b>Figure 4 &mdash; Loading a diagram.</b> The browser never sees BPMN XML. Because the cache key is the immutable <i>(workflow, version)</i> pair, a publish creates a new key rather than dirtying an old one &mdash; so there is no cache-invalidation problem to solve. Above roughly 2,000 nodes the BFF returns a level-of-detail summary and fills in detail as the user zooms in.</p>
+
+<h3>7.3 Assembling an execution trace</h3>
+<p style="margin:10pt 0 4pt;text-align:center"><p style="margin:10pt 0 4pt;text-align:center"><img src="img/fig-5.png" style="width:470pt" alt=""></p></p>
+<p class="cap"><b>Figure 5 &mdash; Execution trace.</b> One request produces a complete screen. Input and output bodies are excluded by default so a trace with hundreds of nodes stays a small payload; they load per node when a user actually opens the inspector. A trace always draws the workflow version that ran, which is what makes a historical trace trustworthy years later.</p>
+
+<h2>8. Deployment A &mdash; multi-tenant SaaS</h2>
+<p><span class="aud">For architects, security and operations</span></p>
+<p>The default. Everything runs in our AWS account: one distribution, one bucket, one BFF service, many tenants. Tenant separation is logical and happens at request time, inside one runtime.</p>
+
+<p style="margin:10pt 0 4pt;text-align:center">
+
+<table>
+<tr><th width="26%">Concern</th><th>How it is handled</th></tr>
+<tr><td>Tenant identity</td><td>Established at sign-in, carried in the httpOnly session. Never a request parameter</td></tr>
+<tr><td>Cross-tenant users</td><td>Platform engineers and administrators switch with <span class="mono">POST /api/v1/me/tenant</span>, a server-side switch that re-scopes every later call. Regular tenant users never see the control</td></tr>
+<tr><td>Branding and features</td><td>Delivered at run time from <span class="mono">/api/v1/me</span> and <span class="mono">config.json</span> &mdash; which is why one artifact serves everyone</td></tr>
+<tr><td>Deep links</td><td>CloudFront maps 403 <i>and</i> 404 to <span class="mono">/index.html</span> with status 200. Behind Origin Access Control S3 answers 403 for a missing key, so both mappings are required</td></tr>
+<tr><td>Caching</td><td><span class="mono">assets/*</span> immutable for a year; <span class="mono">index.html</span> and <span class="mono">config.json</span> no-cache. A deploy invalidates only those two paths</td></tr>
+<tr><td>Release cadence</td><td>We deploy; every tenant is current within minutes</td></tr>
+</table>
+
+<h2>9. Deployment B &mdash; customer-managed</h2>
+<p><span class="aud">For architects, security and commercial</span></p>
+<p>By exception, for clients who cannot accept shared infrastructure &mdash; data-residency law, contractual isolation, or a network model that cannot reach our VPC. The same code is deployed as a complete, self-contained copy inside the client's own AWS account.</p>
+
+<p style="margin:10pt 0 4pt;text-align:center">
+
+<h3>Who hosts what</h3>
+<table>
+<tr><th width="34%">Component</th><th width="33%">Multi-tenant SaaS</th><th>Customer-managed</th></tr>
+<tr><td>UI &mdash; S3 + CloudFront</td><td>Our account</td><td>Client account</td></tr>
+<tr><td>BFF &mdash; ALB + Fargate</td><td>Our account</td><td>Client account</td></tr>
+<tr><td>Domain services, cache, data</td><td>Our account</td><td>Client account</td></tr>
+<tr><td>Identity provider</td><td>Ours, federated to client directories</td><td>The client's</td></tr>
+<tr><td>Source repository, CI, artifact registry</td><td colspan="2"><b>Always our account</b> &mdash; build time only</td></tr>
+</table>
+<div class="note"><b>The UI and BFF are always deployed together, into the same account.</b> They are same-origin by design (&sect;3), which is what lets the httpOnly cookie flow with no CORS. A customer-managed UI calling back to our centrally hosted BFF would need cross-account CORS, third-party cookies, and would route the client's user traffic through our infrastructure at run time &mdash; defeating the isolation that justified the model.</div>
+
+<h3>What differs, precisely</h3>
+<table>
+<tr><th width="24%">Dimension</th><th width="38%">Multi-tenant SaaS</th><th>Customer-managed</th></tr>
+<tr><td>Frontend artifact</td><td colspan="2"><b>Identical.</b> Same commit, same hashed bundle</td></tr>
+<tr><td>Tenant resolution</td><td>From the session, many tenants per deployment</td><td>One tenant per deployment; scoping still enforced server-side and never removed from the code path</td></tr>
+<tr><td>Domain and certificates</td><td>Ours</td><td>Client domain, client-issued certificate, client DNS</td></tr>
+<tr><td>Data location</td><td>Our account, logically isolated</td><td>Client account and region &mdash; the residency answer</td></tr>
+<tr><td>Release cadence</td><td>We deploy; all current within minutes</td><td>Client deploys on their change calendar; expect versions to lag</td></tr>
+<tr><td>Observability</td><td>Central dashboards, full fleet visibility</td><td>The client's CloudWatch. Assume we are blind during incidents</td></tr>
+<tr><td>Support model</td><td>We diagnose directly</td><td>Diagnosis by log bundle and version report; the runbook must be self-serve</td></tr>
+<tr><td>Cost owner</td><td>Us, amortised across tenants</td><td>The client, full stack</td></tr>
+</table>
+
+<h3>What this demands of the codebase</h3>
+<ul>
+<li><b>No client forks, ever.</b> A customer-managed deployment is a tagged release of <span class="mono">main</span>. Client-specific behaviour is configuration or a flag in the shared codebase; anything that cannot be expressed that way is a product gap to close, not a fork to open.</li>
+<li><b>Nothing client-specific at build time.</b> Everything variable &mdash; API base, branding, enabled modules, identity metadata &mdash; resolves at run time from <span class="mono">config.json</span> and the session.</li>
+<li><b>Tenant scoping stays in the code even at one tenant.</b> A single-tenant deployment must not become the one where authorization was optional; both models then share one security model and one test suite.</li>
+<li><b>Infrastructure ships as code</b> &mdash; the repository carries the CloudFront / S3 / Fargate definition parameterised by domain, identity provider, region and VPC.</li>
+</ul>
+
+<h3>Version skew across the fleet</h3>
+<p>SaaS has one version. Customer-managed has as many as there are clients who have deployed, and the oldest defines what the BFF contract must still honour. Three mitigations: version the experience API and add fields rather than change them; publish a support window (the current release and the two preceding minors) so lag is bounded contractually; and expose a version endpoint the client's own monitoring reads, so drift is visible to the party who can act on it.</p>
+
+<h2>10. Build and release pipeline</h2>
+<p><span class="aud">For engineers and operations</span></p>
+<p>The separation happens at exactly two points, and knowing which is which is the whole model: <b>capability is compiled in at build time; tenant is configured on at deploy time.</b></p>
+
+<p style="margin:10pt 0 4pt;text-align:center"><v:group style="width:468pt;height:242pt;position:relative;mso-position-horizontal:center" coordsize="1120,580" coordorigin="0,0" o:allowincell="t"><v:rect style="position:absolute;left:30;top:6;width:640;height:20" filled="f" stroked="f"><v:textbox style="mso-fit-shape-to-text:f" inset="0,0,0,0"><div style="text-align:left;font-family:'Segoe UI',Arial,sans-serif;font-size:6.5pt;font-weight:bold;color:#000000;line-height:1.1">POINT 1 — BUILD TIME, IN OUR ACCOUNT: CAPABILITY SEPARATION</div></v:textbox></v:rect><v:roundrect style="position:absolute;left:180;top:28;width:760;height:66" arcsize="2600f" fillcolor="#e8e8e8" strokecolor="#000000" strokeweight="1.75pt"><v:fill color="#e8e8e8"/><v:textbox style="mso-fit-shape-to-text:f" inset="3pt,2pt,3pt,2pt"><div style="text-align:center;font-family:'Segoe UI',Arial,sans-serif;color:#000000;line-height:1.15"><b style="font-size:9pt">One repository, tag v2.14.0</b><br><span style="font-size:7pt">install · typecheck · unit · accessibility · adherence lint — run once</span></div></v:textbox></v:roundrect><v:line from="560,96" to="560,134" strokecolor="#000000" strokeweight="1pt"><v:stroke endarrow="block" endarrowwidth="narrow" endarrowlength="medium"/></v:line><v:roundrect style="position:absolute;left:40;top:138;width:240;height:100" arcsize="2600f" fillcolor="#ffffff" strokecolor="#000000" strokeweight="1pt"><v:fill color="#ffffff"/><v:textbox style="mso-fit-shape-to-text:f" inset="3pt,2pt,3pt,2pt"><div style="text-align:center;font-family:'Segoe UI',Arial,sans-serif;color:#000000;line-height:1.15"><b style="font-size:8.5pt">ui-monitor</b><br><span style="font-size:7pt">authoring chunks excluded</span><br><span style="font-size:7pt">from the build output</span></div></v:textbox></v:roundrect><v:roundrect style="position:absolute;left:300;top:138;width:220;height:100" arcsize="2600f" fillcolor="#ffffff" strokecolor="#000000" strokeweight="1pt"><v:fill color="#ffffff"/><v:textbox style="mso-fit-shape-to-text:f" inset="3pt,2pt,3pt,2pt"><div style="text-align:center;font-family:'Segoe UI',Arial,sans-serif;color:#000000;line-height:1.15"><b style="font-size:8.5pt">ui-full</b><br><span style="font-size:7pt">every capability</span></div></v:textbox></v:roundrect><v:roundrect style="position:absolute;left:540;top:138;width:260;height:100" arcsize="2600f" fillcolor="#ffffff" strokecolor="#000000" strokeweight="1pt"><v:fill color="#ffffff"/><v:textbox style="mso-fit-shape-to-text:f" inset="3pt,2pt,3pt,2pt"><div style="text-align:center;font-family:'Segoe UI',Arial,sans-serif;color:#000000;line-height:1.15"><b style="font-size:8.5pt">bff-monitor</b><br><span style="font-size:7pt">gradle :bff-app-monitor</span><br><span style="font-size:7pt">authoring jars not on classpath</span></div></v:textbox></v:roundrect><v:roundrect style="position:absolute;left:820;top:138;width:260;height:100" arcsize="2600f" fillcolor="#ffffff" strokecolor="#000000" strokeweight="1pt"><v:fill color="#ffffff"/><v:textbox style="mso-fit-shape-to-text:f" inset="3pt,2pt,3pt,2pt"><div style="text-align:center;font-family:'Segoe UI',Arial,sans-serif;color:#000000;line-height:1.15"><b style="font-size:8.5pt">bff-full</b><br><span style="font-size:7pt">gradle :bff-app-full</span></div></v:textbox></v:roundrect><v:line from="560,242" to="560,282" strokecolor="#000000" strokeweight="1pt"><v:stroke endarrow="block" endarrowwidth="narrow" endarrowlength="medium"/></v:line><v:rect style="position:absolute;left:594;top:244;width:470;height:18" filled="f" stroked="f"><v:textbox style="mso-fit-shape-to-text:f" inset="0,0,0,0"><div style="text-align:left;font-family:'Segoe UI',Arial,sans-serif;font-size:7pt;color:#000000;line-height:1.1">Sign artifacts · per-artifact SBOM · release notes</div></v:textbox></v:rect><v:roundrect style="position:absolute;left:180;top:286;width:760;height:60" arcsize="2600f" fillcolor="#e8e8e8" strokecolor="#000000" strokeweight="1.75pt"><v:fill color="#e8e8e8"/><v:textbox style="mso-fit-shape-to-text:f" inset="3pt,2pt,3pt,2pt"><div style="text-align:center;font-family:'Segoe UI',Arial,sans-serif;color:#000000;line-height:1.15"><b style="font-size:9pt">Signed artifact registry (S3 + ECR), pinned by immutable digest</b></div></v:textbox></v:roundrect><v:rect style="position:absolute;left:30;top:356;width:580;height:20" filled="f" stroked="f"><v:textbox style="mso-fit-shape-to-text:f" inset="0,0,0,0"><div style="text-align:left;font-family:'Segoe UI',Arial,sans-serif;font-size:6.5pt;font-weight:bold;color:#000000;line-height:1.1">POINT 2 — DEPLOY TIME: TENANT SEPARATION</div></v:textbox></v:rect><v:line from="420,348" to="300,424" strokecolor="#000000" strokeweight="1pt"><v:stroke endarrow="block" endarrowwidth="narrow" endarrowlength="medium"/></v:line><v:line from="700,348" to="830,424" strokecolor="#000000" strokeweight="1pt"><v:stroke endarrow="block" endarrowwidth="narrow" endarrowlength="medium"/></v:line><v:rect style="position:absolute;left:40;top:374;width:254;height:42" filled="f" stroked="f"><v:textbox style="mso-fit-shape-to-text:f" inset="0,0,0,0"><div style="text-align:left;font-family:'Segoe UI',Arial,sans-serif;font-size:7pt;color:#000000;line-height:1.1"><b>Multi-tenant SaaS</b><br>our pipeline promotes <b>full</b><br>dev → stage → prod</div></v:textbox></v:rect><v:rect style="position:absolute;left:616;top:374;width:324;height:42" filled="f" stroked="f"><v:textbox style="mso-fit-shape-to-text:f" inset="0,0,0,0"><div style="text-align:left;font-family:'Segoe UI',Arial,sans-serif;font-size:7pt;color:#000000;line-height:1.1"><b>Customer-managed</b><br>the entitled pair is extracted into<br>the client&rsquo;s deployment repository</div></v:textbox></v:rect><v:roundrect style="position:absolute;left:60;top:428;width:480;height:140" arcsize="2600f" fillcolor="#ffffff" strokecolor="#000000" strokeweight="1pt"><v:fill color="#ffffff"/><v:textbox style="mso-fit-shape-to-text:f" inset="3pt,2pt,3pt,2pt"><div style="text-align:center;font-family:'Segoe UI',Arial,sans-serif;color:#000000;line-height:1.15"><b style="font-size:9pt">Our account</b><br><span style="font-size:7pt">One deployment, many tenants</span><br><span style="font-size:7pt">Tenant resolved per request</span><br><span style="font-size:7pt">We deploy; all tenants current within minutes</span></div></v:textbox></v:roundrect><v:roundrect style="position:absolute;left:580;top:428;width:480;height:140" arcsize="2600f" fillcolor="#ffffff" strokecolor="#000000" strokeweight="1pt"><v:fill color="#ffffff"/><v:textbox style="mso-fit-shape-to-text:f" inset="3pt,2pt,3pt,2pt"><div style="text-align:center;font-family:'Segoe UI',Arial,sans-serif;color:#000000;line-height:1.15"><b style="font-size:9pt">Client account, client pipeline</b><br><span style="font-size:7pt">Assume scoped pull role · sync dist/ to their S3</span><br><span style="font-size:7pt">push image to their ECR · ecs update-service (rolling)</span><br><span style="font-size:7pt">invalidate index.html and config.json</span></div></v:textbox></v:roundrect></v:group></p>
+<p class="cap"><b>Figure 6 &mdash; Build and promotion.</b> Our responsibility ends at a signed, versioned artifact in the registry. Everything downstream is either our promotion pipeline or the client's. <span class="mono">config.json</span> is composed at deploy time, not baked at build time, which is what lets one <span class="mono">ui-monitor</span> bundle serve every monitoring client.</p>
+
+<h3>Version-skew handling</h3>
+<p>Hashed asset names mean a deploy never needs a wide invalidation &mdash; only the two no-cache files. A tab opened before a deploy keeps working; when it next calls the API the BFF answers with a version-skew header, and the SPA offers a reload rather than failing silently.</p>
+
+<h2>11. Editions</h2>
+<p><span class="aud">For product, commercial and engineering</span></p>
+<p>Most customer-managed clients want Monitoring only. Rather than fork, the product is a set of named capabilities; a deployment declares an edition, and both the UI and the BFF read that same declaration.</p>
+<table>
+<tr><th width="16%">Capability</th><th width="42%">Screens</th><th>Experience API</th></tr>
+<tr><td class="mono">monitor</td><td>Executions &middot; execution trace &middot; alerts &middot; home monitoring cards &middot; read-only workflows and graph views</td><td><span class="mono">/executions*</span> &middot; <span class="mono">/alerts*</span> &middot; read-only <span class="mono">/workflows/{id}/diagram</span> and <span class="mono">/graphs</span></td></tr>
+<tr><td class="mono">build</td><td>Workflow authoring tabs &mdash; canvas editing, rules, publish</td><td>write <span class="mono">/workflows*</span> &middot; <span class="mono">/graphs*</span> &middot; <span class="mono">/validate</span> &middot; <span class="mono">/publish</span></td></tr>
+<tr><td class="mono">tasks</td><td>Task inventory and detail <i>(in design)</i></td><td><span class="mono">/tasks*</span></td></tr>
+<tr><td class="mono">docs</td><td>Documentation surfaces</td><td><span class="mono">/docs*</span></td></tr>
+<tr><td class="mono">operate</td><td>Stop and restart actions inside a trace</td><td><span class="mono">/executions/{id}/stop</span> &middot; <span class="mono">/restart</span></td></tr>
+</table>
+
+<h3>The edition catalogue</h3>
+<table>
+<tr><th width="20%">Edition</th><th width="34%">Modules</th><th>Typical use</th></tr>
+<tr><td class="mono">monitor</td><td>core + monitor + operate</td><td>Customer-managed monitoring-only client</td></tr>
+<tr><td class="mono">build</td><td>core + build</td><td>Authoring-only deployment</td></tr>
+<tr><td class="mono">docs</td><td>core + docs</td><td>Read-only reference deployment</td></tr>
+<tr><td class="mono">full</td><td>core + every module</td><td>Our SaaS deployment; clients who bought everything</td></tr>
+</table>
+<div class="note"><b>Onboarding selects an edition; it does not compose one.</b> The onboarding record writes <span class="mono">"edition": "monitor"</span> into the deployment configuration, and CI builds from a fixed matrix of catalogue entries &mdash; four images, four smoke suites, four SBOMs. An arbitrary module list would generate 2<sup>n</sup> combinations of which only the ordered ones are ever tested, so a new edition is a deliberate addition to the catalogue.</div>
+
+<h3>One edition, one service &mdash; and when to split</h3>
+<p>An edition is one deployable service; <span class="mono">/api/*</span> routes to it wholesale. Independently <i>buildable</i> modules do not imply independently <i>deployed</i> services. Splitting is possible later if monitoring traffic dwarfs authoring, and the price is paid in three places: CloudFront needs a behaviour per service, coupling the CDN to the API's URL structure; the session must move out of process to a signed cookie or shared ElastiCache; and the parsed-diagram cache is duplicated unless it too becomes shared. Build independently always; deploy independently only on traffic evidence.</p>
+
+<h2>12. Security view</h2>
+<p><span class="aud">For security review and architects</span></p>
+<table>
+<tr><th width="24%">Control</th><th>Implementation</th></tr>
+<tr><td>Authentication</td><td>OIDC authorization code with PKCE, terminated at the BFF. Tokens never reach the browser (&sect;7.1)</td></tr>
+<tr><td>Session</td><td>Server-side, referenced by an opaque httpOnly, Secure, SameSite=Lax cookie</td></tr>
+<tr><td>Authorization</td><td>Role and permission checks server-side before serialization. Client-side gating is presentation only</td></tr>
+<tr><td>Tenancy</td><td>Tenant from the session; never a client parameter. Enforced in core so a module cannot forget it</td></tr>
+<tr><td>Content security policy</td><td><span class="mono">default-src 'self'</span> &mdash; achievable because there are no CDN scripts, no downloaded fonts and no secrets in the bundle</td></tr>
+<tr><td>Transport and headers</td><td>TLS at CloudFront; Response Headers Policy adds HSTS, <span class="mono">nosniff</span>, <span class="mono">frame-ancestors 'none'</span>, Referrer-Policy</td></tr>
+<tr><td>Bucket exposure</td><td>Private bucket, Block Public Access on, REST endpoint with Origin Access Control. Never a website endpoint</td></tr>
+<tr><td>Network</td><td>Fargate tasks in private subnets. Cookies forwarded only on the <span class="mono">/api/*</span> behaviour, so static assets stay fully cacheable</td></tr>
+<tr><td>Secrets</td><td>Secrets Manager at run time; never in an image, never in the bundle</td></tr>
+<tr><td>No third-party origins</td><td>No CDN scripts, no web fonts, no external calls &mdash; the application runs behind a firewall with no outbound internet access</td></tr>
+</table>
+
+<h3>Threat model for a customer-managed deployment</h3>
+<p>A client who runs the deployment has root on the host, owns the environment variables and can read the image. It follows that <b>a runtime flag is a configuration convenience, never a control</b>. Two concerns follow, with different answers.</p>
+<h4>Concern 1 &mdash; discovering functionality they were not sold</h4>
+<table>
+<tr><th width="24%">Surface</th><th>Leak to close</th></tr>
+<tr><td>BFF modules</td><td><span class="mono">bff-app-monitor</span> depends on core + monitor + operate only. Authoring controllers, DTOs, validators and queries are not on the classpath and not in the image. This matters more in Java than elsewhere: boot-jar class files decompile to near-source, so "present but disabled" would be close to shipping the source</td></tr>
+<tr><td>Core code</td><td>Core must not enumerate what it does not carry: no master capability enum, no central registry importing every module, no shared error catalogue naming authoring failures. Modules auto-configure themselves into core; Gradle and an ArchUnit test enforce the direction</td></tr>
+<tr><td>Spring Actuator</td><td>The sharpest Java-specific leak: <span class="mono">/actuator/mappings</span>, <span class="mono">/beans</span>, <span class="mono">/env</span>, <span class="mono">/configprops</span> and <span class="mono">/conditions</span> enumerate every controller, bean and evaluated condition. Expose <span class="mono">health</span> and <span class="mono">info</span> only, on a separate management port not routed through CloudFront, and assert the exposure list in a test</td></tr>
+<tr><td>Generated API docs</td><td>Generated from the controllers actually present, never checked in whole and never published from a full build</td></tr>
+<tr><td>UI bundle</td><td>Authoring chunks excluded from the <span class="mono">ui-monitor</span> build output, not merely left unfetched. Route tables and capability constants are per-build</td></tr>
+<tr><td>Source maps</td><td>Not published to client buckets; retained in our registry for symbolising reported errors</td></tr>
+<tr><td>Config and error text</td><td>Configuration lists what is enabled, never the full catalogue. No "upgrade to unlock" strings, no 403 body that names a capability</td></tr>
+</table>
+<h4>Concern 2 &mdash; reaching back into our boundary</h4>
+<ul>
+<li><b>Exactly one credential exists</b> in a customer-managed deployment: a cross-account pull role scoped by ARN to that client's entitled repositories. They cannot pull <span class="mono">bff-full</span>, because entitlement is an IAM policy on our registry rather than a check inside their runtime.</li>
+<li><b>Short-lived and revocable</b> &mdash; OIDC-federated role assumption from their pipeline; no long-lived keys; revocable unilaterally.</li>
+<li><b>No path inwards</b> &mdash; no VPC peering, no PrivateLink into our account, no service account, no database credential, no shared cache.</li>
+<li><b>Blast radius stops at their own account</b> &mdash; their deployment holds only their data, and there is no shared plane to move laterally through.</li>
+</ul>
+<div class="note"><b>The principle.</b> You cannot cryptographically prevent someone from running code they possess on hardware they own. The architecture's job is therefore to ensure they never possess the code, never hold a credential into our boundary, and could not operate the capability even if they tried &mdash; a Monitoring deployment has no authoring services, data model, validation engine or publish pipeline. Capability scoping is the absence of an entire vertical, not a hidden menu item.</div>
+
+<h2>13. Operations view</h2>
+<p><span class="aud">For operations and SRE</span></p>
+<table>
+<tr><th width="26%">Area</th><th>Approach</th></tr>
+<tr><td>Deployment</td><td>Fargate rolling update with the deployment circuit breaker on; two or more tasks across availability zones; automatic rollback on failed health checks</td></tr>
+<tr><td>Scaling</td><td>Target-tracking autoscaling on CPU and request count. The parse cache is warm per task, so scale-out costs a brief cache miss window</td></tr>
+<tr><td>Static releases</td><td>Sync hashed assets, then <span class="mono">index.html</span> and <span class="mono">config.json</span>; invalidate only those two paths</td></tr>
+<tr><td>Health</td><td>ALB target health on <span class="mono">/actuator/health</span> (management port); the same endpoint reports version and edition for drift detection</td></tr>
+<tr><td>Logging</td><td>Structured JSON to CloudWatch with request id and tenant id on every line; CloudFront and ALB access logs to S3</td></tr>
+<tr><td>Tracing and metrics</td><td>X-Ray on the BFF; per-endpoint latency, cache hit ratio, parse duration by diagram size</td></tr>
+<tr><td>Alarms</td><td>5xx rate, ALB target health, task restarts, cache hit ratio below threshold, parse duration outliers</td></tr>
+<tr><td>Customer-managed support</td><td>Diagnosis by log bundle and version report. The runbook must be self-serve, because we have no access to their account</td></tr>
+</table>
+
+<h2>14. Non-functional requirements</h2>
+<table>
+<tr><th width="26%">Requirement</th><th width="24%">Target</th><th>How the architecture meets it</th></tr>
+<tr><td>First contentful paint</td><td>&lt; 1.5 s on a warm cache</td><td>Static assets served from the edge; no server rendering to wait for</td></tr>
+<tr><td>Screen data</td><td>One request per screen, p95 &lt; 800 ms</td><td>BFF aggregation; no client-side joins</td></tr>
+<tr><td>Diagram interactivity</td><td>60 fps zoom and pan up to 4,000 nodes</td><td>Server-side parsing, viewport tiles, level-of-detail above ~2,000 nodes; zoom is a CSS transform</td></tr>
+<tr><td>Live monitoring latency</td><td>New executions visible within ~5 s</td><td>Polling or SSE from the BFF; arrivals merge without moving the reader's view</td></tr>
+<tr><td>Browser memory</td><td>Constant DOM regardless of list length</td><td>Virtualised lists (~30 rows in the DOM), data pages dropped beyond a ~500-row window, 1,000-row cap</td></tr>
+<tr><td>Availability</td><td>99.9% for the UI</td><td>CloudFront and S3 for static; multi-AZ Fargate behind an ALB for the API</td></tr>
+<tr><td>Accessibility</td><td>WCAG 2.1 AA</td><td>Per the UI Design System: keyboard-complete, contrast-checked, never colour alone</td></tr>
+<tr><td>Auditability</td><td>A historical trace remains truthful indefinitely</td><td>A trace always draws the immutable workflow version that ran</td></tr>
+</table>
+
+<h2>15. Risks and open items</h2>
+<table>
+<tr><th width="30%">Risk or open item</th><th width="12%">Blocks approval?</th><th>Position</th></tr>
+<tr><td>Jenkins path-filtering capability is unconfirmed for a single-repository build</td><td>No</td><td>Fallback needs no special capability: always build both halves and skip the push when the artifact digest is unchanged. Two jobs against one repository is the next option</td></tr>
+<tr><td>Tasks module is still in design</td><td>No</td><td>Contract style is fixed; semantics deliberately left open. It is an edition entry already, so adding it later changes no structure</td></tr>
+<tr><td>Alerts ownership not finally decided</td><td>No</td><td>Currently inside Monitor. If it grows its own lifecycle it becomes its own module without touching core</td></tr>
+<tr><td>Customer-managed version lag</td><td>No</td><td>Bounded contractually by a published support window plus additive-only API change</td></tr>
+<tr><td>Signals that would move the UI off S3</td><td>No</td><td>Server rendering becomes a requirement; runtime secrets must reach the page; edge logic starts multiplying. Bigger diagrams is <i>not</i> on this list &mdash; that is BFF scaling and does not touch hosting</td></tr>
+<tr><td>Per-module deployment of the BFF</td><td>No</td><td>Deliberately deferred; &sect;11 records the three costs and the traffic evidence that would justify it</td></tr>
+</table>
+
+<h2>16. Glossary and detailed design map</h2>
+<table>
+<tr><th width="22%">Term</th><th>Meaning in this document</th></tr>
+<tr><td><b>BFF</b></td><td>Backend-for-frontend. One service layer owned by the frontend team, serving screen-shaped contracts. It <i>is</i> the experience API; there is no second experience service</td></tr>
+<tr><td><b>Experience API</b></td><td>The <span class="mono">/api/v1</span> contract the React application consumes</td></tr>
+<tr><td><b>Capability / module</b></td><td>A product area compiled as its own jar: Monitor, Build, Tasks, Docs, Operate</td></tr>
+<tr><td><b>Edition</b></td><td>A named combination of modules built into one artifact pair (UI + BFF)</td></tr>
+<tr><td><b>Multi-tenant SaaS</b></td><td>One deployment in our account serving many tenants, separated logically per request</td></tr>
+<tr><td><b>Customer-managed</b></td><td>A complete copy of the stack deployed in the client's own AWS account</td></tr>
+<tr><td><b>OAC</b></td><td>Origin Access Control &mdash; lets CloudFront read a private S3 bucket that is never publicly reachable</td></tr>
+<tr><td><b>Level of detail</b></td><td>A summarised diagram response above roughly 2,000 nodes, refined as the user zooms</td></tr>
+</table>
+<table>
+<tr><th width="36%">Detail lives in</th><th>Covers</th></tr>
+<tr><td>UI Design System</td><td>Colour, type, spacing, components, states, patterns, accessibility, content standards</td></tr>
+<tr><td>UI Architecture</td><td>React folder structure, route registry, state placement, browser memory, component interaction</td></tr>
+<tr><td>System Architecture &mdash; BFF</td><td>Full endpoint contracts, error codes, field-level redaction, cache and viewport streaming</td></tr>
+<tr><td>Architecture Decision Records</td><td>Every decision in this document with its context, alternatives and consequences</td></tr>
+<tr><td>Interactive Wireframes</td><td>Every screen, clickable, with live monitoring behaviour</td></tr>
+<tr><td>React application</td><td>Runnable reference implementation against mocked adapters</td></tr>
+</table>
+
+<p style="margin-top:14pt;padding-top:8pt;border-top:1pt solid #9a9a9a;font-size:9pt">Figures are native Word drawing shapes &mdash; rounded rectangles with real arrow connectors &mdash; so any block can be selected, moved, resized or re-labelled in Word. All outlines, arrows and text are black; a grey fill marks the subject of a figure and carries no other meaning. Requires desktop Word for Windows; Word for Mac and Word Online do not draw these shapes. Every rule, arrow and label is black; a shaded fill marks the subject of a figure, and carries no other meaning.</p>
+
+</body></html>
