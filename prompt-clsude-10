@@ -1,0 +1,181 @@
+You are working in a repo that uses OpenSpec with custom `opsx:*` slash commands to drive a PRD → spec/BPMN → OpenSpec proposal/design/tasks → Java pipeline. Today orchestration is MANUAL: a human runs each command, decides when to move on, and may or may not check artifacts in at each stage. This process is in use by a client. I want to evolve it to the target architecture in the Appendix with a seamless transition.
+
+Follow this funnel strictly. STOP for my confirmation at the end of every phase. Never delete existing commands, scripts or artifacts; rename/deprecate instead. Ask before any non-additive change to schema.yaml.
+
+======================================================================
+PHASE 1 — UNDERSTAND CURRENT STATE (read-only)
+======================================================================
+Do NOT assume anything in the Appendix exists. Discover what does. Read at minimum:
+- .claude/commands/**, .claude/agents/**, .claude/settings*.json, hooks
+- CLAUDE.md, openspec/** including my schema.yaml and config.yaml
+- every script referenced by any command, especially anything touching BPMN, traces, scoring
+- how OpenSpec's stock apply / verify are wired in
+- git history of openspec/ for 2–3 recent changes to see how phases were actually run and what was checked in when
+
+Report:
+1. Inventory table: every command and script that exists → purpose → inputs → outputs → agent/model → tools.
+   Explicitly list which Appendix components do NOT exist yet (verify-semantic-design, verify-structural-design, verify-design, verify-structural-author, verify-semantic-author, score, gate, run, runner, pipeline.yaml, council agents, hooks).
+2. Current control flow as a diagram, including how propose-design behaves at step 3 and every loop that actually exists.
+3. How a human sequences the pipeline today: which commands they type, in what order, where they stop, what they inspect, what they commit.
+4. ORACLE AUDIT: for every verification that exists, what is its source of truth, and is it independent of the artifact being verified? Trace the trace-extraction code and show exactly which files traces are extracted from. If traces come from the BPMN and are checked against the BPMN, flag it as circular.
+5. Where any pass/fail/human-review decision is made today and by what (LLM or code).
+6. How state is carried between commands today (files, memory, nothing).
+7. Where a generator can influence the evidence it is judged on (e.g. apply writes annotations a check reads).
+8. Exact `claude -p` flags available in the installed Claude Code version for invoking a named subagent non-interactively with a tool allowlist, max turns and JSON output. Do not assume; check `claude --help`.
+
+======================================================================
+PHASE 2 — GAPS AND REUSABLE
+======================================================================
+Against the Appendix:
+1. Gap list, numbered, each mapped to the Appendix section it violates.
+2. Reusable inventory: existing scripts, prompts, agents, schema parts and BPMN tooling that can be kept as-is, wrapped, or refactored — with the verdict for each (keep / wrap / refactor / deprecate) and why.
+3. Risk list for the client transition: anything whose behavior will visibly change for a user, and how to avoid or stage it.
+
+======================================================================
+PHASE 3 — GATHER TEST DATA FOR EVALS
+======================================================================
+Build an eval corpus under evals/ without modifying production artifacts:
+1. From git history, collect at least 3 completed changes: PRD, spec, BPMN, proposal/design/tasks, Java output, and any human review outcomes or rework commits. These are "known good" (or known-reworked) baselines.
+2. Create at least 3 synthetic negative fixtures by mutating copies of a good change: (a) spec missing a requirement from the PRD; (b) BPMN missing a path the spec requires; (c) Java that satisfies the structure but violates a spec invariant; plus (d) one BPMN with an orphan path not backed by any requirement.
+3. For each fixture write expected outcomes: expected structural result, expected trace list, expected verdict (pass/fail/human_review) and the requirement IDs that should score low.
+4. Record a manifest evals/manifest.yaml: fixture → files → expected outcomes → provenance.
+Report the corpus and any gaps in what history can provide.
+
+======================================================================
+PHASE 4 — IDENTIFY SOURCE OF TRUTH
+======================================================================
+Two sources of truth must be made explicit and defended:
+A. For GENERATED ARTIFACTS: the spec. Confirm or propose the minimal additive schema.yaml changes that make the spec structured enough for deterministic trace extraction (requirement IDs, actors, preconditions, ordered steps, outcomes, invariants). Show the exact diff. Show how BPMN, proposal/design/tasks and Java will each be checked against spec-derived traces, never against each other.
+B. For ORCHESTRATION: .openspec/<change>/state.yaml plus verdict files written only by the runner. Define: state schema, verdict schema, trace-table schema, human decision schema, run-log schema. Define the input-hash policy (sha256 of every input of a node; git SHA recorded only if committed) and the stale-input rule.
+State explicitly what is DETERMINISTIC CODE (orchestration, trace extraction, structural checks, scoring, state/file writes, hooks) and what is PROBABILISTIC CLAUDE (generation, semantic judgement, clarification questions). Claude output is always data, never a control decision.
+
+======================================================================
+PHASE 5 — PLAN TARGET STATE
+======================================================================
+Produce an implementation plan that maps every gap to concrete file changes, in an order that keeps the pipeline runnable after each step and the client's manual workflow valid throughout. Include:
+- the per-gate rollout order (design gate first, author gate last) and the orchestration.mode / gate strictness defaults at each step
+- how in-flight changes get state bootstrapped
+- how the two propose-design nodes stay behind one command
+- the test plan: unit tests for scorer/runner/extractor, and evals from Phase 3
+- rollback procedure
+Stop for confirmation.
+
+======================================================================
+PHASE 6 — IMPLEMENT (one group at a time, confirm after each)
+======================================================================
+6a. Scripts: extract_traces.py, score.py, verify_structural_design.py, verify_structural_author.py, verify_tasks_coverage.py (refactor existing where they exist), shared state/verdict helper with atomic writes and hashing. Unit tests incl.: extract_traces output unchanged when BPMN changes; scorer truth table; disagreement → human_review; max_loops → human_review.
+6b. Agents: author agents, juror agents (3 lenses × design/author), design-verifier; jurors output strict JSON; read-only tools.
+6c. Runner: .openspec/pipeline.yaml + scripts/run_pipeline.py per Appendix §Runner, with the state-machine test harness (fake agents/scripts) covering pass path, fail→retry→pass, max_loops, stale-verdict halt, invalid-JSON retry, interrupt/resume, human_input/human_review resume, checkpoint step/auto, manual-invocation path.
+6d. Commands: wrap existing opsx commands over the runner (names/args unchanged); add opsx:gate, opsx:score, opsx:run; propose-design as one command over two nodes.
+6e. Hooks + settings.json; orchestration.mode and gate strictness config.
+6f. schema.yaml / config.yaml additive updates.
+6g. Docs: docs/pipeline.md for users (what is automatic, what the three verdicts mean, how to answer questions / approve a review, how to force or stop a run) and docs/pipeline-internals.md for maintainers (chain of trust, state machine, schemas, SoD rules). Update CLAUDE.md.
+
+======================================================================
+PHASE 7 — RUN EVALS
+======================================================================
+1. Run extract_traces.py on every eval fixture; diff against expected trace lists.
+2. Run the design gate and author gate in shadow mode on every fixture; compare verdicts and low-scoring requirement IDs to expected outcomes. Report precision/recall per gate and the juror score distributions (per juror, per lens, per model).
+3. Run the design gate in shadow mode against at least two real completed changes from history; report what it would have said.
+4. Propose threshold values for config.yaml based on the data, with the false-positive/false-negative trade-off stated.
+5. Run the runner test harness and all unit tests. Do not commit; leave changes staged.
+
+======================================================================
+PHASE 8 — NOTIFY
+======================================================================
+1. Write TRANSITION_REPORT.md: what changed, what did not, current orchestration.mode and gate strictness per gate, eval results, recommended rollout steps with criteria for moving each gate from shadow → advisory → enforced, known limitations, rollback.
+2. Write a short client-facing announcement draft (what they will notice: nothing yet; what they gain: --status, verdict reasons, audit trail) and a maintainer runbook (force, stop, override, resume, status).
+3. Implement the runner's notify hook: on WAITING_FOR_HUMAN, human_review, merge_ready and infra halt, print a one-line summary and call a configurable command/webhook from config.yaml if set (no-op by default).
+4. Print a final summary to me with the list of files changed and anything that needs my decision.
+
+======================================================================
+APPENDIX — TARGET ARCHITECTURE
+======================================================================
+Principles
+- Source of truth for artifacts is the spec; for orchestration it is the runner's state and verdict files.
+- Separation of duties: nothing grades its own work; verifiers never fix; verifiers never write artifacts, traces or verdicts; generators never author the evidence they are judged on.
+- Orchestration, trace extraction, structural checks, scoring, state and file writes are DETERMINISTIC CODE. Claude does generation and semantic judgement only; its output is always data, never control.
+- A `pass` is auto-approved for merge; therefore the scorer must be unarguable and the audit log complete.
+- Verification is automatic: gates run immediately after their generator, never by manual invocation; humans may force or stop.
+- Multi-day, human-in-the-loop, resumable, interruptible.
+- Seamless for the client: same commands, same artifacts, staged modes, reversible.
+
+Chain of trust
+  PRD ──(semantic council)──▶ spec ──(extract_traces.py)──▶ expected traces
+                                                  │
+                        BPMN / tasks / Java checked against ◀┘
+
+Commands (final set; existing names unchanged)
+  opsx:propose-intent        PRD → spec + BPMN
+  opsx:propose-design        thin wrapper → runner --phase design. Two nodes, same design-author agent:
+                             propose_design_clarify (--steps 1-3) and propose_design_build (--steps 4-7,
+                             requires_verdict gate_design == pass). Runner picks entry node from state; user
+                             always types the same command. State between halves is carried only via artifacts on disk.
+  opsx:verify-semantic-design / opsx:verify-semantic-author   juror agents
+  opsx:verify-structural-design / opsx:verify-structural-author   deterministic scripts
+  opsx:verify-design         single read-only agent, proposal/design/tasks vs spec + BPMN + traces
+  opsx:apply / opsx:verify   stock OpenSpec, unchanged
+  opsx:score <phase>         deterministic scorer
+  opsx:gate <phase>          runs council + structural in parallel, scorer, writes verdict; phases: design | design_artifacts | author
+  opsx:run                   thin wrapper → runner
+
+Rules
+- Expected traces come from the spec only via extract_traces.py → .openspec/<change>/traces/. BPMN and Java are never a source of traces. Only extract_traces.py writes traces/.
+- verify-structural-design: every expected trace realizable in BPMN; BPMN well-formed; orphan BPMN paths flagged.
+- verify-structural-author: traces vs Java structure derived from control flow / call graph; annotations are hints only; original BPMN is a secondary cross-check; a juror checks each annotation's claim matches the code beneath it.
+- Structural never consumes semantic output. Both feed the scorer only.
+- Council: 3 independent jurors, same inputs, parallel, no cross-visibility, lenses coverage / invariants & edge cases / adversarial, vary model where possible, identical strict-JSON output (per-requirement 0–1, findings, overall), tools Read/Glob/Grep only, maxTurns capped. Jurors return JSON in final message; runner writes files. verify-design gate uses a single juror.
+- Scorer: pure function of (juror JSON, structural JSON, config) → pass | fail | human_review with reason. Per-requirement median; any spread > disagreement_max → human_review; loops > max_loops → human_review.
+- Verdict files hash inputs; requires_verdict refuses stale inputs.
+
+Config (adapt to my existing schema; additive)
+  orchestration.mode: manual | observed | assisted | driven
+     manual = today; observed = wrapped commands record state and run gates in shadow, bootstraps in-flight changes;
+     assisted = commands consult state, run gates and inject feedback before continuing, human still sequences phases;
+     driven = runner advances to checkpoints (--step default, --auto).
+     Manual invocation stays valid in every mode and is implemented as runner --from <node> --until <next checkpoint>, logged by: human.
+  gates.<phase>.strictness: shadow | advisory | enforced   (shadow = write verdict, never block; advisory = show, user decides; enforced = loop/block/auto-approve)
+  scorer.design:  { pass: {semantic_min: 0.85, per_req_min: 0.7, structural: pass}, fail: {structural: fail}, else: human_review }
+  scorer.author:  { pass: {semantic_min: 0.90, per_req_min: 0.8, invariants_all_met: true, structural: pass}, fail: {structural: fail}, else: human_review }
+  scorer.max_loops: 3
+  council: { size: 3, aggregate: median, disagreement_max: 0.25, on_disagreement: human_review }
+  notify: { command: null }
+
+State & files (all under .openspec/<change>/, plain text, committable, lock file)
+  state.yaml       current node, completed nodes {in_hash, out_hash, ts, by}, loop counters, awaiting, mode, migrated flag
+  traces/          spec-derived trace tables
+  verdicts/<phase>-<n>.yaml   immutable; inputs hashes, jurors[{id, lens, model, per_requirement, overall, findings}],
+                   aggregate, structural{result, missing_traces, orphan_paths, findings}, verdict, reason, decided_by
+  human/           clarifications.md + .answers.yaml; <phase>-<n>.decision.yaml {decision: approve|reject|reset_loops, reason, by, ts}
+  runs/*.jsonl     append-only audit log
+
+Agents (.claude/agents/)
+  intent-author, design-author: Read, Write, Edit, Glob, Grep
+  implementer: all tools
+  semantic-{design,author}-juror-{coverage,invariants,adversarial}, design-verifier: Read, Glob, Grep; maxTurns
+  Verifiers receive only artifacts as input, never generator conversation. Different framing/model for verifiers vs authors.
+
+Hooks
+  PreToolUse Write|Edit: block proposal/design/tasks writes without a pass verdict with matching hashes (enforced mode only)
+  PreToolUse Write|Edit: block verdicts/** unless caller is runner; block traces/** unless caller is extract_traces.py
+  Stop/SubagentStop on author agents: record state and invoke runner --gate-only for the current phase
+  PostToolUse Write|Edit on spec/BPMN/src: mark state dirty so next run re-gates first
+
+Runner (scripts/run_pipeline.py + .openspec/pipeline.yaml)
+  Node types: agent | gate | checkpoint | human_input | human_review | terminal. Fields: inputs, outputs, requires_verdict, feedback_from, loop_counter, on:{pass,fail,human_review}, next.
+  Only the runner chooses the next node, solely from verdict enums in files it wrote.
+  Idempotent nodes keyed by input sha256; --resume is default; --restart explicit; --status; --from; --until; --dry-run; --pause-after.
+  Gates: pre scripts → council + structural in parallel → one retry on invalid juror JSON then human_review → scorer → atomic verdict write → transition.
+  Checkpoints after each pass: snapshot hashes, record git SHA only if committed, commit: optional|required|auto (default optional), stop with exit 3 unless --auto.
+  Human nodes: write questions / wait for decision file; exit 3 WAITING_FOR_HUMAN; resume when schema-valid file exists.
+  Human control: --gate-only [--phase]; --force; --from; --override <gate> --decision --reason (decision file, verdict immutable); --stop flag file; SIGINT/SIGTERM → terminate children, state `interrupted` at node boundary; interrupted gate/generator re-runs from scratch on resume; checkpointed phases never redo.
+  Infra failures (crash, missing outputs, bad JSON) → exit 2, never a fail verdict. Exit codes: 0 done, 2 infra halt, 3 waiting for human.
+  Stale detection on every resume: re-hash inputs of current node and requires_verdict deps; on mismatch stop and name the earliest node to re-run from.
+  Notify hook on WAITING_FOR_HUMAN, human_review, merge_ready, infra halt.
+
+Migration constraints
+- Preserve every command name, argument and artifact path. New commands additive. Deprecated commands print a notice and delegate.
+- Schema changes additive with defaults; existing specs still validate; trace extraction warns, not fails, on unstructured requirements until enforced.
+- Default after implementation: orchestration.mode observed, all gates shadow. Rollout per gate, design first, author last, promoted on eval evidence.
+- Bootstrap state for in-flight changes from existing artifacts, marked migrated: true; never require restarting a change.
+- Rollback: mode manual; all new state is confined to .openspec/<change>/ and removable without touching artifacts.
